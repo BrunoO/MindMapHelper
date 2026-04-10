@@ -26,7 +26,7 @@ constexpr ImU32 kColorBranchOutline = IM_COL32(95, 72, 52, 220);
 constexpr ImU32 kColorNodeFill = IM_COL32(52, 48, 44, 255);
 constexpr ImU32 kColorNodeBorder = IM_COL32(130, 110, 90, 255);
 constexpr ImU32 kColorNodeBorderHot = IM_COL32(230, 200, 160, 255);
-constexpr float kNodeCornerRadius = 6.0F;
+constexpr float kNodeCornerRadius = kSampleMindMapNodeCornerRadiusWorld;
 constexpr float kNodeBorderThickness = 1.5F;
 
 [[nodiscard]] ImVec2 CubicBezierPoint(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3,
@@ -133,17 +133,19 @@ void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0w = SampleMapAttachmentToward(pw, parent_half, cw);
-    const ImVec2 p3w = SampleMapAttachmentToward(cw, child_half, pw);
+    const ImVec2 p0w = SampleMapRoundedRectAttachmentToward(pw, parent_half, kSampleMindMapNodeCornerRadiusWorld, cw);
+    const ImVec2 p3w = SampleMapRoundedRectAttachmentToward(cw, child_half, kSampleMindMapNodeCornerRadiusWorld, pw);
 
     const int grandparent = kSampleMindMapSpecs[static_cast<size_t>(parent)].parent_;
     const float parent_radius = SampleMapNodeRadiusWorld(parent_label);
     const float child_radius = SampleMapNodeRadiusWorld(child_label);
     const float half_width_start = (grandparent < 0) ? BranchRootStartHalfWidthWorld(parent_radius)
                                                      : BranchEndHalfWidthWorld(parent_radius);
-    const float half_width_end = BranchEndHalfWidthWorld(child_radius);
+    const float half_width_end_raw = BranchEndHalfWidthWorld(child_radius);
+    const float half_width_end = (std::min)(half_width_end_raw, half_width_start);
 
-    const SampleMapBezierArms arms = ComputeSampleMapBezierArmsWorld(p0w, p3w, 96.0F, 0.55F);
+    const SampleMapBezierArms arms =
+        ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F);
     const ImVec2 p1w = arms.p1;
     const ImVec2 p2w = arms.p2;
 

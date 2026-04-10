@@ -14,6 +14,8 @@ namespace mind_map::demos {
 
 inline constexpr int kSampleMindMapNodeCount = 7;
 inline constexpr float kSampleMindMapNodePad = 10.0F;
+// Matches rounded-rect nodes in Bezier / organic taper demos (world space).
+inline constexpr float kSampleMindMapNodeCornerRadiusWorld = 6.0F;
 
 struct SampleMindMapNodeSpec {
   const char* label_;
@@ -88,6 +90,122 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
   return {from_center.x + vx * t, from_center.y + vy * t};
 }
 
+// First hit from box center along toward_point on a rounded-rect outline (uniform corner radius, axis-aligned).
+[[nodiscard]] inline ImVec2 SampleMapRoundedRectAttachmentToward(ImVec2 center, ImVec2 half_extents, float corner_r,
+                                                                   ImVec2 toward_point) {
+  float vx = toward_point.x - center.x;
+  float vy = toward_point.y - center.y;
+  const float len_sq = vx * vx + vy * vy;
+  if (len_sq < 1.0e-12F) {
+    return {center.x + half_extents.x, center.y};
+  }
+  const float inv_len = 1.0F / std::sqrt(len_sq);
+  vx *= inv_len;
+  vy *= inv_len;
+
+  const float hx = half_extents.x;
+  const float hy = half_extents.y;
+  float r = corner_r;
+  if (r > hx * 0.98F) {
+    r = hx * 0.98F;
+  }
+  if (r > hy * 0.98F) {
+    r = hy * 0.98F;
+  }
+  if (r < 1.0e-5F) {
+    return SampleMapAttachmentToward(center, half_extents, toward_point);
+  }
+
+  constexpr float kEps = 1.0e-5F;
+  float best_t = 1.0e15F;
+  const auto consider = [&best_t](float t) {
+    if (t > kEps && t < best_t) {
+      best_t = t;
+    }
+  };
+
+  const float cx = center.x;
+  const float cy = center.y;
+
+  if (vx > kEps) {
+    const float t = hx / vx;
+    const float y = cy + vy * t;
+    if (y >= cy - hy + r - kEps && y <= cy + hy - r + kEps) {
+      consider(t);
+    }
+  }
+  else if (vx < -kEps) {
+    const float t = -hx / vx;
+    const float y = cy + vy * t;
+    if (y >= cy - hy + r - kEps && y <= cy + hy - r + kEps) {
+      consider(t);
+    }
+  }
+
+  if (vy > kEps) {
+    const float t = hy / vy;
+    const float x = cx + vx * t;
+    if (x >= cx - hx + r - kEps && x <= cx + hx - r + kEps) {
+      consider(t);
+    }
+  }
+  else if (vy < -kEps) {
+    const float t = -hy / vy;
+    const float x = cx + vx * t;
+    if (x >= cx - hx + r - kEps && x <= cx + hx - r + kEps) {
+      consider(t);
+    }
+  }
+
+  const auto consider_arc = [&](ImVec2 k, bool br, bool bl, bool tr, bool tl) {
+    const float wx = cx - k.x;
+    const float wy = cy - k.y;
+    const float wd = wx * vx + wy * vy;
+    const float ww = wx * wx + wy * wy;
+    const float inner = wd * wd - (ww - r * r);
+    if (inner < 0.0F) {
+      return;
+    }
+    const float srt = std::sqrt(inner);
+    const float roots[2] = {-wd + srt, -wd - srt};
+    for (float t : roots) {
+      if (t <= kEps) {
+        continue;
+      }
+      const float px = cx + vx * t;
+      const float py = cy + vy * t;
+      const float rx = px - k.x;
+      const float ry = py - k.y;
+      bool ok = false;
+      if (br) {
+        ok = (rx >= -kEps && ry >= -kEps);
+      }
+      else if (bl) {
+        ok = (rx <= kEps && ry >= -kEps);
+      }
+      else if (tr) {
+        ok = (rx >= -kEps && ry <= kEps);
+      }
+      else if (tl) {
+        ok = (rx <= kEps && ry <= kEps);
+      }
+      if (ok) {
+        consider(t);
+      }
+    }
+  };
+
+  consider_arc({cx + hx - r, cy + hy - r}, true, false, false, false);
+  consider_arc({cx - hx + r, cy + hy - r}, false, true, false, false);
+  consider_arc({cx + hx - r, cy - hy + r}, false, false, true, false);
+  consider_arc({cx - hx + r, cy - hy + r}, false, false, false, true);
+
+  if (best_t >= 1.0e14F) {
+    return SampleMapAttachmentToward(center, half_extents, toward_point);
+  }
+  return {cx + vx * best_t, cy + vy * best_t};
+}
+
 [[nodiscard]] inline ImVec2 SampleMapCircleAttachmentToward(ImVec2 from_center, float radius, ImVec2 toward_point) {
   assert(radius >= 0.0F);
   float vx = toward_point.x - from_center.x;
@@ -105,32 +223,40 @@ struct SampleMapBezierArms {
   ImVec2 p2;
 };
 
-// Axis-aligned handles (horizontal or vertical S), matching pre–side-aware attachment behavior: strong bend
-// along the dominant separation axis. p0/p3 remain side-aware; p1/p2 extend only in X or only in Y.
-[[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(ImVec2 p0w, ImVec2 p3w, float min_arm_world,
+// Outward axis normal for the flat edge (or dominant edge at corners) where attachment_point lies on the box.
+[[nodiscard]] inline ImVec2 SampleMapEdgeOutwardAxis(ImVec2 box_center, ImVec2 half_extents, ImVec2 attachment_point) {
+  constexpr float kTiny = 1.0e-6F;
+  const float ax =
+      half_extents.x > kTiny ? std::abs(attachment_point.x - box_center.x) / half_extents.x : 0.0F;
+  const float ay =
+      half_extents.y > kTiny ? std::abs(attachment_point.y - box_center.y) / half_extents.y : 0.0F;
+  if (ax >= ay) {
+    return (attachment_point.x >= box_center.x) ? ImVec2{1.0F, 0.0F} : ImVec2{-1.0F, 0.0F};
+  }
+  return (attachment_point.y >= box_center.y) ? ImVec2{0.0F, 1.0F} : ImVec2{0.0F, -1.0F};
+}
+
+// p1 / p2 extend along edge normals so B'(0) and B'(1) match the border; strong S without peeling off the node.
+[[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(ImVec2 parent_center, ImVec2 parent_half,
+                                                                         ImVec2 child_center, ImVec2 child_half,
+                                                                         ImVec2 p0w, ImVec2 p3w, float min_arm_world,
                                                                          float span_fraction) {
-  constexpr float kMaxArmAsSepFraction = 0.45F;
+  constexpr float kMaxArmAsChordFraction = 0.45F;
   const float dx = p3w.x - p0w.x;
   const float dy = p3w.y - p0w.y;
   const float adx = std::abs(dx);
   const float ady = std::abs(dy);
-  if (adx < 1.0e-6F && ady < 1.0e-6F) {
+  const float chord = std::sqrt(dx * dx + dy * dy);
+  if (chord < 1.0e-6F) {
     return {p0w, p3w};
   }
+  const float sep_dom = (std::max)(adx, ady);
+  float arm = (std::max)(min_arm_world, sep_dom * span_fraction);
+  arm = (std::min)(arm, kMaxArmAsChordFraction * chord);
 
-  if (adx >= ady) {
-    const float cap = kMaxArmAsSepFraction * adx;
-    float arm = (std::max)(min_arm_world, adx * span_fraction);
-    arm = (std::min)(arm, cap);
-    const float sign = (dx >= 0.0F) ? 1.0F : -1.0F;
-    return {{p0w.x + sign * arm, p0w.y}, {p3w.x - sign * arm, p3w.y}};
-  }
-
-  const float cap = kMaxArmAsSepFraction * ady;
-  float arm = (std::max)(min_arm_world, ady * span_fraction);
-  arm = (std::min)(arm, cap);
-  const float sign = (dy >= 0.0F) ? 1.0F : -1.0F;
-  return {{p0w.x, p0w.y + sign * arm}, {p3w.x, p3w.y - sign * arm}};
+  const ImVec2 out0 = SampleMapEdgeOutwardAxis(parent_center, parent_half, p0w);
+  const ImVec2 out3 = SampleMapEdgeOutwardAxis(child_center, child_half, p3w);
+  return {{p0w.x + out0.x * arm, p0w.y + out0.y * arm}, {p3w.x + out3.x * arm, p3w.y + out3.y * arm}};
 }
 
 [[nodiscard]] inline int HitTestSampleMapCircles(ImVec2 world_pos,

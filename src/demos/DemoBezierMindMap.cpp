@@ -37,9 +37,10 @@ void DrawMindMapEdgesBezier(ImDrawList* draw_list, ImVec2 canvas_p0,
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0w = SampleMapAttachmentToward(pw, parent_half, cw);
-    const ImVec2 p3w = SampleMapAttachmentToward(cw, child_half, pw);
-    const SampleMapBezierArms arms = ComputeSampleMapBezierArmsWorld(p0w, p3w, 96.0F, 0.55F);
+    const ImVec2 p0w = SampleMapRoundedRectAttachmentToward(pw, parent_half, kSampleMindMapNodeCornerRadiusWorld, cw);
+    const ImVec2 p3w = SampleMapRoundedRectAttachmentToward(cw, child_half, kSampleMindMapNodeCornerRadiusWorld, pw);
+    const SampleMapBezierArms arms =
+        ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F);
     const ImVec2 p1w = arms.p1;
     const ImVec2 p2w = arms.p2;
 
@@ -113,8 +114,8 @@ void DemoBezierMindMap::Render(const DemoRenderContext& ctx) {
 
     const bool hot = (i == dragging_node_) || (i == hot_node);
     const ImU32 border = hot ? kColorNodeBorderHot : kColorNodeBorder;
-    ctx.draw_list->AddRectFilled(rmin, rmax, kColorNodeFill, 6.0F);
-    ctx.draw_list->AddRect(rmin, rmax, border, 6.0F, 0, 1.5F);
+    ctx.draw_list->AddRectFilled(rmin, rmax, kColorNodeFill, kSampleMindMapNodeCornerRadiusWorld);
+    ctx.draw_list->AddRect(rmin, rmax, border, kSampleMindMapNodeCornerRadiusWorld, 0, 1.5F);
 
     const ImVec2 text_sz = ImGui::CalcTextSize(label);
     const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F, (rmin.y + rmax.y - text_sz.y) * 0.5F};
