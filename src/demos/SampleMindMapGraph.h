@@ -105,25 +105,32 @@ struct SampleMapBezierArms {
   ImVec2 p2;
 };
 
-// Each handle must stay within less than half the chord; otherwise p1/p2 cross and the cubic looks straight.
+// Axis-aligned handles (horizontal or vertical S), matching pre–side-aware attachment behavior: strong bend
+// along the dominant separation axis. p0/p3 remain side-aware; p1/p2 extend only in X or only in Y.
 [[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(ImVec2 p0w, ImVec2 p3w, float min_arm_world,
                                                                          float span_fraction) {
-  constexpr float kMaxArmAsChordFraction = 0.45F;
-  float dx = p3w.x - p0w.x;
-  float dy = p3w.y - p0w.y;
-  const float dist = std::sqrt(dx * dx + dy * dy);
-  const float desired_arm = (std::max)(min_arm_world, dist * span_fraction);
-  const float max_arm = dist * kMaxArmAsChordFraction;
-  const float arm = (dist < 1.0e-6F) ? 0.0F : (std::min)(desired_arm, max_arm);
-  if (dist > 1.0e-6F) {
-    dx /= dist;
-    dy /= dist;
+  constexpr float kMaxArmAsSepFraction = 0.45F;
+  const float dx = p3w.x - p0w.x;
+  const float dy = p3w.y - p0w.y;
+  const float adx = std::abs(dx);
+  const float ady = std::abs(dy);
+  if (adx < 1.0e-6F && ady < 1.0e-6F) {
+    return {p0w, p3w};
   }
-  else {
-    dx = 1.0F;
-    dy = 0.0F;
+
+  if (adx >= ady) {
+    const float cap = kMaxArmAsSepFraction * adx;
+    float arm = (std::max)(min_arm_world, adx * span_fraction);
+    arm = (std::min)(arm, cap);
+    const float sign = (dx >= 0.0F) ? 1.0F : -1.0F;
+    return {{p0w.x + sign * arm, p0w.y}, {p3w.x - sign * arm, p3w.y}};
   }
-  return {{p0w.x + dx * arm, p0w.y + dy * arm}, {p3w.x - dx * arm, p3w.y - dy * arm}};
+
+  const float cap = kMaxArmAsSepFraction * ady;
+  float arm = (std::max)(min_arm_world, ady * span_fraction);
+  arm = (std::min)(arm, cap);
+  const float sign = (dy >= 0.0F) ? 1.0F : -1.0F;
+  return {{p0w.x, p0w.y + sign * arm}, {p3w.x, p3w.y - sign * arm}};
 }
 
 [[nodiscard]] inline int HitTestSampleMapCircles(ImVec2 world_pos,
