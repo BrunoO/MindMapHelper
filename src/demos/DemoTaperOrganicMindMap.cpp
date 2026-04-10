@@ -67,16 +67,24 @@ void NormalizeOrDefault(ImVec2* v) {
   return {-tangent.y, tangent.x};
 }
 
-[[nodiscard]] float BranchHalfWidthWorld(float t, float parent_radius_world, float child_radius_world) {
-  const float w0 = (std::max)(kMinParentHalfWidthWorld, parent_radius_world * kMaxParentHalfWidthScale);
-  const float w1 = (std::max)(kMinChildHalfWidthWorld, child_radius_world * kMaxChildHalfWidthScale);
+// Half-width at t=1 along an edge (matches where the branch meets the child node).
+[[nodiscard]] float BranchEndHalfWidthWorld(float child_node_radius_world) {
+  return (std::max)(kMinChildHalfWidthWorld, child_node_radius_world * kMaxChildHalfWidthScale);
+}
+
+// Half-width at t=0 for edges leaving the root (no incoming branch).
+[[nodiscard]] float BranchRootStartHalfWidthWorld(float root_node_radius_world) {
+  return (std::max)(kMinParentHalfWidthWorld, root_node_radius_world * kMaxParentHalfWidthScale);
+}
+
+[[nodiscard]] float BranchHalfWidthAlongEdge(float t, float half_width_start, float half_width_end) {
   const float narrow = std::pow(t, kTaperPower);
-  return w0 + (w1 - w0) * narrow;
+  return half_width_start + (half_width_end - half_width_start) * narrow;
 }
 
 void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_px, float zoom, const ImVec2& p0w,
-                           const ImVec2& p1w, const ImVec2& p2w, const ImVec2& p3w, float parent_radius_world,
-                           float child_radius_world) {
+                           const ImVec2& p1w, const ImVec2& p2w, const ImVec2& p3w, float half_width_start,
+                           float half_width_end) {
   assert(draw_list != nullptr);
   std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> left_s{};
   std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> right_s{};
@@ -88,7 +96,7 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
     NormalizeOrDefault(&tan_w);
     ImVec2 n_w = PerpLeft(tan_w);
     NormalizeOrDefault(&n_w);
-    const float half_w = BranchHalfWidthWorld(t, parent_radius_world, child_radius_world);
+    const float half_w = BranchHalfWidthAlongEdge(t, half_width_start, half_width_end);
     const ImVec2 lw = {pw.x + n_w.x * half_w, pw.y + n_w.y * half_w};
     const ImVec2 rw = {pw.x - n_w.x * half_w, pw.y - n_w.y * half_w};
     left_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(lw, canvas_p0, pan_px, zoom);
@@ -122,20 +130,26 @@ void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
     const char* const child_label = kSampleMindMapSpecs[static_cast<size_t>(child)].label_;
     const ImVec2 parent_half = SampleMapHalfExtentForLabel(parent_label);
     const ImVec2 child_half = SampleMapHalfExtentForLabel(child_label);
-    const float pr = SampleMapNodeRadiusWorld(parent_label);
-    const float cr = SampleMapNodeRadiusWorld(child_label);
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
     const ImVec2 p0w = {pw.x + parent_half.x, pw.y};
     const ImVec2 p3w = {cw.x - child_half.x, cw.y};
 
+    const int grandparent = kSampleMindMapSpecs[static_cast<size_t>(parent)].parent_;
+    const float parent_radius = SampleMapNodeRadiusWorld(parent_label);
+    const float child_radius = SampleMapNodeRadiusWorld(child_label);
+    const float half_width_start = (grandparent < 0) ? BranchRootStartHalfWidthWorld(parent_radius)
+                                                     : BranchEndHalfWidthWorld(parent_radius);
+    const float half_width_end = BranchEndHalfWidthWorld(child_radius);
+
     const float horizontal_span = std::abs(p3w.x - p0w.x);
     const float arm = (std::max)(96.0F, horizontal_span * 0.55F);
     const ImVec2 p1w = {p0w.x + arm, p0w.y};
     const ImVec2 p2w = {p3w.x - arm, p3w.y};
 
-    DrawTaperBezierBranch(draw_list, canvas_p0, pan_px, zoom, p0w, p1w, p2w, p3w, pr, cr);
+    DrawTaperBezierBranch(draw_list, canvas_p0, pan_px, zoom, p0w, p1w, p2w, p3w, half_width_start,
+                          half_width_end);
   }
 }
 
