@@ -206,6 +206,100 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
   return {cx + vx * best_t, cy + vy * best_t};
 }
 
+enum class SampleMapBoxSide { kRight, kLeft, kBottom, kTop };
+
+// Which face of the box `hit` lies on (normalized coords + horizontal_stickiness to prefer left/right ties).
+[[nodiscard]] inline SampleMapBoxSide SampleMapSideOfHit(ImVec2 box_center, ImVec2 half_extents, ImVec2 hit,
+                                                         float horizontal_stickiness = 1.12F) {
+  const float hx = (std::max)(half_extents.x, 1.0e-4F);
+  const float hy = (std::max)(half_extents.y, 1.0e-4F);
+  const float nax = std::abs(hit.x - box_center.x) / hx * horizontal_stickiness;
+  const float nay = std::abs(hit.y - box_center.y) / hy;
+  if (nax >= nay) {
+    return (hit.x >= box_center.x) ? SampleMapBoxSide::kRight : SampleMapBoxSide::kLeft;
+  }
+  return (hit.y >= box_center.y) ? SampleMapBoxSide::kBottom : SampleMapBoxSide::kTop;
+}
+
+[[nodiscard]] inline float SampleMapSmoothstep(float edge0, float edge1, float x) {
+  if (x <= edge0) {
+    return 0.0F;
+  }
+  if (x >= edge1) {
+    return 1.0F;
+  }
+  const float t = (x - edge0) / (edge1 - edge0);
+  return t * t * (3.0F - 2.0F * t);
+}
+
+[[nodiscard]] inline bool SampleMapHitOnStraightSegment(ImVec2 c, ImVec2 h, float r, SampleMapBoxSide side,
+                                                        ImVec2 hit) {
+  constexpr float kEps = 0.85F;
+  const float cx = c.x;
+  const float cy = c.y;
+  const float hx = h.x;
+  const float hy = h.y;
+  switch (side) {
+    case SampleMapBoxSide::kRight:
+      return std::abs(hit.x - (cx + hx)) <= kEps && hit.y >= cy - hy + r - kEps && hit.y <= cy + hy - r + kEps;
+    case SampleMapBoxSide::kLeft:
+      return std::abs(hit.x - (cx - hx)) <= kEps && hit.y >= cy - hy + r - kEps && hit.y <= cy + hy - r + kEps;
+    case SampleMapBoxSide::kBottom:
+      return std::abs(hit.y - (cy + hy)) <= kEps && hit.x >= cx - hx + r - kEps && hit.x <= cx + hx - r + kEps;
+    case SampleMapBoxSide::kTop:
+      return std::abs(hit.y - (cy - hy)) <= kEps && hit.x >= cx - hx + r - kEps && hit.x <= cx + hx - r + kEps;
+  }
+  return false;
+}
+
+// Like SampleMapRoundedRectAttachmentToward but pulls toward the middle of the chosen flat edge; follows the ray hit
+// only when the hit lies far along that edge (smoothstep). Corner hits are left unchanged.
+[[nodiscard]] inline ImVec2 SampleMapRoundedRectAttachmentPreferEdgeMid(
+    ImVec2 center, ImVec2 half_extents, float corner_r, ImVec2 toward_point,
+    float blend_from_normalized = 0.22F, float blend_to_normalized = 0.62F, float horizontal_stickiness = 1.12F) {
+  const ImVec2 hit = SampleMapRoundedRectAttachmentToward(center, half_extents, corner_r, toward_point);
+  const SampleMapBoxSide side = SampleMapSideOfHit(center, half_extents, hit, horizontal_stickiness);
+  if (!SampleMapHitOnStraightSegment(center, half_extents, corner_r, side, hit)) {
+    return hit;
+  }
+
+  float r = corner_r;
+  if (r > half_extents.x * 0.98F) {
+    r = half_extents.x * 0.98F;
+  }
+  if (r > half_extents.y * 0.98F) {
+    r = half_extents.y * 0.98F;
+  }
+  if (r < 1.0e-5F) {
+    return hit;
+  }
+
+  const float cx = center.x;
+  const float cy = center.y;
+  const float hx = half_extents.x;
+  const float hy = half_extents.y;
+  const float span_v = (std::max)(hy - r, 1.0e-4F);
+  const float span_h = (std::max)(hx - r, 1.0e-4F);
+
+  if (side == SampleMapBoxSide::kRight || side == SampleMapBoxSide::kLeft) {
+    const float offset = hit.y - cy;
+    const float u = (std::min)(std::abs(offset) / span_v, 1.0F);
+    const float w = SampleMapSmoothstep(blend_from_normalized, blend_to_normalized, u);
+    const float y = cy + offset * w;
+    const float y_clamped = (std::clamp)(y, cy - hy + r, cy + hy - r);
+    const float x_side = (side == SampleMapBoxSide::kRight) ? (cx + hx) : (cx - hx);
+    return {x_side, y_clamped};
+  }
+
+  const float offset = hit.x - cx;
+  const float u = (std::min)(std::abs(offset) / span_h, 1.0F);
+  const float w = SampleMapSmoothstep(blend_from_normalized, blend_to_normalized, u);
+  const float x = cx + offset * w;
+  const float x_clamped = (std::clamp)(x, cx - hx + r, cx + hx - r);
+  const float y_side = (side == SampleMapBoxSide::kBottom) ? (cy + hy) : (cy - hy);
+  return {x_clamped, y_side};
+}
+
 [[nodiscard]] inline ImVec2 SampleMapCircleAttachmentToward(ImVec2 from_center, float radius, ImVec2 toward_point) {
   assert(radius >= 0.0F);
   float vx = toward_point.x - from_center.x;

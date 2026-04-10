@@ -37,8 +37,10 @@ void DrawMindMapEdgesBezier(ImDrawList* draw_list, ImVec2 canvas_p0,
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0w = SampleMapRoundedRectAttachmentToward(pw, parent_half, kSampleMindMapNodeCornerRadiusWorld, cw);
-    const ImVec2 p3w = SampleMapRoundedRectAttachmentToward(cw, child_half, kSampleMindMapNodeCornerRadiusWorld, pw);
+    const ImVec2 p0w =
+        SampleMapRoundedRectAttachmentPreferEdgeMid(pw, parent_half, kSampleMindMapNodeCornerRadiusWorld, cw);
+    const ImVec2 p3w =
+        SampleMapRoundedRectAttachmentPreferEdgeMid(cw, child_half, kSampleMindMapNodeCornerRadiusWorld, pw);
     const SampleMapBezierArms arms =
         ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F);
     const ImVec2 p1w = arms.p1;

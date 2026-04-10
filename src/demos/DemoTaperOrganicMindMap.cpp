@@ -133,8 +133,10 @@ void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0w = SampleMapRoundedRectAttachmentToward(pw, parent_half, kSampleMindMapNodeCornerRadiusWorld, cw);
-    const ImVec2 p3w = SampleMapRoundedRectAttachmentToward(cw, child_half, kSampleMindMapNodeCornerRadiusWorld, pw);
+    const ImVec2 p0w =
+        SampleMapRoundedRectAttachmentPreferEdgeMid(pw, parent_half, kSampleMindMapNodeCornerRadiusWorld, cw);
+    const ImVec2 p3w =
+        SampleMapRoundedRectAttachmentPreferEdgeMid(cw, child_half, kSampleMindMapNodeCornerRadiusWorld, pw);
 
     const int grandparent = kSampleMindMapSpecs[static_cast<size_t>(parent)].parent_;
     const float parent_radius = SampleMapNodeRadiusWorld(parent_label);
