@@ -133,8 +133,8 @@ void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0w = {pw.x + parent_half.x, pw.y};
-    const ImVec2 p3w = {cw.x - child_half.x, cw.y};
+    const ImVec2 p0w = SampleMapAttachmentToward(pw, parent_half, cw);
+    const ImVec2 p3w = SampleMapAttachmentToward(cw, child_half, pw);
 
     const int grandparent = kSampleMindMapSpecs[static_cast<size_t>(parent)].parent_;
     const float parent_radius = SampleMapNodeRadiusWorld(parent_label);
@@ -143,10 +143,9 @@ void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
                                                      : BranchEndHalfWidthWorld(parent_radius);
     const float half_width_end = BranchEndHalfWidthWorld(child_radius);
 
-    const float horizontal_span = std::abs(p3w.x - p0w.x);
-    const float arm = (std::max)(96.0F, horizontal_span * 0.55F);
-    const ImVec2 p1w = {p0w.x + arm, p0w.y};
-    const ImVec2 p2w = {p3w.x - arm, p3w.y};
+    const SampleMapBezierArms arms = ComputeSampleMapBezierArmsWorld(p0w, p3w, 96.0F, 0.55F);
+    const ImVec2 p1w = arms.p1;
+    const ImVec2 p2w = arms.p2;
 
     DrawTaperBezierBranch(draw_list, canvas_p0, pan_px, zoom, p0w, p1w, p2w, p3w, half_width_start,
                           half_width_end);

@@ -57,6 +57,71 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
   return (std::max)(half.x, half.y);
 }
 
+// Axis-aligned box boundary point from from_center toward toward_point (half = half-extents).
+[[nodiscard]] inline ImVec2 SampleMapAttachmentToward(ImVec2 from_center, ImVec2 half_extents, ImVec2 toward_point) {
+  float vx = toward_point.x - from_center.x;
+  float vy = toward_point.y - from_center.y;
+  const float len_sq = vx * vx + vy * vy;
+  if (len_sq < 1.0e-12F) {
+    return {from_center.x + half_extents.x, from_center.y};
+  }
+  const float inv_len = 1.0F / std::sqrt(len_sq);
+  vx *= inv_len;
+  vy *= inv_len;
+  constexpr float kEps = 1.0e-6F;
+  constexpr float kHuge = 1.0e15F;
+  float tx = kHuge;
+  float ty = kHuge;
+  if (vx > kEps) {
+    tx = half_extents.x / vx;
+  }
+  else if (vx < -kEps) {
+    tx = half_extents.x / (-vx);
+  }
+  if (vy > kEps) {
+    ty = half_extents.y / vy;
+  }
+  else if (vy < -kEps) {
+    ty = half_extents.y / (-vy);
+  }
+  const float t = (std::min)(tx, ty);
+  return {from_center.x + vx * t, from_center.y + vy * t};
+}
+
+[[nodiscard]] inline ImVec2 SampleMapCircleAttachmentToward(ImVec2 from_center, float radius, ImVec2 toward_point) {
+  assert(radius >= 0.0F);
+  float vx = toward_point.x - from_center.x;
+  float vy = toward_point.y - from_center.y;
+  const float len_sq = vx * vx + vy * vy;
+  if (len_sq < 1.0e-12F) {
+    return {from_center.x + radius, from_center.y};
+  }
+  const float inv = radius / std::sqrt(len_sq);
+  return {from_center.x + vx * inv, from_center.y + vy * inv};
+}
+
+struct SampleMapBezierArms {
+  ImVec2 p1;
+  ImVec2 p2;
+};
+
+[[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(ImVec2 p0w, ImVec2 p3w, float min_arm_world,
+                                                                         float span_fraction) {
+  float dx = p3w.x - p0w.x;
+  float dy = p3w.y - p0w.y;
+  const float dist = std::sqrt(dx * dx + dy * dy);
+  const float arm = (std::max)(min_arm_world, dist * span_fraction);
+  if (dist > 1.0e-6F) {
+    dx /= dist;
+    dy /= dist;
+  }
+  else {
+    dx = 1.0F;
+    dy = 0.0F;
+  }
+  return {{p0w.x + dx * arm, p0w.y + dy * arm}, {p3w.x - dx * arm, p3w.y - dy * arm}};
+}
+
 [[nodiscard]] inline int HitTestSampleMapCircles(ImVec2 world_pos,
                                                  const std::array<ImVec2, kSampleMindMapNodeCount>& pos_world) {
   for (int i = kSampleMindMapNodeCount - 1; i >= 0; --i) {

@@ -4,7 +4,6 @@
 
 #include "ui/canvas/CanvasMath.h"
 
-#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -36,15 +35,13 @@ void DrawMindMapEdgesBezier(ImDrawList* draw_list, ImVec2 canvas_p0,
     const ImVec2 parent_half = SampleMapHalfExtentForLabel(parent_label);
     const ImVec2 child_half = SampleMapHalfExtentForLabel(child_label);
 
-    const ImVec2 p0w = {pos_world[static_cast<size_t>(parent)].x + parent_half.x,
-                        pos_world[static_cast<size_t>(parent)].y};
-    const ImVec2 p3w = {pos_world[static_cast<size_t>(child)].x - child_half.x,
-                        pos_world[static_cast<size_t>(child)].y};
-
-    const float horizontal_span = std::abs(p3w.x - p0w.x);
-    const float arm = (std::max)(96.0F, horizontal_span * 0.55F);
-    const ImVec2 p1w = {p0w.x + arm, p0w.y};
-    const ImVec2 p2w = {p3w.x - arm, p3w.y};
+    const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
+    const ImVec2 cw = pos_world[static_cast<size_t>(child)];
+    const ImVec2 p0w = SampleMapAttachmentToward(pw, parent_half, cw);
+    const ImVec2 p3w = SampleMapAttachmentToward(cw, child_half, pw);
+    const SampleMapBezierArms arms = ComputeSampleMapBezierArmsWorld(p0w, p3w, 96.0F, 0.55F);
+    const ImVec2 p1w = arms.p1;
+    const ImVec2 p2w = arms.p2;
 
     const ImVec2 p0 = mind_map::canvas::WorldToScreen(p0w, canvas_p0, pan_px, zoom);
     const ImVec2 p1 = mind_map::canvas::WorldToScreen(p1w, canvas_p0, pan_px, zoom);

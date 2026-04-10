@@ -34,8 +34,8 @@ void DrawOrthogonalEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0w = {pw.x + pr, pw.y};
-    const ImVec2 p3w = {cw.x - cr, cw.y};
+    const ImVec2 p0w = SampleMapCircleAttachmentToward(pw, pr, cw);
+    const ImVec2 p3w = SampleMapCircleAttachmentToward(cw, cr, pw);
     const float mid_x = 0.5F * (p0w.x + p3w.x);
     const ImVec2 p1w = {mid_x, p0w.y};
     const ImVec2 p2w = {mid_x, p3w.y};
