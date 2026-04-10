@@ -105,12 +105,16 @@ struct SampleMapBezierArms {
   ImVec2 p2;
 };
 
+// Each handle must stay within less than half the chord; otherwise p1/p2 cross and the cubic looks straight.
 [[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(ImVec2 p0w, ImVec2 p3w, float min_arm_world,
                                                                          float span_fraction) {
+  constexpr float kMaxArmAsChordFraction = 0.45F;
   float dx = p3w.x - p0w.x;
   float dy = p3w.y - p0w.y;
   const float dist = std::sqrt(dx * dx + dy * dy);
-  const float arm = (std::max)(min_arm_world, dist * span_fraction);
+  const float desired_arm = (std::max)(min_arm_world, dist * span_fraction);
+  const float max_arm = dist * kMaxArmAsChordFraction;
+  const float arm = (dist < 1.0e-6F) ? 0.0F : (std::min)(desired_arm, max_arm);
   if (dist > 1.0e-6F) {
     dx /= dist;
     dy /= dist;
