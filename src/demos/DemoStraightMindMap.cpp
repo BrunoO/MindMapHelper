@@ -4,9 +4,7 @@
 
 #include "ui/canvas/CanvasMath.h"
 
-#include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstddef>
 
 namespace mind_map::demos {
@@ -18,25 +16,6 @@ constexpr ImU32 kColorEdge = IM_COL32(120, 200, 150, 255);
 constexpr ImU32 kColorNodeFill = IM_COL32(42, 56, 52, 255);
 constexpr ImU32 kColorNodeBorder = IM_COL32(100, 150, 120, 255);
 constexpr ImU32 kColorNodeBorderHot = IM_COL32(190, 240, 210, 255);
-
-[[nodiscard]] float NodeRadiusWorld(const char* label) {
-  const ImVec2 half = SampleMapHalfExtentForLabel(label);
-  return (std::max)(half.x, half.y);
-}
-
-[[nodiscard]] int HitTestCircles(ImVec2 world_pos, const std::array<ImVec2, kSampleMindMapNodeCount>& pos_world) {
-  for (int i = kSampleMindMapNodeCount - 1; i >= 0; --i) {
-    const char* const label = kSampleMindMapSpecs[static_cast<size_t>(i)].label_;
-    const float r = NodeRadiusWorld(label);
-    const ImVec2 c = pos_world[static_cast<size_t>(i)];
-    const float dx = world_pos.x - c.x;
-    const float dy = world_pos.y - c.y;
-    if (dx * dx + dy * dy <= r * r) {
-      return i;
-    }
-  }
-  return -1;
-}
 
 void DrawOrthogonalEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
                          const std::array<ImVec2, kSampleMindMapNodeCount>& pos_world, ImVec2 pan_px, float zoom) {
@@ -50,8 +29,8 @@ void DrawOrthogonalEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
 
     const char* const parent_label = kSampleMindMapSpecs[static_cast<size_t>(parent)].label_;
     const char* const child_label = kSampleMindMapSpecs[static_cast<size_t>(child)].label_;
-    const float pr = NodeRadiusWorld(parent_label);
-    const float cr = NodeRadiusWorld(child_label);
+    const float pr = SampleMapNodeRadiusWorld(parent_label);
+    const float cr = SampleMapNodeRadiusWorld(child_label);
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
@@ -87,7 +66,7 @@ void DemoStraightMindMap::OnPrimaryDown(const DemoPointerState& ptr) {
   if (!ptr.canvas_hovered) {
     return;
   }
-  const int hit = HitTestCircles(ptr.mouse_world, pos_world_);
+  const int hit = HitTestSampleMapCircles(ptr.mouse_world, pos_world_);
   if (hit >= 0) {
     dragging_node_ = hit;
     const ImVec2 c = pos_world_[static_cast<size_t>(hit)];
@@ -119,12 +98,12 @@ void DemoStraightMindMap::Render(const DemoRenderContext& ctx) {
   mind_map::canvas::DrawGrid(ctx.draw_list, ctx.canvas_p0, ctx.canvas_p1, ctx.pan_px, ctx.zoom);
   DrawOrthogonalEdges(ctx.draw_list, ctx.canvas_p0, pos_world_, ctx.pan_px, ctx.zoom);
 
-  const int hot_node = ctx.canvas_hovered ? HitTestCircles(ctx.mouse_world, pos_world_) : -1;
+  const int hot_node = ctx.canvas_hovered ? HitTestSampleMapCircles(ctx.mouse_world, pos_world_) : -1;
 
   for (int i = 0; i < kSampleMindMapNodeCount; ++i) {
     const char* const label = kSampleMindMapSpecs[static_cast<size_t>(i)].label_;
     const ImVec2 c = pos_world_[static_cast<size_t>(i)];
-    const float r = NodeRadiusWorld(label);
+    const float r = SampleMapNodeRadiusWorld(label);
     const ImVec2 center = mind_map::canvas::WorldToScreen(c, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
     const float radius_px = r * ctx.zoom;
 

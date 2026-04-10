@@ -4,8 +4,10 @@
 
 #include "imgui.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 
 namespace mind_map::demos {
@@ -43,6 +45,27 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
     const ImVec2 rmin = {c.x - half.x, c.y - half.y};
     const ImVec2 rmax = {c.x + half.x, c.y + half.y};
     if (mind_map::canvas::IsInsideRect(world_pos, rmin, rmax)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+[[nodiscard]] inline float SampleMapNodeRadiusWorld(const char* label) {
+  assert(label != nullptr);
+  const ImVec2 half = SampleMapHalfExtentForLabel(label);
+  return (std::max)(half.x, half.y);
+}
+
+[[nodiscard]] inline int HitTestSampleMapCircles(ImVec2 world_pos,
+                                                 const std::array<ImVec2, kSampleMindMapNodeCount>& pos_world) {
+  for (int i = kSampleMindMapNodeCount - 1; i >= 0; --i) {
+    const char* const label = kSampleMindMapSpecs[static_cast<size_t>(i)].label_;
+    const float r = SampleMapNodeRadiusWorld(label);
+    const ImVec2 c = pos_world[static_cast<size_t>(i)];
+    const float dx = world_pos.x - c.x;
+    const float dy = world_pos.y - c.y;
+    if (dx * dx + dy * dy <= r * r) {
       return i;
     }
   }

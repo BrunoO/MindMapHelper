@@ -50,6 +50,7 @@ add_executable(bmindmap
   src/ui/MindMapUi.cpp
   src/demos/DemoBezierMindMap.cpp
   src/demos/DemoStraightMindMap.cpp
+  src/demos/DemoTaperOrganicMindMap.cpp
   src/demos/DemoRegistry.cpp
   ${IMGUI_SOURCES}
 )
