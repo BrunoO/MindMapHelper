@@ -1,0 +1,32 @@
+---
+description: On macOS, validate C++/CMake changes per AGENTS.md (script or CMake+ctest)
+globs: "**/*.cpp,**/*.h,**/*.hpp,CMakeLists.txt,**/CMakeLists.txt"
+alwaysApply: false
+paths:
+  - "**/*.cpp"
+  - "**/*.h"
+  - "**/*.hpp"
+  - "CMakeLists.txt"
+  - "**/CMakeLists.txt"
+---
+
+# macOS build and test
+
+On macOS, any change to C++ source, headers, or CMake **must** be validated by building and running tests.
+
+## Required
+
+- **Preferred (if present):** `scripts/build_tests_macos.sh` — single entrypoint, same pattern as USN_Windows.
+- **Otherwise:** CMake configure, build, and `ctest` (or the test command documented in this repository’s README / AGENTS.md).
+- **Scope:** When changing `*.cpp`, `*.c`, `*.h`, `*.hpp`, `*.cxx`, `*.cc`, `CMakeLists.txt`, or scripts that affect builds/tests.
+- **Exception:** Pure documentation-only changes (e.g. `*.md` or comment-only) may skip this step.
+
+## When a macOS build script exists
+
+If `scripts/build_tests_macos.sh` exists, treat it as the **only** allowed build/test entrypoint on macOS (do not bypass it with ad-hoc `cmake`/`make` unless AGENTS.md explicitly allows an exception for a task).
+
+## Agent note
+
+When modifying code under macOS, **state in your response** which validation command you ran and whether it passed.
+
+**Reference:** AGENTS.md — Build and tests.

@@ -1,0 +1,29 @@
+---
+description: ImGui Test Engine tests — verify Set* / state before driving UI actions
+globs: "**/ui/ImGui*Test*.cpp,**/ui/*Regression*.cpp,**/ui/*Test*Engine*.cpp"
+alwaysApply: false
+paths:
+  - "**/ui/ImGui*Test*.cpp"
+  - "**/ui/*Regression*.cpp"
+  - "**/ui/*Test*Engine*.cpp"
+---
+
+# ImGui Test Engine regression tests (precondition verification)
+
+When you add in-process UI tests with **Dear ImGui Test Engine** (or similar hooks that set app state then trigger an action), ensure **state matches what you intended** before triggering the action. Otherwise a test can pass or fail for the wrong reason.
+
+## Rule
+
+After each `Set*` (or equivalent) that affects the next UI action or backend call, **assert the corresponding getter matches** what was set, then trigger the action (search, click sequence, etc.).
+
+## Pattern
+
+- After `SetFoo(value)`, use `IM_CHECK(GetFoo() == value)` (or project assertion macro) before `TriggerBar()`.
+- For window-based checks, prefer **exact window title** comparison when the test engine exposes window names.
+- For optional controls, **pre-check** visibility (e.g. `ItemExists`) and skip if the control is absent in that build.
+
+## bMindMap
+
+This repository does not ship ImGui Test Engine by default. When you integrate it (optional; macOS is the usual first target), place regression sources under `src/ui/` with names matching the globs above and apply this discipline.
+
+**Reference:** AGENTS.md — ImGui Test Engine; upstream: https://github.com/ocornut/imgui_test_engine
