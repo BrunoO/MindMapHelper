@@ -48,6 +48,9 @@ set(IMGUI_SOURCES
 add_executable(bmindmap
   src/main.cpp
   src/ui/MindMapUi.cpp
+  src/demos/DemoBezierMindMap.cpp
+  src/demos/DemoStraightMindMap.cpp
+  src/demos/DemoRegistry.cpp
   ${IMGUI_SOURCES}
 )
 
