@@ -116,6 +116,30 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
   draw_list->AddPolyline(right_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, 1.25F);
 }
 
+// Branch geometry (taper demo only): p0 placement vs draw order
+// -----------------------------------------------------------------
+// Problem: a cubic that starts exactly on the rounded border can look slightly "detached" when nodes move (AA,
+// strip width, corner vs straight segment).
+//
+// Approach used here:
+// 1) Compute p0_border = logical exit on the parent outline (prefer-edge-mid + rounded hit), for direction only.
+// 2) Set p0_curve = lerp(parent_center, p0_border, kTaperP0BlendCenterToBorder). The visible stroke begins
+//    *inside* the parent; the filled node is drawn *after* branches (Render: DrawOrganicEdges then nodes), so the
+//    node paint hides the stub.
+// 3) Bézier handles use SampleMapEdgeOutwardAxis(parent, half, p0_border) so out0 still matches the facing edge,
+//    not the ambiguous "center" point (via ComputeSampleMapBezierArmsWorld(..., &p0_border, nullptr)).
+//
+// Choosing kTaperP0BlendCenterToBorder (0 = center, 1 = border):
+// - 0.0   — p0 at parent center; maximum cover, shortest interior stub; curve leaves from middle (can feel odd for
+//           very wide roots if arm is large).
+// - 0.15–0.30 — default band: mostly hidden, still reads as exiting the correct side after a few pixels.
+// - 0.5   — halfway; more of the taper visible under semi-transparent fills (avoid if you add alpha).
+// - 1.0   — same as border start; recovers previous "flush border" look (no occlusion trick).
+//
+// p3 stays on the child border so the branch still meets the child cleanly; only the parent origin is pulled inward.
+
+constexpr float kTaperP0BlendCenterToBorder = 0.22F;
+
 void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
                       const std::array<ImVec2, kSampleMindMapNodeCount>& pos_world, ImVec2 pan_px, float zoom) {
   assert(draw_list != nullptr);
@@ -133,10 +157,13 @@ void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0w =
+    const ImVec2 p0_border =
         SampleMapRoundedRectAttachmentPreferEdgeMid(pw, parent_half, kSampleMindMapNodeCornerRadiusWorld, cw);
     const ImVec2 p3w =
         SampleMapRoundedRectAttachmentPreferEdgeMid(cw, child_half, kSampleMindMapNodeCornerRadiusWorld, pw);
+
+    const float b = (std::clamp)(kTaperP0BlendCenterToBorder, 0.0F, 1.0F);
+    const ImVec2 p0w = {pw.x + (p0_border.x - pw.x) * b, pw.y + (p0_border.y - pw.y) * b};
 
     const int grandparent = kSampleMindMapSpecs[static_cast<size_t>(parent)].parent_;
     const float parent_radius = SampleMapNodeRadiusWorld(parent_label);
@@ -147,7 +174,8 @@ void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
     const float half_width_end = (std::min)(half_width_end_raw, half_width_start);
 
     const SampleMapBezierArms arms =
-        ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F);
+        ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, &p0_border,
+                                        nullptr);
     const ImVec2 p1w = arms.p1;
     const ImVec2 p2w = arms.p2;
 
@@ -201,6 +229,7 @@ bool DemoTaperOrganicMindMap::IsDraggingContent() const {
 void DemoTaperOrganicMindMap::Render(const DemoRenderContext& ctx) {
   assert(ctx.draw_list != nullptr);
   mind_map::canvas::DrawGrid(ctx.draw_list, ctx.canvas_p0, ctx.canvas_p1, ctx.pan_px, ctx.zoom);
+  // Branches first, then filled nodes — occludes the parent-side stub when p0 is inside the parent box.
   DrawOrganicEdges(ctx.draw_list, ctx.canvas_p0, pos_world_, ctx.pan_px, ctx.zoom);
 
   const int hot_node = ctx.canvas_hovered ? HitTestSampleMap(ctx.mouse_world, pos_world_) : -1;

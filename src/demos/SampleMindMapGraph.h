@@ -331,10 +331,12 @@ struct SampleMapBezierArms {
 }
 
 // p1 / p2 extend along edge normals so B'(0) and B'(1) match the border; strong S without peeling off the node.
-[[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(ImVec2 parent_center, ImVec2 parent_half,
-                                                                         ImVec2 child_center, ImVec2 child_half,
-                                                                         ImVec2 p0w, ImVec2 p3w, float min_arm_world,
-                                                                         float span_fraction) {
+// If p0_border_for_normal / p3_border_for_normal are non-null, those points classify the edge for out0/out3 while
+// p0w/p3w remain the actual cubic endpoints (e.g. p0 inside parent, normal from border hit).
+[[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(
+    ImVec2 parent_center, ImVec2 parent_half, ImVec2 child_center, ImVec2 child_half, ImVec2 p0w, ImVec2 p3w,
+    float min_arm_world, float span_fraction, const ImVec2* p0_border_for_normal = nullptr,
+    const ImVec2* p3_border_for_normal = nullptr) {
   constexpr float kMaxArmAsChordFraction = 0.45F;
   const float dx = p3w.x - p0w.x;
   const float dy = p3w.y - p0w.y;
@@ -348,8 +350,10 @@ struct SampleMapBezierArms {
   float arm = (std::max)(min_arm_world, sep_dom * span_fraction);
   arm = (std::min)(arm, kMaxArmAsChordFraction * chord);
 
-  const ImVec2 out0 = SampleMapEdgeOutwardAxis(parent_center, parent_half, p0w);
-  const ImVec2 out3 = SampleMapEdgeOutwardAxis(child_center, child_half, p3w);
+  const ImVec2 ref0 = (p0_border_for_normal != nullptr) ? *p0_border_for_normal : p0w;
+  const ImVec2 ref3 = (p3_border_for_normal != nullptr) ? *p3_border_for_normal : p3w;
+  const ImVec2 out0 = SampleMapEdgeOutwardAxis(parent_center, parent_half, ref0);
+  const ImVec2 out3 = SampleMapEdgeOutwardAxis(child_center, child_half, ref3);
   return {{p0w.x + out0.x * arm, p0w.y + out0.y * arm}, {p3w.x + out3.x * arm, p3w.y + out3.y * arm}};
 }
 
