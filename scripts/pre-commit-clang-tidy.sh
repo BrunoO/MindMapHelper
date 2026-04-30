@@ -64,7 +64,8 @@ for FILE in $STAGED_FILES; do
 
   echo "Checking $FILE..."
 
-  CLANG_OUTPUT=$($CLANG_TIDY_CMD -p "$BUILD_DIR" "$FILE" --quiet 2>&1)
+  # clang-tidy returns non-zero on diagnostics; capture output and decide below.
+  CLANG_OUTPUT=$($CLANG_TIDY_CMD -p "$BUILD_DIR" "$FILE" --quiet 2>&1 || true)
 
   echo "$CLANG_OUTPUT" | \
     grep -v "llvmlibc-" | \

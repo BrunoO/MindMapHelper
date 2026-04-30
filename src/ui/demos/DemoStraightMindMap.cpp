@@ -1,4 +1,4 @@
-#include "demos/DemoStraightMindMap.h"
+#include "ui/demos/DemoStraightMindMap.h"
 
 #include "imgui.h"
 

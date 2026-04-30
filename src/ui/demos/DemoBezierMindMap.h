@@ -1,7 +1,7 @@
 #pragma once
 
-#include "demos/IDemo.h"
-#include "demos/SampleMindMapGraph.h"
+#include "ui/demos/IDemo.h"
+#include "ui/demos/SampleMindMapGraph.h"
 
 #include <array>
 

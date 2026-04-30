@@ -1,8 +1,8 @@
-#include "demos/IDemo.h"
+#include "ui/demos/IDemo.h"
 
-#include "demos/DemoBezierMindMap.h"
-#include "demos/DemoStraightMindMap.h"
-#include "demos/DemoTaperOrganicMindMap.h"
+#include "ui/demos/DemoBezierMindMap.h"
+#include "ui/demos/DemoStraightMindMap.h"
+#include "ui/demos/DemoTaperOrganicMindMap.h"
 
 #include <memory>
 #include <vector>

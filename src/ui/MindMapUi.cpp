@@ -1,6 +1,6 @@
 #include "ui/MindMapUi.h"
 
-#include "demos/IDemo.h"
+#include "ui/demos/IDemo.h"
 #include "ui/canvas/CanvasMath.h"
 
 #include "imgui.h"

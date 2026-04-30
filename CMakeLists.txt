@@ -45,10 +45,10 @@ set(IMGUI_SOURCES
 
 set(BM_UI_SOURCES
   src/ui/MindMapUi.cpp
-  src/demos/DemoBezierMindMap.cpp
-  src/demos/DemoStraightMindMap.cpp
-  src/demos/DemoTaperOrganicMindMap.cpp
-  src/demos/DemoRegistry.cpp
+  src/ui/demos/DemoBezierMindMap.cpp
+  src/ui/demos/DemoStraightMindMap.cpp
+  src/ui/demos/DemoTaperOrganicMindMap.cpp
+  src/ui/demos/DemoRegistry.cpp
 )
 
 set(BM_PLATFORM_SOURCES

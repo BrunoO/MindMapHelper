@@ -1,4 +1,4 @@
-#include "demos/DemoBezierMindMap.h"
+#include "ui/demos/DemoBezierMindMap.h"
 
 #include "imgui.h"
 
