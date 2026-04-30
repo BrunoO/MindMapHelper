@@ -5,8 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(ENABLE_PGO "Enable Profile-Guided Optimization (MSVC Release)" OFF)
-
 include(FetchContent)
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -45,14 +43,65 @@ set(IMGUI_SOURCES
   ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-add_executable(bmindmap
-  src/main.cpp
+set(BM_UI_SOURCES
   src/ui/MindMapUi.cpp
   src/demos/DemoBezierMindMap.cpp
   src/demos/DemoStraightMindMap.cpp
   src/demos/DemoTaperOrganicMindMap.cpp
   src/demos/DemoRegistry.cpp
+)
+
+set(BM_PLATFORM_SOURCES
+  src/platform/PlatformBootstrapCommon.cpp
+)
+
+if(WIN32)
+  list(APPEND BM_PLATFORM_SOURCES src/platform/windows/PlatformBootstrap_windows.cpp)
+elseif(APPLE)
+  list(APPEND BM_PLATFORM_SOURCES src/platform/macos/PlatformBootstrap_macos.cpp)
+elseif(UNIX)
+  list(APPEND BM_PLATFORM_SOURCES src/platform/linux/PlatformBootstrap_linux.cpp)
+endif()
+
+add_library(bmindmap_core INTERFACE)
+
+add_library(bmindmap_platform STATIC
+  ${BM_PLATFORM_SOURCES}
+)
+
+add_library(bmindmap_ui STATIC
+  ${BM_UI_SOURCES}
   ${IMGUI_SOURCES}
+)
+
+target_include_directories(bmindmap_platform PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+
+target_include_directories(bmindmap_ui PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  "${IMGUI_DIR}"
+  "${IMGUI_DIR}/backends"
+)
+
+target_link_libraries(bmindmap_ui PRIVATE glfw)
+
+target_link_libraries(bmindmap_platform PRIVATE glfw)
+
+if(WIN32)
+  target_link_libraries(bmindmap_platform PRIVATE opengl32)
+elseif(APPLE)
+  target_link_libraries(bmindmap_platform PRIVATE
+    "-framework OpenGL"
+  )
+elseif(UNIX)
+  find_package(OpenGL REQUIRED)
+  target_link_libraries(bmindmap_platform PRIVATE OpenGL::GL)
+endif()
+
+add_executable(bmindmap
+  src/main.cpp
+  src/app/AppMain.cpp
 )
 
 target_include_directories(bmindmap PRIVATE
@@ -61,31 +110,14 @@ target_include_directories(bmindmap PRIVATE
   "${IMGUI_DIR}/backends"
 )
 
-target_link_libraries(bmindmap PRIVATE glfw)
-
-if(WIN32)
-  target_link_libraries(bmindmap PRIVATE opengl32)
-elseif(APPLE)
-  target_link_libraries(bmindmap PRIVATE
-    "-framework OpenGL"
-  )
-elseif(UNIX)
-  find_package(OpenGL REQUIRED)
-  target_link_libraries(bmindmap PRIVATE OpenGL::GL)
-endif()
+target_link_libraries(bmindmap PRIVATE
+  bmindmap_core
+  bmindmap_platform
+  bmindmap_ui
+  glfw
+)
 
 if(MSVC)
+  target_compile_definitions(bmindmap_platform PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(bmindmap PRIVATE _CRT_SECURE_NO_WARNINGS)
-endif()
-
-# PGO: keep dependency objects consistent with the main target (avoids LNK1269-style mismatches).
-if(MSVC AND ENABLE_PGO)
-  set(_bm_pgo_compile "$<$<CONFIG:Release>:/GL;/Gy>")
-  set(_bm_pgo_link "$<$<CONFIG:Release>:/LTCG>")
-  target_compile_options(bmindmap PRIVATE ${_bm_pgo_compile})
-  target_link_options(bmindmap PRIVATE ${_bm_pgo_link})
-  if(TARGET glfw)
-    target_compile_options(glfw PRIVATE ${_bm_pgo_compile})
-    target_link_options(glfw PRIVATE ${_bm_pgo_link})
-  endif()
 endif()
