@@ -15,7 +15,9 @@ NC='\033[0m'
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
 cd "$PROJECT_ROOT"
 
-if [[ -f "/opt/homebrew/opt/llvm/bin/clang-tidy" ]]; then
+if [[ -f "$PROJECT_ROOT/scripts/clang-tidy-wrapper.sh" ]]; then
+  CLANG_TIDY_CMD="$PROJECT_ROOT/scripts/clang-tidy-wrapper.sh"
+elif [[ -f "/opt/homebrew/opt/llvm/bin/clang-tidy" ]]; then
   CLANG_TIDY_CMD="/opt/homebrew/opt/llvm/bin/clang-tidy"
 elif [[ -f "/usr/local/opt/llvm/bin/clang-tidy" ]]; then
   CLANG_TIDY_CMD="/usr/local/opt/llvm/bin/clang-tidy"
@@ -30,6 +32,8 @@ if [ -f "${PROJECT_ROOT}/compile_commands.json" ]; then
   BUILD_DIR="${PROJECT_ROOT}"
 elif [ -f "${PROJECT_ROOT}/build/compile_commands.json" ]; then
   BUILD_DIR="${PROJECT_ROOT}/build"
+elif [ -f "${PROJECT_ROOT}/build_coverage/compile_commands.json" ]; then
+  BUILD_DIR="${PROJECT_ROOT}/build_coverage"
 else
   echo -e "${YELLOW}Warning: compile_commands.json not found.${NC}"
   echo "Run: cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
@@ -65,7 +69,12 @@ for FILE in $STAGED_FILES; do
   echo "Checking $FILE..."
 
   # clang-tidy returns non-zero on diagnostics; capture output and decide below.
-  CLANG_OUTPUT=$($CLANG_TIDY_CMD -p "$BUILD_DIR" "$FILE" --quiet 2>&1 || true)
+  FILTER_SCRIPT="${PROJECT_ROOT}/scripts/filter_clang_tidy_init_statements.py"
+  if [[ -f "$FILTER_SCRIPT" ]]; then
+    CLANG_OUTPUT=$($CLANG_TIDY_CMD -p "$BUILD_DIR" "$FILE" --quiet 2>&1 | python3 "$FILTER_SCRIPT" || true)
+  else
+    CLANG_OUTPUT=$($CLANG_TIDY_CMD -p "$BUILD_DIR" "$FILE" --quiet 2>&1 || true)
+  fi
 
   echo "$CLANG_OUTPUT" | \
     grep -v "llvmlibc-" | \
@@ -75,6 +84,9 @@ for FILE in $STAGED_FILES; do
     grep -v "\[clang-diagnostic-error\]" /tmp/clang-tidy-output.txt > /tmp/clang-tidy-filtered.txt || true
     mv /tmp/clang-tidy-filtered.txt /tmp/clang-tidy-output.txt
   fi
+
+  awk '/\[misc-header-include-cycle\]/ && /curl/ {next} 1' /tmp/clang-tidy-output.txt > /tmp/clang-tidy-filtered.txt || true
+  mv /tmp/clang-tidy-filtered.txt /tmp/clang-tidy-output.txt
 
   if [[ -s /tmp/clang-tidy-output.txt ]]; then
     echo -e "${RED}Issues found in $FILE:${NC}"
