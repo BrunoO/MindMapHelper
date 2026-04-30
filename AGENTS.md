@@ -17,13 +17,15 @@ cmake --build build
 
 Dependencies are fetched with **CMake FetchContent** (`glfw` 3.4, Dear **ImGui** v1.91.9) on first configure.
 
-- **Optional MSVC PGO:** `-DENABLE_PGO=ON` (Release only); see `.cursor/rules/cmake-safe.mdc`.
-
 ### Tests
 
 - **Default:** When tests exist, use `ctest` from the build directory.
 - **macOS:** If this repo adds `scripts/build_tests_macos.sh` (USN_Windows pattern), prefer that as the single entrypoint; until then, CMake + `ctest` as above.
-- **Windows / Linux:** CMake directly; when adding libraries on Windows, follow PGO rules in `.cursor/rules/cmake-safe.mdc` and user rules for `CMakeLists.txt`.
+- **Windows:** Use multi-config flow and include configuration in tests:
+  - `cmake -S . -B build -A x64`
+  - `cmake --build build --config Release`
+  - `ctest --test-dir build -C Release --output-on-failure`
+- **Linux:** Use CMake directly and run `ctest --output-on-failure`.
 
 ### Analysis
 
@@ -86,9 +88,9 @@ Full reminder: `.cursor/rules/clang-tidy-yaml.mdc`.
 
 ## Modifying `CMakeLists.txt` safely
 
-- Mirror existing patterns; do not casually change PGO or toolchain blocks.
-- On Windows, if `ENABLE_PGO` (or equivalent) is used, new `add_subdirectory()` / `FetchContent` libraries linked into the main executable must receive the same PGO-related settings as other deps (avoids LNK1269).
-- Test targets that compile the same sources as the main target must match the main target’s PGO compiler flags where applicable.
+- Mirror existing patterns; keep Windows-specific and platform-specific blocks consistent with nearby style.
+- PGO is out of scope for this project; do not introduce `ENABLE_PGO`, `/GENPROFILE`, `/USEPROFILE`, or `pgomgr` workflow into this repository.
+- On Windows CI and local MSVC runs, keep multi-config conventions explicit (`--config Release` for build and `ctest -C Release` for tests).
 
 Full reminder: `.cursor/rules/cmake-safe.mdc`.
 

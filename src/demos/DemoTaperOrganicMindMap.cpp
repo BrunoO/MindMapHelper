@@ -21,6 +21,17 @@ constexpr float kMaxParentHalfWidthScale = 0.42F;
 constexpr float kMinChildHalfWidthWorld = 2.0F;
 constexpr float kMaxChildHalfWidthScale = 0.14F;
 
+// Hobby mid-waypoint spine (BuildHobbyMidWaypointTwoCubics):
+// - kHobbyMidWaypointTension — scales Hermite speeds vs chord length at both ends and (partially) overall bend;
+//   lower → straighter; higher → curvier (can feel “tight” if pushed too far).
+// - kHobbyMidJointVelocityScale — multiplier for tangent magnitude at the middle waypoint only; raises/lowers the
+//   “knee” without changing endpoint port emphasis as much as tension alone.
+// - kHobbyMidChordPerpOffsetFraction — midpoint = chord midpoint + fraction * chord_length * PerpLeft(unit parent→child);
+//   0 = on the chord; sign picks which side; typical |fraction| ~ 0.06–0.14.
+constexpr float kHobbyMidWaypointTension = 0.8F;
+constexpr float kHobbyMidJointVelocityScale = 1.55F;
+constexpr float kHobbyMidChordPerpOffsetFraction = 0.1F;
+
 constexpr ImU32 kColorBranchFill = IM_COL32(175, 140, 105, 255);
 constexpr ImU32 kColorBranchOutline = IM_COL32(95, 72, 52, 220);
 constexpr ImU32 kColorNodeFill = IM_COL32(52, 48, 44, 255);
@@ -116,6 +127,113 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
   draw_list->AddPolyline(right_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, 1.25F);
 }
 
+// Automatic middle waypoint + Hobby-style interior tangent (bisector of chord directions, chord-length scalings).
+// Endpoint Hermite directions match rounded-rect ports: departure along parent outward normal, arrival along -child
+// outward normal. Emits two C1 cubics: p0w→mid and mid→p3w. Midpoint starts at chord center, then shifts perpendicular
+// to the parent→child chord when chord_perp_offset_fraction != 0.
+[[nodiscard]] bool BuildHobbyMidWaypointTwoCubics(ImVec2 p0w, ImVec2 p3w, ImVec2 out0_unit, ImVec2 out3_unit,
+                                                  float tension, float mid_joint_scale, float chord_perp_offset_fraction,
+                                                  ImVec2* seg0, ImVec2* seg1) {
+  assert(seg0 != nullptr);
+  assert(seg1 != nullptr);
+  constexpr float kMinChord = 1.0e-4F;
+  const float chord_dx = p3w.x - p0w.x;
+  const float chord_dy = p3w.y - p0w.y;
+  const float chord_len = std::sqrt(chord_dx * chord_dx + chord_dy * chord_dy);
+  if (chord_len < kMinChord) {
+    return false;
+  }
+  const ImVec2 chord_hat = {chord_dx / chord_len, chord_dy / chord_len};
+  ImVec2 perp = PerpLeft(chord_hat);
+  NormalizeOrDefault(&perp);
+  const ImVec2 mid_linear = {(p0w.x + p3w.x) * 0.5F, (p0w.y + p3w.y) * 0.5F};
+  const float perp_shift = chord_perp_offset_fraction * chord_len;
+  const ImVec2 mid = {mid_linear.x + perp.x * perp_shift, mid_linear.y + perp.y * perp_shift};
+
+  const float ax = mid.x - p0w.x;
+  const float ay = mid.y - p0w.y;
+  const float bx = p3w.x - mid.x;
+  const float by = p3w.y - mid.y;
+  const float a = std::sqrt(ax * ax + ay * ay);
+  const float b = std::sqrt(bx * bx + by * by);
+  if (a < kMinChord || b < kMinChord) {
+    return false;
+  }
+  const ImVec2 u0 = {ax / a, ay / a};
+  const ImVec2 u1 = {bx / b, by / b};
+  ImVec2 m_dir = {u0.x + u1.x, u0.y + u1.y};
+  const float m_len_sq = m_dir.x * m_dir.x + m_dir.y * m_dir.y;
+  if (m_len_sq < 1.0e-10F) {
+    m_dir = PerpLeft(u0);
+  }
+  NormalizeOrDefault(&m_dir);
+
+  const float s0 = tension * a;
+  const float s2 = tension * b;
+  const float vm = tension * mid_joint_scale * (std::min)(a, b);
+  const ImVec2 v0 = {out0_unit.x * s0, out0_unit.y * s0};
+  const ImVec2 v_end = {-out3_unit.x * s2, -out3_unit.y * s2};
+  const ImVec2 vm_vec = {m_dir.x * vm, m_dir.y * vm};
+
+  seg0[0] = p0w;
+  seg0[1] = {p0w.x + v0.x / 3.0F, p0w.y + v0.y / 3.0F};
+  seg0[2] = {mid.x - vm_vec.x / 3.0F, mid.y - vm_vec.y / 3.0F};
+  seg0[3] = mid;
+
+  seg1[0] = mid;
+  seg1[1] = {mid.x + vm_vec.x / 3.0F, mid.y + vm_vec.y / 3.0F};
+  seg1[2] = {p3w.x - v_end.x / 3.0F, p3w.y - v_end.y / 3.0F};
+  seg1[3] = p3w;
+  return true;
+}
+
+void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_px, float zoom,
+                                     const ImVec2* seg0, const ImVec2* seg1, float half_width_start,
+                                     float half_width_end) {
+  assert(draw_list != nullptr);
+  assert(seg0 != nullptr);
+  assert(seg1 != nullptr);
+  std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> left_s{};
+  std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> right_s{};
+
+  for (int i = 0; i <= kBranchStripSegments; ++i) {
+    const float u = static_cast<float>(i) / static_cast<float>(kBranchStripSegments);
+    float t_curve = 0.0F;
+    const ImVec2* c = nullptr;
+    if (u <= 0.5F) {
+      t_curve = u * 2.0F;
+      c = seg0;
+    }
+    else {
+      t_curve = (u - 0.5F) * 2.0F;
+      c = seg1;
+    }
+    const ImVec2 pw =
+        CubicBezierPoint(c[0], c[1], c[2], c[3], t_curve);
+    ImVec2 tan_w = CubicBezierTangent(c[0], c[1], c[2], c[3], t_curve);
+    NormalizeOrDefault(&tan_w);
+    ImVec2 n_w = PerpLeft(tan_w);
+    NormalizeOrDefault(&n_w);
+    const float half_w = BranchHalfWidthAlongEdge(u, half_width_start, half_width_end);
+    const ImVec2 lw = {pw.x + n_w.x * half_w, pw.y + n_w.y * half_w};
+    const ImVec2 rw = {pw.x - n_w.x * half_w, pw.y - n_w.y * half_w};
+    left_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(lw, canvas_p0, pan_px, zoom);
+    right_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(rw, canvas_p0, pan_px, zoom);
+  }
+
+  for (int i = 0; i < kBranchStripSegments; ++i) {
+    const ImVec2& l0 = left_s[static_cast<size_t>(i)];
+    const ImVec2& r0 = right_s[static_cast<size_t>(i)];
+    const ImVec2& l1 = left_s[static_cast<size_t>(i + 1)];
+    const ImVec2& r1 = right_s[static_cast<size_t>(i + 1)];
+    draw_list->AddTriangleFilled(l0, r0, l1, kColorBranchFill);
+    draw_list->AddTriangleFilled(r0, r1, l1, kColorBranchFill);
+  }
+
+  draw_list->AddPolyline(left_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, 1.25F);
+  draw_list->AddPolyline(right_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, 1.25F);
+}
+
 // Branch geometry (taper demo only): p0 / p3 inside nodes + draw order
 // -----------------------------------------------------------------------
 // Problem: cubics pinned exactly on rounded borders can look slightly "detached" when nodes move (AA, strip width,
@@ -126,8 +244,9 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
 // 2) p0_curve = lerp(parent_center, p0_border, kTaperP0BlendCenterToBorder); same for child with kTaperP3....
 //    Strokes start/end *inside* the boxes; filled nodes are drawn after all branches (Render), so each node hides
 //    the stub on its side.
-// 3) Bézier handles: ComputeSampleMapBezierArmsWorld(..., &p0_border, &p3_border) so out0/out3 still match the
-//    facing edges, not the interior endpoints.
+// 3) Branch spine: waypoint at chord midpoint of p0w–p3w, offset perpendicular to that chord (tunable fraction);
+//    Hobby-style interior tangent (chord bisector + chord length scaling) with Hermite ends along parent out0 and
+//    -child out3. Two C1 cubics; fallback to single cubic (ComputeSampleMapBezierArmsWorld) if chords degenerate.
 //
 // Blend factor (0 = node center, 1 = border) for each end:
 // - 0.0 — maximum occlusion; curve endpoint at center (odd if arms are large vs small nodes).
@@ -173,13 +292,21 @@ void DrawOrganicEdges(ImDrawList* draw_list, ImVec2 canvas_p0,
     const float half_width_end_raw = BranchEndHalfWidthWorld(child_radius);
     const float half_width_end = (std::min)(half_width_end_raw, half_width_start);
 
-    const SampleMapBezierArms arms = ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w,
-                                                                     96.0F, 0.55F, &p0_border, &p3_border);
-    const ImVec2 p1w = arms.p1;
-    const ImVec2 p2w = arms.p2;
-
-    DrawTaperBezierBranch(draw_list, canvas_p0, pan_px, zoom, p0w, p1w, p2w, p3w, half_width_start,
-                          half_width_end);
+    const ImVec2 out0 = SampleMapEdgeOutwardAxis(pw, parent_half, p0_border);
+    const ImVec2 out3 = SampleMapEdgeOutwardAxis(cw, child_half, p3_border);
+    std::array<ImVec2, 4> seg0{};
+    std::array<ImVec2, 4> seg1{};
+    if (BuildHobbyMidWaypointTwoCubics(p0w, p3w, out0, out3, kHobbyMidWaypointTension, kHobbyMidJointVelocityScale,
+                                       kHobbyMidChordPerpOffsetFraction, seg0.data(), seg1.data())) {
+      DrawTaperTwoSegmentBezierBranch(draw_list, canvas_p0, pan_px, zoom, seg0.data(), seg1.data(), half_width_start,
+                                      half_width_end);
+    }
+    else {
+      const SampleMapBezierArms arms = ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w,
+                                                                       96.0F, 0.55F, &p0_border, &p3_border);
+      DrawTaperBezierBranch(draw_list, canvas_p0, pan_px, zoom, p0w, arms.p1, arms.p2, p3w, half_width_start,
+                            half_width_end);
+    }
   }
 }
 

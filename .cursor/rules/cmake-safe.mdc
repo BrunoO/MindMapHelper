@@ -1,5 +1,5 @@
 ---
-description: Safe CMakeLists.txt changes (patterns, PGO, test targets)
+description: Safe CMakeLists.txt changes (patterns, Windows multi-config, test targets)
 globs: "CMakeLists.txt,**/CMakeLists.txt"
 alwaysApply: false
 paths:
@@ -14,15 +14,21 @@ When adding or changing sources or tests:
 ## Do
 
 - **Mirror existing patterns** — same style, indentation, ordering as nearby entries. Group related files.
-- **Add inside existing blocks** — do not move or duplicate `if(MSVC)`, `if(BUILD_TESTS)`, `if(ENABLE_PGO)`; add entries inside the correct block.
-- **Leave PGO flags unchanged** — do not change `/GL`, `/Gy`, `/GENPROFILE`, `/USEPROFILE`, `/LTCG:*` when adding files.
+- **Add inside existing blocks** — do not move or duplicate `if(MSVC)` or test/platform blocks; add entries inside the correct block.
+- **Keep project scope clean** — this project does not use PGO; do not add `ENABLE_PGO`, `/GENPROFILE`, `/USEPROFILE`, or `pgomgr` flow.
 
-## Test targets sharing code with main app
+## Windows multi-config behavior
 
-If a test target compiles source files that are also in the main executable, the test target **must** use the same PGO compiler flags as the main target (to avoid LNK1269). Use standard linker flags (e.g. `/LTCG /OPT:REF /OPT:ICF`), not PGO linker flags. Mirror an existing test target in this repo’s `CMakeLists.txt` that already shares sources with the main app.
+When validating with Visual Studio generators, keep configuration explicit:
+
+- Configure with `-A x64`.
+- Build with `--config Release` (or intended config).
+- Run tests with `ctest -C Release --output-on-failure`.
+
+This avoids false negatives caused by missing test binaries for the default config.
 
 ## After editing
 
-Run CMake configure and build on Windows to confirm no config/link errors. Keep changes minimal and describe in the commit message.
+Run CMake configure and build on Windows to confirm no config/link errors; if tests exist, run multi-config `ctest -C Release --output-on-failure`. Keep changes minimal and describe in the commit message.
 
 Full rules: AGENTS.md — Modifying `CMakeLists.txt` safely.
