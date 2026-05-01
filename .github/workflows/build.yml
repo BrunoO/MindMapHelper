@@ -40,3 +40,21 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/build_tests_windows.ps1
+
+  static-analysis:
+    name: Static analysis (clang-tidy)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install analysis dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy ripgrep libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+
+      - name: Configure compile database
+        run: cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBM_ENABLE_TESTS=OFF
+
+      - name: Run clang-tidy summary
+        run: bash ./scripts/run_clang_tidy.sh --summary-only --output clang-tidy-report.txt
