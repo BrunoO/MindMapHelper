@@ -4,6 +4,7 @@ project(bMindMap LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+option(BM_ENABLE_TESTS "Enable bMindMap tests" ON)
 
 include(FetchContent)
 
@@ -120,4 +121,25 @@ target_link_libraries(bmindmap PRIVATE
 if(MSVC)
   target_compile_definitions(bmindmap_platform PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_compile_definitions(bmindmap PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
+if(BM_ENABLE_TESTS)
+  enable_testing()
+
+  add_executable(bmindmap_smoke_test
+    tests/SmokeTest.cpp
+  )
+
+  target_include_directories(bmindmap_smoke_test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  )
+
+  target_link_libraries(bmindmap_smoke_test PRIVATE
+    bmindmap_core
+  )
+
+  add_test(
+    NAME bmindmap_smoke_test
+    COMMAND bmindmap_smoke_test
+  )
 endif()

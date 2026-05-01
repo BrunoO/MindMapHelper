@@ -1,0 +1,1 @@
+bmindmap_smoke_test

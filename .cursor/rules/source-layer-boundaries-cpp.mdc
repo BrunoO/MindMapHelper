@@ -1,0 +1,38 @@
+---
+description: Enforce app/core/ui/platform source boundaries for cross-platform structure
+globs: "**/*.cpp,**/*.h,**/*.hpp,CMakeLists.txt,**/CMakeLists.txt"
+alwaysApply: false
+paths:
+  - "**/*.cpp"
+  - "**/*.h"
+  - "**/*.hpp"
+  - "CMakeLists.txt"
+  - "**/CMakeLists.txt"
+---
+
+# Source layer boundaries
+
+Use the project source layering to keep platform code isolated and cross-platform behavior maintainable.
+
+## Target ownership
+
+- `src/main.cpp`: thin launcher only.
+- `src/app/`: startup/shutdown orchestration.
+- `src/core/`: platform-neutral logic.
+- `src/ui/`: UI composition and demos.
+- `src/platform/`: GLFW/OpenGL bootstrap and OS-specific behavior.
+
+## Dependency constraints
+
+- `core` must not depend on ImGui, GLFW, OpenGL, or OS APIs.
+- `ui` may depend on `core` and ImGui but must not include OS-specific implementation files.
+- `platform` owns OS-specific branches and OpenGL/GLFW context setup.
+- `app` composes `core`, `ui`, and `platform`; avoid duplicating bootstrap logic elsewhere.
+
+## Editing guidance
+
+- When adding cross-platform behavior, prefer adapter extraction in `src/platform/*` over expanding shared `#ifdef` trees.
+- Keep CMake target links aligned with layer boundaries (`core -> ui/platform -> app` composition, not inverse).
+- If a file naturally violates current ownership, move it to the correct layer instead of adding exceptions.
+
+Reference: `docs/standards/2026-05-01_CROSS_PLATFORM_STRUCTURE_GUIDE.md` and `AGENTS.md`.

@@ -20,12 +20,13 @@ Dependencies are fetched with **CMake FetchContent** (`glfw` 3.4, Dear **ImGui**
 ### Tests
 
 - **Default:** When tests exist, use `ctest` from the build directory.
-- **macOS:** If this repo adds `scripts/build_tests_macos.sh` (USN_Windows pattern), prefer that as the single entrypoint; until then, CMake + `ctest` as above.
+- **Canonical test target list:** `scripts/test_targets.txt`
+- **macOS:** `scripts/build_tests_macos.sh` is the single entrypoint.
 - **Windows:** Use multi-config flow and include configuration in tests:
   - `cmake -S . -B build -A x64`
   - `cmake --build build --config Release`
   - `ctest --test-dir build -C Release --output-on-failure`
-- **Linux:** Use CMake directly and run `ctest --output-on-failure`.
+- **Linux:** `scripts/build_tests_linux.sh` is the single entrypoint.
 
 ### Analysis
 
@@ -91,6 +92,7 @@ Full reminder: `.cursor/rules/clang-tidy-yaml.mdc`.
 - Mirror existing patterns; keep Windows-specific and platform-specific blocks consistent with nearby style.
 - PGO is out of scope for this project; do not introduce `ENABLE_PGO`, `/GENPROFILE`, `/USEPROFILE`, or `pgomgr` workflow into this repository.
 - On Windows CI and local MSVC runs, keep multi-config conventions explicit (`--config Release` for build and `ctest -C Release` for tests).
+- Keep source layering enforced: `core` remains platform-neutral, platform code stays in `src/platform/*`, and orchestration remains in `src/app/*`.
 
 Full reminder: `.cursor/rules/cmake-safe.mdc`.
 
@@ -134,7 +136,8 @@ Dear ImGui is **immediate mode**: no widget objects, UI is a function of your da
 | `documentation-placement.mdc` | `docs/` vs `internal-docs/` |
 | `imgui-ui.mdc` | ImGui immediate mode, popups |
 | `imgui-test-engine-preconditions.mdc` | UI regression test preconditions |
-| `cmake-safe.mdc` | CMake / PGO / tests |
+| `cmake-safe.mdc` | CMake / Windows multi-config / tests |
+| `source-layer-boundaries-cpp.mdc` | app/core/ui/platform ownership and dependency boundaries |
 | `clang-tidy-yaml.mdc` | Safe `.clang-tidy` edits |
 | `macos-build-tests.mdc` | macOS build entrypoint |
 
