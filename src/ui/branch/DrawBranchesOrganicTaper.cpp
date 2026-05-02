@@ -218,57 +218,65 @@ void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, Im
 
 }  // namespace
 
+void DrawSampleMindMapBranchOrganicTaper(
+    const BranchRenderContext& ctx, const int child_index,
+    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
+  assert(ctx.draw_list != nullptr);
+  assert(child_index >= 0 && child_index < mind_map::demos::kSampleMindMapNodeCount);
+  const int parent = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child_index)].parent_;
+  assert(parent >= 0 && parent < mind_map::demos::kSampleMindMapNodeCount);
+
+  const char* const parent_label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(parent)].label_;
+  const char* const child_label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child_index)].label_;
+  const ImVec2 parent_half = mind_map::demos::SampleMapHalfExtentForLabel(parent_label);
+  const ImVec2 child_half = mind_map::demos::SampleMapHalfExtentForLabel(child_label);
+
+  const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
+  const ImVec2 cw = pos_world[static_cast<size_t>(child_index)];
+  const ImVec2 p0_border = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
+      pw, parent_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, cw);
+  const ImVec2 p3_border = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
+      cw, child_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, pw);
+
+  const float b0 = (std::clamp)(kTaperP0BlendCenterToBorder, 0.0F, 1.0F);
+  const float b3 = (std::clamp)(kTaperP3BlendCenterToBorder, 0.0F, 1.0F);
+  const ImVec2 p0w = {pw.x + (p0_border.x - pw.x) * b0, pw.y + (p0_border.y - pw.y) * b0};
+  const ImVec2 p3w = {cw.x + (p3_border.x - cw.x) * b3, cw.y + (p3_border.y - cw.y) * b3};
+
+  const int grandparent = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(parent)].parent_;
+  const float parent_radius = mind_map::demos::SampleMapNodeRadiusWorld(parent_label);
+  const float child_radius = mind_map::demos::SampleMapNodeRadiusWorld(child_label);
+  const float half_width_start = (grandparent < 0) ? BranchRootStartHalfWidthWorld(parent_radius)
+                                                   : BranchEndHalfWidthWorld(parent_radius);
+  const float half_width_end_raw = BranchEndHalfWidthWorld(child_radius);
+  const float half_width_end = (std::min)(half_width_end_raw, half_width_start);
+
+  const ImVec2 out0 = mind_map::demos::SampleMapEdgeOutwardAxis(pw, parent_half, p0_border);
+  const ImVec2 out3 = mind_map::demos::SampleMapEdgeOutwardAxis(cw, child_half, p3_border);
+  std::array<ImVec2, 4> seg0{};
+  std::array<ImVec2, 4> seg1{};
+  if (BuildHobbyMidWaypointTwoCubics(p0w, p3w, out0, out3, kHobbyMidWaypointTension, kHobbyMidJointVelocityScale,
+                                     kHobbyMidChordPerpOffsetFraction, seg0.data(), seg1.data())) {
+    DrawTaperTwoSegmentBezierBranch(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom, seg0.data(), seg1.data(),
+                                    half_width_start, half_width_end);
+  }
+  else {
+    const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(
+        pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border);
+    DrawTaperBezierBranch(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom, p0w, arms.p1, arms.p2, p3w,
+                          half_width_start, half_width_end);
+  }
+}
+
 void DrawAllSampleMindMapBranchesOrganicTaper(
     const BranchRenderContext& ctx,
     const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
   assert(ctx.draw_list != nullptr);
   for (int child = 0; child < mind_map::demos::kSampleMindMapNodeCount; ++child) {
-    const int parent = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].parent_;
-    if (parent < 0) {
+    if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].parent_ < 0) {
       continue;
     }
-    assert(parent >= 0 && parent < mind_map::demos::kSampleMindMapNodeCount);
-
-    const char* const parent_label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(parent)].label_;
-    const char* const child_label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].label_;
-    const ImVec2 parent_half = mind_map::demos::SampleMapHalfExtentForLabel(parent_label);
-    const ImVec2 child_half = mind_map::demos::SampleMapHalfExtentForLabel(child_label);
-
-    const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
-    const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0_border = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
-        pw, parent_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, cw);
-    const ImVec2 p3_border = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
-        cw, child_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, pw);
-
-    const float b0 = (std::clamp)(kTaperP0BlendCenterToBorder, 0.0F, 1.0F);
-    const float b3 = (std::clamp)(kTaperP3BlendCenterToBorder, 0.0F, 1.0F);
-    const ImVec2 p0w = {pw.x + (p0_border.x - pw.x) * b0, pw.y + (p0_border.y - pw.y) * b0};
-    const ImVec2 p3w = {cw.x + (p3_border.x - cw.x) * b3, cw.y + (p3_border.y - cw.y) * b3};
-
-    const int grandparent = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(parent)].parent_;
-    const float parent_radius = mind_map::demos::SampleMapNodeRadiusWorld(parent_label);
-    const float child_radius = mind_map::demos::SampleMapNodeRadiusWorld(child_label);
-    const float half_width_start = (grandparent < 0) ? BranchRootStartHalfWidthWorld(parent_radius)
-                                                     : BranchEndHalfWidthWorld(parent_radius);
-    const float half_width_end_raw = BranchEndHalfWidthWorld(child_radius);
-    const float half_width_end = (std::min)(half_width_end_raw, half_width_start);
-
-    const ImVec2 out0 = mind_map::demos::SampleMapEdgeOutwardAxis(pw, parent_half, p0_border);
-    const ImVec2 out3 = mind_map::demos::SampleMapEdgeOutwardAxis(cw, child_half, p3_border);
-    std::array<ImVec2, 4> seg0{};
-    std::array<ImVec2, 4> seg1{};
-    if (BuildHobbyMidWaypointTwoCubics(p0w, p3w, out0, out3, kHobbyMidWaypointTension, kHobbyMidJointVelocityScale,
-                                       kHobbyMidChordPerpOffsetFraction, seg0.data(), seg1.data())) {
-      DrawTaperTwoSegmentBezierBranch(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom, seg0.data(), seg1.data(),
-                                      half_width_start, half_width_end);
-    }
-    else {
-      const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(
-          pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border);
-      DrawTaperBezierBranch(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom, p0w, arms.p1, arms.p2, p3w,
-                            half_width_start, half_width_end);
-    }
+    DrawSampleMindMapBranchOrganicTaper(ctx, child, pos_world);
   }
 }
 

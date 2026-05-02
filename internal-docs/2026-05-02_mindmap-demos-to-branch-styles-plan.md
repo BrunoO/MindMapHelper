@@ -100,6 +100,8 @@
 
 **Acceptance:** Hard-code two different styles on two edges in the array, confirm both render correctly in one frame; no global style required for correctness (global can remain as “default for new edges” later).
 
+**Status (2026-05-02):** Implemented. `MindMapCanvasView` stores `branch_style_by_child_` (default mix on load); `Render` dispatches `DrawSampleMindMapBranch*` per child. `DrawAllSampleMindMapBranches*` now delegate to the single-edge APIs. Toolbar combo **“Set all branches to”** calls `SetBranchStyleForAllEdges`; status bar shows `GetBranchStyleComboPreviewLabel()` (`Mixed (per child)` when styles differ). `Reset()` does not clear per-edge styles.
+
 ---
 
 ## Milestone E — UI to edit per-branch style (optional follow-up)

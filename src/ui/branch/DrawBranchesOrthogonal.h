@@ -7,6 +7,10 @@
 
 namespace mind_map::ui::branch {
 
+void DrawSampleMindMapBranchOrthogonal(
+    const BranchRenderContext& ctx, int child_index,
+    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world);
+
 void DrawAllSampleMindMapBranchesOrthogonal(
     const BranchRenderContext& ctx,
     const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world);

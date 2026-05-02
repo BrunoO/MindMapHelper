@@ -31,6 +31,9 @@ struct MindMapPointerState {
 // representation — rounded rectangles from SampleMapHalfExtentForLabel + kSampleMindMapNodeCornerRadiusWorld.
 // Pointer hit-testing uses mind_map::demos::HitTestSampleMap only; branch styles may differ in edge geometry but share
 // the same attachments (e.g. orthogonal uses SampleMapRoundedRectAttachmentPreferEdgeMid, not circles).
+//
+// Milestone D: each child node index owns the style of its incoming edge (`branch_style_by_child_[child]`); root slot
+// is unused. Reset() restores positions only, not per-edge styles.
 class MindMapCanvasView {
  public:
   MindMapCanvasView();
@@ -45,14 +48,26 @@ class MindMapCanvasView {
 
   void Render(const MindMapCanvasRenderContext& ctx);
 
-  [[nodiscard]] mind_map::ui::branch::BranchStyle GetBranchStyle() const { return branch_style_; }
-  void SetBranchStyle(mind_map::ui::branch::BranchStyle style) { branch_style_ = style; }
+  // Applies one style to every edge (all child indices with a parent). Used by the toolbar combo until per-edge UI
+  // exists (Milestone E).
+  void SetBranchStyleForAllEdges(mind_map::ui::branch::BranchStyle style);
+
+  // Combo preview: common style name, or a short label when edges disagree.
+  [[nodiscard]] const char* GetBranchStyleComboPreviewLabel() const;
+
+  [[nodiscard]] bool BranchStylesAreUniform() const;
+  [[nodiscard]] mind_map::ui::branch::BranchStyle RepresentativeChildEdgeStyle() const;
 
  private:
+  void InitDefaultPerChildBranchStyles();
+
+  [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
+  [[nodiscard]] bool BranchStylesAreUniform_() const;
+
   std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount> pos_world_{};
   int dragging_node_ = -1;
   ImVec2 grab_offset_world_{};
-  mind_map::ui::branch::BranchStyle branch_style_ = mind_map::ui::branch::BranchStyle::Bezier;
+  std::array<mind_map::ui::branch::BranchStyle, mind_map::demos::kSampleMindMapNodeCount> branch_style_by_child_{};
 };
 
 }  // namespace mind_map::ui

@@ -62,17 +62,19 @@ class UiCommandDispatcher final {
 };
 
 void RenderBranchStyleSelector(MindMapCanvasView& canvas) {
-  const mind_map::ui::branch::BranchStyle current = canvas.GetBranchStyle();
-  const char* const preview = mind_map::ui::branch::GetBranchStyleDisplayName(current);
-  if (!ImGui::BeginCombo("Branch style", preview)) {
+  const char* const preview = canvas.GetBranchStyleComboPreviewLabel();
+  if (!ImGui::BeginCombo("Set all branches to", preview)) {
     return;
   }
 
+  const bool uniform = canvas.BranchStylesAreUniform();
+  const mind_map::ui::branch::BranchStyle representative = canvas.RepresentativeChildEdgeStyle();
+
   for (int i = 0; i < mind_map::ui::branch::kBranchStyleCount; ++i) {
     const mind_map::ui::branch::BranchStyle style = mind_map::ui::branch::BranchStyleFromIndex(i);
-    const bool selected = (style == current);
+    const bool selected = uniform && (style == representative);
     if (ImGui::Selectable(mind_map::ui::branch::GetBranchStyleDisplayName(style), selected)) {
-      canvas.SetBranchStyle(style);
+      canvas.SetBranchStyleForAllEdges(style);
     }
     if (selected) {
       ImGui::SetItemDefaultFocus();
@@ -191,10 +193,9 @@ void RenderStatusBar(const UiState& state) {
     return;
   }
   ImGui::Separator();
-  ImGui::Text("Status  Branch style: %s  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)",
-              mind_map::ui::branch::GetBranchStyleDisplayName(state.canvas_.GetBranchStyle()),
-              static_cast<double>(state.zoom_), static_cast<double>(state.pan_px_.x),
-              static_cast<double>(state.pan_px_.y));
+  ImGui::Text("Status  Branches: %s  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)",
+              state.canvas_.GetBranchStyleComboPreviewLabel(), static_cast<double>(state.zoom_),
+              static_cast<double>(state.pan_px_.x), static_cast<double>(state.pan_px_.y));
 }
 
 }  // namespace
@@ -223,7 +224,9 @@ void RenderMainUi() {
       command_dispatcher.Dispatch(UiCommandId::ResetLayout, state.canvas_, state.pan_px_, state.zoom_,
                                    state.show_status_bar_);
     }
-    ImGui::TextUnformatted("Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms.");
+    ImGui::TextUnformatted(
+        "Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms. Default map mixes branch styles per edge; "
+        "combo applies one style to all edges.");
     ImGui::Text("Zoom %.2f", static_cast<double>(state.zoom_));
     RenderCanvas(state);
   }
