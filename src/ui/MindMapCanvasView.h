@@ -26,6 +26,11 @@ struct MindMapPointerState {
 };
 
 // Single sample-map canvas: pan/zoom stay in MindMapUi; this owns layout, drag, and drawing.
+//
+// Node model **C1** (see internal-docs/2026-05-02_mindmap-demos-to-branch-styles-plan.md, Milestone C): one canonical
+// representation — rounded rectangles from SampleMapHalfExtentForLabel + kSampleMindMapNodeCornerRadiusWorld.
+// Pointer hit-testing uses mind_map::demos::HitTestSampleMap only; branch styles may differ in edge geometry but share
+// the same attachments (e.g. orthogonal uses SampleMapRoundedRectAttachmentPreferEdgeMid, not circles).
 class MindMapCanvasView {
  public:
   MindMapCanvasView();

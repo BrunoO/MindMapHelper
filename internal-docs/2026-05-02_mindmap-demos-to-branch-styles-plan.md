@@ -80,6 +80,8 @@
 
 **Acceptance:** Document chosen option in this file or in code comment at view; hit-test and outline match the chosen model everywhere.
 
+**Status (2026-05-02):** **C1 adopted.** `MindMapCanvasView` documents C1 on the class; `SampleMindMapGraph.h` states the unified rounded-rect contract at the node constants; `HitTestSampleMap` + rect drawing are the only node interaction path; `SampleMapCircleAttachmentToward` / `HitTestSampleMapCircles` were removed as dead code after the demo layer was deleted. Orthogonal branches already use rounded-rect ports (`DrawBranchesOrthogonal.cpp`).
+
 ---
 
 ## Milestone D — Per-branch style data + render dispatch

@@ -14,7 +14,8 @@ namespace mind_map::demos {
 
 inline constexpr int kSampleMindMapNodeCount = 7;
 inline constexpr float kSampleMindMapNodePad = 10.0F;
-// Matches rounded-rect nodes in Bezier / organic taper demos (world space).
+// Node model C1 (unified canvas): label-sized axis-aligned rounded rects in world space; all branch styles attach
+// via SampleMapRoundedRectAttachment* and hit-test via HitTestSampleMap.
 inline constexpr float kSampleMindMapNodeCornerRadiusWorld = 6.0F;
 
 struct SampleMindMapNodeSpec {
@@ -53,6 +54,8 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
   return -1;
 }
 
+// Max half-extent of the label’s rounded rect (world space). Used for branch-width scalings (e.g. organic taper), not
+// for circular node geometry — C1 hit-test and outlines use the full rect + HitTestSampleMap.
 [[nodiscard]] inline float SampleMapNodeRadiusWorld(const char* label) {
   assert(label != nullptr);
   const ImVec2 half = SampleMapHalfExtentForLabel(label);
@@ -300,18 +303,6 @@ enum class SampleMapBoxSide { kRight, kLeft, kBottom, kTop };
   return {x_clamped, y_side};
 }
 
-[[nodiscard]] inline ImVec2 SampleMapCircleAttachmentToward(ImVec2 from_center, float radius, ImVec2 toward_point) {
-  assert(radius >= 0.0F);
-  float vx = toward_point.x - from_center.x;
-  float vy = toward_point.y - from_center.y;
-  const float len_sq = vx * vx + vy * vy;
-  if (len_sq < 1.0e-12F) {
-    return {from_center.x + radius, from_center.y};
-  }
-  const float inv = radius / std::sqrt(len_sq);
-  return {from_center.x + vx * inv, from_center.y + vy * inv};
-}
-
 struct SampleMapBezierArms {
   ImVec2 p1;
   ImVec2 p2;
@@ -355,21 +346,6 @@ struct SampleMapBezierArms {
   const ImVec2 out0 = SampleMapEdgeOutwardAxis(parent_center, parent_half, ref0);
   const ImVec2 out3 = SampleMapEdgeOutwardAxis(child_center, child_half, ref3);
   return {{p0w.x + out0.x * arm, p0w.y + out0.y * arm}, {p3w.x + out3.x * arm, p3w.y + out3.y * arm}};
-}
-
-[[nodiscard]] inline int HitTestSampleMapCircles(ImVec2 world_pos,
-                                                 const std::array<ImVec2, kSampleMindMapNodeCount>& pos_world) {
-  for (int i = kSampleMindMapNodeCount - 1; i >= 0; --i) {
-    const char* const label = kSampleMindMapSpecs[static_cast<size_t>(i)].label_;
-    const float r = SampleMapNodeRadiusWorld(label);
-    const ImVec2 c = pos_world[static_cast<size_t>(i)];
-    const float dx = world_pos.x - c.x;
-    const float dy = world_pos.y - c.y;
-    if (dx * dx + dy * dy <= r * r) {
-      return i;
-    }
-  }
-  return -1;
 }
 
 [[nodiscard]] inline std::array<ImVec2, kSampleMindMapNodeCount> InitialSampleMapPositions() {
