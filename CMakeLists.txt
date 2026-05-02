@@ -88,6 +88,9 @@ set(IMGUI_SOURCES
 
 set(BM_UI_SOURCES
   src/ui/MindMapUi.cpp
+  src/ui/branch/DrawBranchesBezier.cpp
+  src/ui/branch/DrawBranchesOrthogonal.cpp
+  src/ui/branch/DrawBranchesOrganicTaper.cpp
   src/ui/demos/DemoBezierMindMap.cpp
   src/ui/demos/DemoStraightMindMap.cpp
   src/ui/demos/DemoTaperOrganicMindMap.cpp
