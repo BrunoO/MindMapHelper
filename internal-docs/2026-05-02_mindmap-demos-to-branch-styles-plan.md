@@ -114,6 +114,8 @@
 
 **Acceptance:** User can change style at runtime without recompile; persistence out of scope unless requested.
 
+**Status (2026-05-02):** Implemented. Selection = click **non-root** node (`selected_child_for_edge_style_`); root or empty canvas clears it. Second toolbar row: label + combo edits `branch_style_by_child_[selected]` via `SetBranchStyleForSelectedChildEdge`. Selected node gets a distinct border color; status bar shows edge target label and current style.
+
 ---
 
 ## Topology and layering cleanup (parallel or after B)

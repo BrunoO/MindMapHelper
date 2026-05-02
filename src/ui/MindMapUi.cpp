@@ -61,6 +61,34 @@ class UiCommandDispatcher final {
   }
 };
 
+void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas) {
+  if (!canvas.HasSelectedIncomingEdgeStyleTarget()) {
+    ImGui::TextDisabled("Incoming edge style: select a non-root node on the canvas.");
+    return;
+  }
+  const char* const node_label = canvas.GetSelectedIncomingEdgeChildLabel();
+  assert(node_label != nullptr);
+  ImGui::Text("Incoming edge to \"%s\"", node_label);
+  ImGui::SameLine();
+  const mind_map::ui::branch::BranchStyle current = canvas.GetBranchStyleForSelectedChildEdge();
+  const char* const preview = mind_map::ui::branch::GetBranchStyleDisplayName(current);
+  if (!ImGui::BeginCombo("##SelectedIncomingEdgeBranchStyle", preview)) {
+    return;
+  }
+
+  for (int i = 0; i < mind_map::ui::branch::kBranchStyleCount; ++i) {
+    const mind_map::ui::branch::BranchStyle style = mind_map::ui::branch::BranchStyleFromIndex(i);
+    const bool selected = (style == current);
+    if (ImGui::Selectable(mind_map::ui::branch::GetBranchStyleDisplayName(style), selected)) {
+      canvas.SetBranchStyleForSelectedChildEdge(style);
+    }
+    if (selected) {
+      ImGui::SetItemDefaultFocus();
+    }
+  }
+  ImGui::EndCombo();
+}
+
 void RenderBranchStyleSelector(MindMapCanvasView& canvas) {
   const char* const preview = canvas.GetBranchStyleComboPreviewLabel();
   if (!ImGui::BeginCombo("Set all branches to", preview)) {
@@ -116,7 +144,8 @@ void RenderMainMenuBar(UiCommandDispatcher& dispatcher, MindMapCanvasView& canva
   }
 
   if (ImGui::BeginMenu("Help")) {
-    ImGui::MenuItem("Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms.", nullptr, false, false);
+    ImGui::MenuItem("Canvas: drag nodes; empty space pans; wheel zooms.", nullptr, false, false);
+    ImGui::MenuItem("Non-root node: select to edit incoming edge style; root clears selection.", nullptr, false, false);
     ImGui::EndMenu();
   }
 
@@ -193,9 +222,20 @@ void RenderStatusBar(const UiState& state) {
     return;
   }
   ImGui::Separator();
-  ImGui::Text("Status  Branches: %s  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)",
-              state.canvas_.GetBranchStyleComboPreviewLabel(), static_cast<double>(state.zoom_),
-              static_cast<double>(state.pan_px_.x), static_cast<double>(state.pan_px_.y));
+  const char* const edge_child_label = state.canvas_.GetSelectedIncomingEdgeChildLabel();
+  if (edge_child_label != nullptr) {
+    ImGui::Text(
+        "Status  Branches: %s  |  Edge to \"%s\": %s  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)",
+        state.canvas_.GetBranchStyleComboPreviewLabel(), edge_child_label,
+        mind_map::ui::branch::GetBranchStyleDisplayName(state.canvas_.GetBranchStyleForSelectedChildEdge()),
+        static_cast<double>(state.zoom_), static_cast<double>(state.pan_px_.x),
+        static_cast<double>(state.pan_px_.y));
+  }
+  else {
+    ImGui::Text("Status  Branches: %s  |  Selected edge: none  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)",
+                state.canvas_.GetBranchStyleComboPreviewLabel(), static_cast<double>(state.zoom_),
+                static_cast<double>(state.pan_px_.x), static_cast<double>(state.pan_px_.y));
+  }
 }
 
 }  // namespace
@@ -224,9 +264,10 @@ void RenderMainUi() {
       command_dispatcher.Dispatch(UiCommandId::ResetLayout, state.canvas_, state.pan_px_, state.zoom_,
                                    state.show_status_bar_);
     }
+    RenderSelectedIncomingEdgeStyleSelector(state.canvas_);
     ImGui::TextUnformatted(
-        "Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms. Default map mixes branch styles per edge; "
-        "combo applies one style to all edges.");
+        "Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms. Click a non-root node to edit its incoming "
+        "edge style; root or empty canvas clears selection. \"Set all branches\" applies one style to every edge.");
     ImGui::Text("Zoom %.2f", static_cast<double>(state.zoom_));
     RenderCanvas(state);
   }

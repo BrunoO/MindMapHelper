@@ -34,6 +34,9 @@ struct MindMapPointerState {
 //
 // Milestone D: each child node index owns the style of its incoming edge (`branch_style_by_child_[child]`); root slot
 // is unused. Reset() restores positions only, not per-edge styles.
+//
+// Milestone E: click a non-root node to select it; the incoming edge (parent → child) style is edited via the toolbar
+// combo. Click empty canvas or root to clear selection.
 class MindMapCanvasView {
  public:
   MindMapCanvasView();
@@ -48,9 +51,15 @@ class MindMapCanvasView {
 
   void Render(const MindMapCanvasRenderContext& ctx);
 
-  // Applies one style to every edge (all child indices with a parent). Used by the toolbar combo until per-edge UI
-  // exists (Milestone E).
+  // Applies one style to every edge (all child indices with a parent).
   void SetBranchStyleForAllEdges(mind_map::ui::branch::BranchStyle style);
+
+  [[nodiscard]] bool HasSelectedIncomingEdgeStyleTarget() const;
+  [[nodiscard]] int GetSelectedChildForBranchStyle() const;
+  // nullptr when no non-root node is selected for incoming-edge editing.
+  [[nodiscard]] const char* GetSelectedIncomingEdgeChildLabel() const;
+  [[nodiscard]] mind_map::ui::branch::BranchStyle GetBranchStyleForSelectedChildEdge() const;
+  void SetBranchStyleForSelectedChildEdge(mind_map::ui::branch::BranchStyle style);
 
   // Combo preview: common style name, or a short label when edges disagree.
   [[nodiscard]] const char* GetBranchStyleComboPreviewLabel() const;
@@ -67,6 +76,7 @@ class MindMapCanvasView {
   std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount> pos_world_{};
   int dragging_node_ = -1;
   ImVec2 grab_offset_world_{};
+  int selected_child_for_edge_style_ = -1;
   std::array<mind_map::ui::branch::BranchStyle, mind_map::demos::kSampleMindMapNodeCount> branch_style_by_child_{};
 };
 
