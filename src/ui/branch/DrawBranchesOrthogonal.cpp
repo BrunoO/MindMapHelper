@@ -27,13 +27,15 @@ void DrawAllSampleMindMapBranchesOrthogonal(
 
     const char* const parent_label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(parent)].label_;
     const char* const child_label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].label_;
-    const float pr = mind_map::demos::SampleMapNodeRadiusWorld(parent_label);
-    const float cr = mind_map::demos::SampleMapNodeRadiusWorld(child_label);
+    const ImVec2 parent_half = mind_map::demos::SampleMapHalfExtentForLabel(parent_label);
+    const ImVec2 child_half = mind_map::demos::SampleMapHalfExtentForLabel(child_label);
 
     const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
     const ImVec2 cw = pos_world[static_cast<size_t>(child)];
-    const ImVec2 p0w = mind_map::demos::SampleMapCircleAttachmentToward(pw, pr, cw);
-    const ImVec2 p3w = mind_map::demos::SampleMapCircleAttachmentToward(cw, cr, pw);
+    const ImVec2 p0w = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
+        pw, parent_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, cw);
+    const ImVec2 p3w = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
+        cw, child_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, pw);
     const float mid_x = 0.5F * (p0w.x + p3w.x);
     const ImVec2 p1w = {mid_x, p0w.y};
     const ImVec2 p2w = {mid_x, p3w.y};

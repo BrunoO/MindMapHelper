@@ -1,15 +1,14 @@
 #include "ui/MindMapUi.h"
 
+#include "ui/MindMapCanvasView.h"
+#include "ui/branch/BranchStyle.h"
 #include "ui/canvas/CanvasMath.h"
-#include "ui/demos/IDemo.h"
 
 #include "imgui.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
-#include <memory>
-#include <vector>
 
 namespace mind_map::ui {
 
@@ -31,8 +30,7 @@ enum class UiCommandId : std::uint8_t {
 };
 
 struct UiState {
-  std::vector<std::unique_ptr<mind_map::demos::IDemo>> demos_;
-  int demo_index_ = 0;
+  MindMapCanvasView canvas_;
   ImVec2 pan_px_ = {kInitialPanX, kInitialPanY};
   float zoom_ = 1.0F;
   bool show_status_bar_ = true;
@@ -40,10 +38,11 @@ struct UiState {
 
 class UiCommandDispatcher final {
  public:
-  void Dispatch(UiCommandId command, mind_map::demos::IDemo& demo, ImVec2& pan_px, float& zoom, bool& show_status_bar) const {
+  void Dispatch(UiCommandId command, MindMapCanvasView& canvas, ImVec2& pan_px, float& zoom,
+                bool& show_status_bar) const {
     switch (command) {
       case UiCommandId::ResetLayout:
-        demo.Reset();
+        canvas.Reset();
         return;
       case UiCommandId::ZoomIn:
         zoom = std::clamp(zoom + kZoomStep, kMinZoom, kMaxZoom);
@@ -62,26 +61,18 @@ class UiCommandDispatcher final {
   }
 };
 
-[[nodiscard]] mind_map::demos::IDemo* GetSelectedDemo(UiState& state) {
-  if (state.demos_.empty()) {
-    state.demos_ = mind_map::demos::CreateDemoList();
-  }
-  assert(!state.demos_.empty());
-  state.demo_index_ = std::clamp(state.demo_index_, 0, static_cast<int>(state.demos_.size()) - 1);
-  return state.demos_.at(static_cast<size_t>(state.demo_index_)).get();
-}
-
-void RenderDemoSelector(UiState& state) {
-  const mind_map::demos::IDemo* const selected_demo = GetSelectedDemo(state);
-  assert(selected_demo != nullptr);
-  if (!ImGui::BeginCombo("Demo", selected_demo->GetName())) {
+void RenderBranchStyleSelector(MindMapCanvasView& canvas) {
+  const mind_map::ui::branch::BranchStyle current = canvas.GetBranchStyle();
+  const char* const preview = mind_map::ui::branch::GetBranchStyleDisplayName(current);
+  if (!ImGui::BeginCombo("Branch style", preview)) {
     return;
   }
 
-  for (int i = 0; i < static_cast<int>(state.demos_.size()); ++i) {
-    const bool selected = (i == state.demo_index_);
-    if (ImGui::Selectable(state.demos_.at(static_cast<size_t>(i))->GetName(), selected)) {
-      state.demo_index_ = i;
+  for (int i = 0; i < mind_map::ui::branch::kBranchStyleCount; ++i) {
+    const mind_map::ui::branch::BranchStyle style = mind_map::ui::branch::BranchStyleFromIndex(i);
+    const bool selected = (style == current);
+    if (ImGui::Selectable(mind_map::ui::branch::GetBranchStyleDisplayName(style), selected)) {
+      canvas.SetBranchStyle(style);
     }
     if (selected) {
       ImGui::SetItemDefaultFocus();
@@ -90,7 +81,7 @@ void RenderDemoSelector(UiState& state) {
   ImGui::EndCombo();
 }
 
-void RenderMainMenuBar(UiCommandDispatcher& dispatcher, mind_map::demos::IDemo& demo, ImVec2& pan_px, float& zoom,
+void RenderMainMenuBar(UiCommandDispatcher& dispatcher, MindMapCanvasView& canvas, ImVec2& pan_px, float& zoom,
                        bool& show_status_bar) {
   if (!ImGui::BeginMainMenuBar()) {
     return;
@@ -98,26 +89,26 @@ void RenderMainMenuBar(UiCommandDispatcher& dispatcher, mind_map::demos::IDemo& 
 
   if (ImGui::BeginMenu("File")) {
     if (ImGui::MenuItem("Reset Layout")) {
-      dispatcher.Dispatch(UiCommandId::ResetLayout, demo, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ResetLayout, canvas, pan_px, zoom, show_status_bar);
     }
     if (ImGui::MenuItem("Reset View")) {
-      dispatcher.Dispatch(UiCommandId::ResetView, demo, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ResetView, canvas, pan_px, zoom, show_status_bar);
     }
     ImGui::EndMenu();
   }
 
   if (ImGui::BeginMenu("View")) {
     if (ImGui::MenuItem("Zoom In", "Cmd+=")) {
-      dispatcher.Dispatch(UiCommandId::ZoomIn, demo, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ZoomIn, canvas, pan_px, zoom, show_status_bar);
     }
     if (ImGui::MenuItem("Zoom Out", "Cmd+-")) {
-      dispatcher.Dispatch(UiCommandId::ZoomOut, demo, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ZoomOut, canvas, pan_px, zoom, show_status_bar);
     }
     if (ImGui::MenuItem("Reset View", "Cmd+0")) {
-      dispatcher.Dispatch(UiCommandId::ResetView, demo, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ResetView, canvas, pan_px, zoom, show_status_bar);
     }
     if (ImGui::MenuItem("Show Status Bar", nullptr, show_status_bar)) {
-      dispatcher.Dispatch(UiCommandId::ToggleStatusBar, demo, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ToggleStatusBar, canvas, pan_px, zoom, show_status_bar);
     }
     ImGui::EndMenu();
   }
@@ -142,15 +133,14 @@ void HandleCanvasZoom(const ImGuiIO& io, bool canvas_hovered, ImVec2 canvas_p0, 
 }
 
 void HandleCanvasPointerInput(bool canvas_hovered, bool canvas_item_active, const ImGuiIO& io,
-                              const mind_map::demos::DemoPointerState& pointer_state, ImVec2& pan_px,
-                              mind_map::demos::IDemo& demo) {
+                              const MindMapPointerState& pointer_state, ImVec2& pan_px, MindMapCanvasView& canvas) {
   if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && canvas_hovered) {
-    demo.OnPrimaryDown(pointer_state);
+    canvas.OnPrimaryDown(pointer_state);
   }
 
   if (canvas_item_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-    if (demo.IsDraggingContent()) {
-      demo.OnPrimaryDrag(pointer_state);
+    if (canvas.IsDraggingContent()) {
+      canvas.OnPrimaryDrag(pointer_state);
     }
     else {
       pan_px.x += io.MouseDelta.x;
@@ -159,11 +149,11 @@ void HandleCanvasPointerInput(bool canvas_hovered, bool canvas_item_active, cons
   }
 
   if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-    demo.OnPrimaryUp();
+    canvas.OnPrimaryUp();
   }
 }
 
-void RenderCanvas(UiState& state, mind_map::demos::IDemo& demo) {
+void RenderCanvas(UiState& state) {
   const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
   const ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
   const ImVec2 canvas_p1 = {canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y};
@@ -176,13 +166,13 @@ void RenderCanvas(UiState& state, mind_map::demos::IDemo& demo) {
   HandleCanvasZoom(io, canvas_hovered, canvas_p0, state.pan_px_, state.zoom_);
 
   const ImVec2 mouse_world = mind_map::canvas::ScreenToWorld(io.MousePos, canvas_p0, state.pan_px_, state.zoom_);
-  mind_map::demos::DemoPointerState pointer_state = {};
+  MindMapPointerState pointer_state = {};
   pointer_state.mouse_screen = io.MousePos;
   pointer_state.mouse_world = mouse_world;
   pointer_state.canvas_hovered = canvas_hovered;
-  HandleCanvasPointerInput(canvas_hovered, canvas_item_active, io, pointer_state, state.pan_px_, demo);
+  HandleCanvasPointerInput(canvas_hovered, canvas_item_active, io, pointer_state, state.pan_px_, state.canvas_);
 
-  mind_map::demos::DemoRenderContext render_context = {};
+  MindMapCanvasRenderContext render_context = {};
   render_context.draw_list = ImGui::GetWindowDrawList();
   render_context.canvas_p0 = canvas_p0;
   render_context.canvas_p1 = canvas_p1;
@@ -192,28 +182,27 @@ void RenderCanvas(UiState& state, mind_map::demos::IDemo& demo) {
   render_context.mouse_world = mouse_world;
 
   render_context.draw_list->PushClipRect(canvas_p0, canvas_p1, true);
-  demo.Render(render_context);
+  state.canvas_.Render(render_context);
   render_context.draw_list->PopClipRect();
 }
 
-void RenderStatusBar(const UiState& state, const mind_map::demos::IDemo& demo) {
+void RenderStatusBar(const UiState& state) {
   if (!state.show_status_bar_) {
     return;
   }
   ImGui::Separator();
-  ImGui::Text("Status  Demo: %s  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)", demo.GetName(), static_cast<double>(state.zoom_),
-              static_cast<double>(state.pan_px_.x), static_cast<double>(state.pan_px_.y));
+  ImGui::Text("Status  Branch style: %s  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)",
+              mind_map::ui::branch::GetBranchStyleDisplayName(state.canvas_.GetBranchStyle()),
+              static_cast<double>(state.zoom_), static_cast<double>(state.pan_px_.x),
+              static_cast<double>(state.pan_px_.y));
 }
 
 }  // namespace
 
 void RenderMainUi() {
   static UiState state;
-  mind_map::demos::IDemo* const demo = GetSelectedDemo(state);
-  assert(demo != nullptr);
-
   UiCommandDispatcher command_dispatcher;
-  RenderMainMenuBar(command_dispatcher, *demo, state.pan_px_, state.zoom_, state.show_status_bar_);
+  RenderMainMenuBar(command_dispatcher, state.canvas_, state.pan_px_, state.zoom_, state.show_status_bar_);
 
   const ImGuiViewport* const viewport = ImGui::GetMainViewport();
   assert(viewport != nullptr);
@@ -228,18 +217,19 @@ void RenderMainUi() {
 
   const float content_height = state.show_status_bar_ ? -kStatusBarHeight : 0.0F;
   if (ImGui::BeginChild("bMindMapContent", ImVec2(0.0F, content_height), ImGuiChildFlags_None, ImGuiWindowFlags_None)) {
-    RenderDemoSelector(state);
+    RenderBranchStyleSelector(state.canvas_);
     ImGui::SameLine();
     if (ImGui::Button("Reset layout")) {
-      command_dispatcher.Dispatch(UiCommandId::ResetLayout, *demo, state.pan_px_, state.zoom_, state.show_status_bar_);
+      command_dispatcher.Dispatch(UiCommandId::ResetLayout, state.canvas_, state.pan_px_, state.zoom_,
+                                   state.show_status_bar_);
     }
     ImGui::TextUnformatted("Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms.");
     ImGui::Text("Zoom %.2f", static_cast<double>(state.zoom_));
-    RenderCanvas(state, *demo);
+    RenderCanvas(state);
   }
   ImGui::EndChild();
 
-  RenderStatusBar(state, *demo);
+  RenderStatusBar(state);
   ImGui::End();
   ImGui::PopStyleVar(2);
 }
