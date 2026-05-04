@@ -1,6 +1,8 @@
 # MindMap Helper
 
-Cross-platform **C++17** mind-map UI prototype built with **Dear ImGui**, **GLFW 3**, and **OpenGL 3**. Dependencies are pulled on first configure via **CMake FetchContent** (GLFW 3.4, ImGui v1.91.9).
+Cross-platform **C++17** mind-map UI built with **Dear ImGui**, **GLFW 3**, and **OpenGL 3**. Dependencies are pulled on first configure via **CMake FetchContent** (GLFW 3.4, ImGui v1.91.9).
+
+> **Status: proof of concept.** The current version demonstrates core rendering and interaction. New features are actively planned and will be added in future releases.
 
 ## Requirements
 
