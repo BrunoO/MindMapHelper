@@ -20,9 +20,9 @@ else()
   set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
   set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
-  if(APPLE)
-    set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "" FORCE)
-  endif()
+  # Wayland requires wayland-scanner and extra dev packages; X11 is enough for CI and typical dev.
+  # (GLFW enables Wayland on Linux by default when dependencies are partially detected.)
+  set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "" FORCE)
 
   FetchContent_Declare(
     glfw

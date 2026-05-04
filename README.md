@@ -63,7 +63,7 @@ ctest --test-dir build --output-on-failure
 ./build/MindMapHelper
 ```
 
-If a system GLFW CMake config is not found, this project fetches and builds GLFW via FetchContent.
+If a system GLFW CMake config is not found, this project fetches and builds GLFW via FetchContent. That path sets **`GLFW_BUILD_WAYLAND=OFF`** (X11 only) so minimal CI images do not need `wayland-scanner` or Wayland dev packages.
 
 ---
 
