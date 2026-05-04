@@ -8,8 +8,8 @@
 
 namespace mind_map::canvas {
 
-constexpr ImU32 kGridMajorColor = IM_COL32(60, 60, 72, 255);
-constexpr ImU32 kGridMinorColor = IM_COL32(45, 45, 55, 255);
+constexpr ImU32 kGridMajorColor = IM_COL32(60, 60, 72, 255);   // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32 kGridMinorColor = IM_COL32(45, 45, 55, 255);   // NOLINT(hicpp-signed-bitwise)
 
 [[nodiscard]] inline ImVec2 WorldToScreen(ImVec2 world, ImVec2 canvas_p0, ImVec2 pan_px, float zoom) {
   return {canvas_p0.x + pan_px.x + world.x * zoom, canvas_p0.y + pan_px.y + world.y * zoom};

@@ -10,7 +10,7 @@ namespace mind_map::ui::branch {
 namespace {
 
 constexpr float kEdgeThickness = 2.0F;
-constexpr ImU32 kColorEdge = IM_COL32(120, 200, 150, 255);
+constexpr ImU32 kColorEdge = IM_COL32(120, 200, 150, 255);  // NOLINT(hicpp-signed-bitwise)
 
 }  // namespace
 
