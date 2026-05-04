@@ -121,7 +121,7 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
 
   constexpr float kEps = 1.0e-5F;
   float best_t = 1.0e15F;
-  const auto consider = [&best_t](float t) {
+  const auto consider = [&best_t, kEps](float t) {
     if (t > kEps && t < best_t) {
       best_t = t;
     }
