@@ -2,8 +2,6 @@
 
 int main() {
   constexpr std::string_view kProjectName = "MindMap Helper";
-  if (kProjectName.empty()) {
-    return 1;
-  }
+  static_assert(!kProjectName.empty(), "Project name must not be empty");
   return 0;
 }
