@@ -224,7 +224,7 @@ void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, Im
 void DrawSampleMindMapBranchOrganicTaper(
     const BranchRenderContext& ctx, const int child_index,
     const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
-  assert(ctx.draw_list != nullptr);
+  assert(ctx.draw_list_ != nullptr);
   assert(child_index >= 0 && child_index < mind_map::demos::kSampleMindMapNodeCount);
   const int parent = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child_index)].parent_;
   assert(parent >= 0 && parent < mind_map::demos::kSampleMindMapNodeCount);
@@ -260,13 +260,13 @@ void DrawSampleMindMapBranchOrganicTaper(
   std::array<ImVec2, 4> seg1{};
   if (BuildHobbyMidWaypointTwoCubics(p0w, p3w, out0, out3, kHobbyMidWaypointTension, kHobbyMidJointVelocityScale,
                                      kHobbyMidChordPerpOffsetFraction, seg0.data(), seg1.data())) {
-    DrawTaperTwoSegmentBezierBranch(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom, seg0.data(), seg1.data(),
+    DrawTaperTwoSegmentBezierBranch(ctx.draw_list_, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_, seg0.data(), seg1.data(),
                                     half_width_start, half_width_end);
   }
   else {
     const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(
         pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border);
-    DrawTaperBezierBranch(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom, p0w, arms.p1_, arms.p2_, p3w,
+    DrawTaperBezierBranch(ctx.draw_list_, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_, p0w, arms.p1_, arms.p2_, p3w,
                           half_width_start, half_width_end);
   }
 }
@@ -274,7 +274,7 @@ void DrawSampleMindMapBranchOrganicTaper(
 void DrawAllSampleMindMapBranchesOrganicTaper(
     const BranchRenderContext& ctx,
     const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
-  assert(ctx.draw_list != nullptr);
+  assert(ctx.draw_list_ != nullptr);
   for (int child = 0; child < mind_map::demos::kSampleMindMapNodeCount; ++child) {
     if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].parent_ < 0) {
       continue;

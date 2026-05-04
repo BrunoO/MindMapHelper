@@ -247,6 +247,9 @@ CheckOptions:
   # Functions and Methods: PascalCase
   readability-identifier-naming.FunctionCase: CamelCase
   readability-identifier-naming.MethodCase: CamelCase
+  # Private methods use trailing underscore (same convention as private member variables)
+  readability-identifier-naming.PrivateMethodCase: CamelCase
+  readability-identifier-naming.PrivateMethodSuffix: '_'
   
   # Local Variables and Parameters: snake_case
   readability-identifier-naming.VariableCase: lower_case

@@ -21,7 +21,7 @@ constexpr float kStatusBarHeight = 26.0F;
 constexpr float kInitialPanX = 40.0F;
 constexpr float kInitialPanY = 120.0F;
 
-enum class UiCommandId : std::uint8_t {
+enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   ResetLayout,
   ZoomIn,
   ZoomOut,
@@ -44,7 +44,7 @@ class UiCommandDispatcher final {
       case UiCommandId::ResetLayout:
         canvas.Reset();
         return;
-      case UiCommandId::ZoomIn:
+      case UiCommandId::ZoomIn:  // NOLINT(bugprone-branch-clone)
         zoom = std::clamp(zoom + kZoomStep, kMinZoom, kMaxZoom);
         return;
       case UiCommandId::ZoomOut:
@@ -198,23 +198,23 @@ void RenderCanvas(UiState& state) {
 
   const ImVec2 mouse_world = mind_map::canvas::ScreenToWorld(io.MousePos, canvas_p0, state.pan_px_, state.zoom_);
   MindMapPointerState pointer_state = {};
-  pointer_state.mouse_screen = io.MousePos;
-  pointer_state.mouse_world = mouse_world;
-  pointer_state.canvas_hovered = canvas_hovered;
+  pointer_state.mouse_screen_ = io.MousePos;
+  pointer_state.mouse_world_ = mouse_world;
+  pointer_state.canvas_hovered_ = canvas_hovered;
   HandleCanvasPointerInput(canvas_hovered, canvas_item_active, io, pointer_state, state.pan_px_, state.canvas_);
 
   MindMapCanvasRenderContext render_context = {};
-  render_context.draw_list = ImGui::GetWindowDrawList();
-  render_context.canvas_p0 = canvas_p0;
-  render_context.canvas_p1 = canvas_p1;
-  render_context.pan_px = state.pan_px_;
-  render_context.zoom = state.zoom_;
-  render_context.canvas_hovered = canvas_hovered;
-  render_context.mouse_world = mouse_world;
+  render_context.draw_list_ = ImGui::GetWindowDrawList();
+  render_context.canvas_p0_ = canvas_p0;
+  render_context.canvas_p1_ = canvas_p1;
+  render_context.pan_px_ = state.pan_px_;
+  render_context.zoom_ = state.zoom_;
+  render_context.canvas_hovered_ = canvas_hovered;
+  render_context.mouse_world_ = mouse_world;
 
-  render_context.draw_list->PushClipRect(canvas_p0, canvas_p1, true);
+  render_context.draw_list_->PushClipRect(canvas_p0, canvas_p1, true);
   state.canvas_.Render(render_context);
-  render_context.draw_list->PopClipRect();
+  render_context.draw_list_->PopClipRect();
 }
 
 void RenderStatusBar(const UiState& state) {

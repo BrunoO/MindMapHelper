@@ -26,8 +26,8 @@ constexpr std::string_view kMixedBranchStylesPreview = "Mixed (per child)";
 
 void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_node, int selected_child_for_edge,
                             const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
-  assert(ctx.draw_list != nullptr);
-  const int hot_node = ctx.canvas_hovered ? mind_map::demos::HitTestSampleMap(ctx.mouse_world, pos_world) : -1;
+  assert(ctx.draw_list_ != nullptr);
+  const int hot_node = ctx.canvas_hovered_ ? mind_map::demos::HitTestSampleMap(ctx.mouse_world_, pos_world) : -1;
 
   for (int i = 0; i < mind_map::demos::kSampleMindMapNodeCount; ++i) {
     const char* const label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(i)].label_;
@@ -35,8 +35,8 @@ void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_
     const ImVec2 c = pos_world[static_cast<size_t>(i)];
     const ImVec2 rmin_w = {c.x - half.x, c.y - half.y};
     const ImVec2 rmax_w = {c.x + half.x, c.y + half.y};
-    const ImVec2 rmin = mind_map::canvas::WorldToScreen(rmin_w, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
-    const ImVec2 rmax = mind_map::canvas::WorldToScreen(rmax_w, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
+    const ImVec2 rmin = mind_map::canvas::WorldToScreen(rmin_w, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
+    const ImVec2 rmax = mind_map::canvas::WorldToScreen(rmax_w, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
 
     const bool incoming_edge_selected =
         (i == selected_child_for_edge) &&
@@ -44,17 +44,17 @@ void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_
     const bool hot = (i == dragging_node) || (i == hot_node);
     const ImU32 hot_border = hot ? kColorNodeBorderHot : kColorNodeBorder;
     const ImU32 border = incoming_edge_selected ? kColorNodeBorderSelected : hot_border;
-    ctx.draw_list->AddRectFilled(rmin, rmax, kColorNodeFill, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld);
-    ctx.draw_list->AddRect(rmin, rmax, border, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, 0, kNodeBorderThickness);
+    ctx.draw_list_->AddRectFilled(rmin, rmax, kColorNodeFill, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld);
+    ctx.draw_list_->AddRect(rmin, rmax, border, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, 0, kNodeBorderThickness);
 
     const ImVec2 text_sz = ImGui::CalcTextSize(label);
     const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F, (rmin.y + rmax.y - text_sz.y) * 0.5F};
-    ctx.draw_list->AddText(text_pos, IM_COL32(235, 235, 245, 255), label);  // NOLINT(hicpp-signed-bitwise)
+    ctx.draw_list_->AddText(text_pos, IM_COL32(235, 235, 245, 255), label);  // NOLINT(hicpp-signed-bitwise)
 
-    const ImVec2 left = mind_map::canvas::WorldToScreen({c.x - half.x, c.y}, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
-    const ImVec2 right = mind_map::canvas::WorldToScreen({c.x + half.x, c.y}, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
-    ctx.draw_list->AddCircleFilled(left, kHandleRadius, IM_COL32(90, 200, 255, 200));   // NOLINT(hicpp-signed-bitwise)
-    ctx.draw_list->AddCircleFilled(right, kHandleRadius, IM_COL32(255, 190, 90, 200));  // NOLINT(hicpp-signed-bitwise)
+    const ImVec2 left = mind_map::canvas::WorldToScreen({c.x - half.x, c.y}, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
+    const ImVec2 right = mind_map::canvas::WorldToScreen({c.x + half.x, c.y}, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
+    ctx.draw_list_->AddCircleFilled(left, kHandleRadius, IM_COL32(90, 200, 255, 200));   // NOLINT(hicpp-signed-bitwise)
+    ctx.draw_list_->AddCircleFilled(right, kHandleRadius, IM_COL32(255, 190, 90, 200));  // NOLINT(hicpp-signed-bitwise)
   }
 }
 
@@ -81,10 +81,10 @@ void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_
 
 MindMapCanvasView::MindMapCanvasView() {
   pos_world_ = mind_map::demos::InitialSampleMapPositions();
-  InitDefaultPerChildBranchStyles();
+  InitDefaultPerChildBranchStyles_();
 }
 
-void MindMapCanvasView::InitDefaultPerChildBranchStyles() {
+void MindMapCanvasView::InitDefaultPerChildBranchStyles_() {
   using mind_map::ui::branch::BranchStyle;
   // Root index 0 unused; children 1–6 use mixed styles to validate Milestone D (per-edge dispatch).
   branch_style_by_child_ = {{
@@ -128,14 +128,14 @@ void MindMapCanvasView::Reset() {
 }
 
 void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
-  if (!ptr.canvas_hovered) {
+  if (!ptr.canvas_hovered_) {
     return;
   }
-  const int hit = mind_map::demos::HitTestSampleMap(ptr.mouse_world, pos_world_);
+  const int hit = mind_map::demos::HitTestSampleMap(ptr.mouse_world_, pos_world_);
   if (hit >= 0) {
     dragging_node_ = hit;
     const ImVec2 c = pos_world_[static_cast<size_t>(hit)];
-    grab_offset_world_ = {ptr.mouse_world.x - c.x, ptr.mouse_world.y - c.y};
+    grab_offset_world_ = {ptr.mouse_world_.x - c.x, ptr.mouse_world_.y - c.y};
     if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(hit)].parent_ >= 0) {
       selected_child_for_edge_style_ = hit;
     }
@@ -153,8 +153,8 @@ void MindMapCanvasView::OnPrimaryDrag(const MindMapPointerState& ptr) {  // NOLI
   if (dragging_node_ < 0) {
     return;
   }
-  pos_world_[static_cast<size_t>(dragging_node_)] = {ptr.mouse_world.x - grab_offset_world_.x,
-                                                     ptr.mouse_world.y - grab_offset_world_.y};
+  pos_world_[static_cast<size_t>(dragging_node_)] = {ptr.mouse_world_.x - grab_offset_world_.x,
+                                                     ptr.mouse_world_.y - grab_offset_world_.y};
 }
 
 void MindMapCanvasView::OnPrimaryUp() {
@@ -222,11 +222,11 @@ void MindMapCanvasView::SetBranchStyleForSelectedChildEdge(mind_map::ui::branch:
 }
 
 void MindMapCanvasView::Render(const MindMapCanvasRenderContext& ctx) {
-  assert(ctx.draw_list != nullptr);
-  mind_map::canvas::DrawGrid(ctx.draw_list, ctx.canvas_p0, ctx.canvas_p1, ctx.pan_px, ctx.zoom);
+  assert(ctx.draw_list_ != nullptr);
+  mind_map::canvas::DrawGrid(ctx.draw_list_, ctx.canvas_p0_, ctx.canvas_p1_, ctx.pan_px_, ctx.zoom_);
 
   const mind_map::ui::branch::BranchRenderContext branch_ctx =
-      mind_map::ui::branch::MakeBranchRenderContext(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
+      mind_map::ui::branch::MakeBranchRenderContext(ctx.draw_list_, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
 
   for (int child = 0; child < mind_map::demos::kSampleMindMapNodeCount; ++child) {
     if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].parent_ < 0) {

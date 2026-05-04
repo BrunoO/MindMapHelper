@@ -10,19 +10,19 @@
 namespace mind_map::ui {
 
 struct MindMapCanvasRenderContext {
-  ImDrawList* draw_list = nullptr;
-  ImVec2 canvas_p0{};
-  ImVec2 canvas_p1{};
-  ImVec2 pan_px{};
-  float zoom = 1.0F;
-  bool canvas_hovered = false;
-  ImVec2 mouse_world{};
+  ImDrawList* draw_list_ = nullptr;
+  ImVec2 canvas_p0_;
+  ImVec2 canvas_p1_;
+  ImVec2 pan_px_;
+  float zoom_ = 1.0F;
+  bool canvas_hovered_ = false;
+  ImVec2 mouse_world_;
 };
 
 struct MindMapPointerState {
-  ImVec2 mouse_screen{};
-  ImVec2 mouse_world{};
-  bool canvas_hovered = false;
+  ImVec2 mouse_screen_;
+  ImVec2 mouse_world_;
+  bool canvas_hovered_ = false;
 };
 
 // Single sample-map canvas: pan/zoom stay in MindMapUi; this owns layout, drag, and drawing.
@@ -68,14 +68,14 @@ class MindMapCanvasView {
   [[nodiscard]] mind_map::ui::branch::BranchStyle RepresentativeChildEdgeStyle() const;
 
  private:
-  void InitDefaultPerChildBranchStyles();
+  void InitDefaultPerChildBranchStyles_();
 
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
   [[nodiscard]] bool BranchStylesAreUniform_() const;
 
   std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount> pos_world_{};
   int dragging_node_ = -1;
-  ImVec2 grab_offset_world_{};
+  ImVec2 grab_offset_world_;
   int selected_child_for_edge_style_ = -1;
   std::array<mind_map::ui::branch::BranchStyle, mind_map::demos::kSampleMindMapNodeCount> branch_style_by_child_{};
 };
