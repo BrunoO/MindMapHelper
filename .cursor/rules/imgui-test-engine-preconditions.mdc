@@ -22,7 +22,7 @@ After each `Set*` (or equivalent) that affects the next UI action or backend cal
 - For window-based checks, prefer **exact window title** comparison when the test engine exposes window names.
 - For optional controls, **pre-check** visibility (e.g. `ItemExists`) and skip if the control is absent in that build.
 
-## bMindMap
+## MindMap Helper
 
 This repository does not ship ImGui Test Engine by default. When you integrate it (optional; macOS is the usual first target), place regression sources under `src/ui/` with names matching the globs above and apply this discipline.
 

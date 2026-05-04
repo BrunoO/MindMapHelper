@@ -254,10 +254,10 @@ void RenderMainUi() {
   const auto root_flags = static_cast<ImGuiWindowFlags>(ImGuiWindowFlags_NoTitleBar + ImGuiWindowFlags_NoResize +
                                                         ImGuiWindowFlags_NoMove + ImGuiWindowFlags_NoCollapse +
                                                         ImGuiWindowFlags_NoSavedSettings);
-  ImGui::Begin("bMindMap", nullptr, root_flags);
+  ImGui::Begin("MindMap Helper", nullptr, root_flags);
 
   const float content_height = state.show_status_bar_ ? -kStatusBarHeight : 0.0F;
-  if (ImGui::BeginChild("bMindMapContent", ImVec2(0.0F, content_height), ImGuiChildFlags_None, ImGuiWindowFlags_None)) {
+  if (ImGui::BeginChild("MindMapHelperContent", ImVec2(0.0F, content_height), ImGuiChildFlags_None, ImGuiWindowFlags_None)) {
     RenderBranchStyleSelector(state.canvas_);
     ImGui::SameLine();
     if (ImGui::Button("Reset layout")) {

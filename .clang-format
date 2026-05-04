@@ -1,4 +1,4 @@
-# clang-format configuration for bMindMap (imported from USN_Windows)
+# clang-format configuration for MindMap Helper (imported from USN_Windows)
 # Based on Google style with customizations for C++17
 
 BasedOnStyle: Google

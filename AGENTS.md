@@ -1,4 +1,4 @@
-# AGENTS.md — bMindMap
+# AGENTS.md — MindMap Helper
 
 C++17 project standards imported from `../USN_Windows`. Adjust build paths and scripts as this repository grows.
 
@@ -6,13 +6,13 @@ C++17 project standards imported from `../USN_Windows`. Adjust build paths and s
 
 ## Build and tests
 
-### App (`bmindmap` — ImGui + GLFW + OpenGL3)
+### App (`MindMapHelper` — ImGui + GLFW + OpenGL3)
 
 ```bash
 cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build
-./build/bmindmap          # macOS / Linux
-# build\Release\bmindmap.exe   # Windows MSVC (multi-config)
+./build/MindMapHelper          # macOS / Linux
+# build\Release\MindMapHelper.exe   # Windows MSVC (multi-config)
 ```
 
 Dependencies are fetched with **CMake FetchContent** (`glfw` 3.4, Dear **ImGui** v1.91.9) on first configure.

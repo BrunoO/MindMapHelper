@@ -1,1 +1,1 @@
-bmindmap_smoke_test
+mindmap_helper_smoke_test

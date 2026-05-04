@@ -1,5 +1,5 @@
 ---
-# clang-tidy configuration for bMindMap
+# clang-tidy configuration for MindMap Helper
 #
 # This configuration enforces:
 # - C++17 naming conventions (see docs/standards/CXX17_NAMING_CONVENTIONS.md)

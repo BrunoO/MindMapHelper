@@ -1,6 +1,6 @@
 # Cross-Platform Structure Guide
 
-This document defines the cross-platform structure for `bMindMap` and the boundaries between shared logic and OS-specific code.
+This document defines the cross-platform structure for MindMap Helper (`MindMapHelper`) and the boundaries between shared logic and OS-specific code.
 
 ## Source layout
 

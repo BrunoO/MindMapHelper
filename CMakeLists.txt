@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
-project(bMindMap LANGUAGES CXX)
+project(MindMapHelper LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-option(BM_ENABLE_TESTS "Enable bMindMap tests" ON)
+option(BM_ENABLE_TESTS "Enable MindMap Helper tests" ON)
 
 include(FetchContent)
 
@@ -110,62 +110,64 @@ elseif(UNIX)
   list(APPEND BM_PLATFORM_SOURCES src/platform/linux/PlatformBootstrap_linux.cpp)
 endif()
 
-add_library(bmindmap_core STATIC
+add_library(mindmap_helper_core STATIC
   ${BM_CORE_SOURCES}
 )
 
-add_library(bmindmap_platform STATIC
+add_library(mindmap_helper_platform STATIC
   ${BM_PLATFORM_SOURCES}
 )
 
-add_library(bmindmap_ui STATIC
+add_library(mindmap_helper_ui STATIC
   ${BM_UI_SOURCES}
   ${IMGUI_SOURCES}
 )
 
-bm_target_use_src_includes(bmindmap_core)
-bm_target_use_src_includes(bmindmap_platform)
-bm_target_use_src_includes(bmindmap_ui)
-bm_target_use_imgui_includes(bmindmap_ui)
+bm_target_use_src_includes(mindmap_helper_core)
+bm_target_use_src_includes(mindmap_helper_platform)
+bm_target_use_src_includes(mindmap_helper_ui)
+bm_target_use_imgui_includes(mindmap_helper_ui)
 
-target_link_libraries(bmindmap_ui PRIVATE ${BM_GLFW_TARGET})
-target_link_libraries(bmindmap_ui PRIVATE bmindmap_core)
+target_link_libraries(mindmap_helper_ui PRIVATE ${BM_GLFW_TARGET})
+target_link_libraries(mindmap_helper_ui PRIVATE mindmap_helper_core)
 
-target_link_libraries(bmindmap_platform PRIVATE ${BM_GLFW_TARGET})
-bm_link_opengl_for_platform(bmindmap_platform)
+target_link_libraries(mindmap_helper_platform PRIVATE ${BM_GLFW_TARGET})
+bm_link_opengl_for_platform(mindmap_helper_platform)
 
-add_executable(bmindmap
+add_executable(mindmap_helper
   src/main.cpp
   src/app/AppMain.cpp
 )
 
-bm_target_use_src_includes(bmindmap)
-bm_target_use_imgui_includes(bmindmap)
+set_target_properties(mindmap_helper PROPERTIES OUTPUT_NAME "MindMapHelper")
 
-target_link_libraries(bmindmap PRIVATE
-  bmindmap_platform
-  bmindmap_ui
+bm_target_use_src_includes(mindmap_helper)
+bm_target_use_imgui_includes(mindmap_helper)
+
+target_link_libraries(mindmap_helper PRIVATE
+  mindmap_helper_platform
+  mindmap_helper_ui
   ${BM_GLFW_TARGET}
 )
 
-bm_enable_msvc_secure_crt(bmindmap_platform)
-bm_enable_msvc_secure_crt(bmindmap)
+bm_enable_msvc_secure_crt(mindmap_helper_platform)
+bm_enable_msvc_secure_crt(mindmap_helper)
 
 if(BM_ENABLE_TESTS)
   enable_testing()
 
-  add_executable(bmindmap_smoke_test
+  add_executable(mindmap_helper_smoke_test
     tests/SmokeTest.cpp
   )
 
-  bm_target_use_src_includes(bmindmap_smoke_test)
+  bm_target_use_src_includes(mindmap_helper_smoke_test)
 
-  target_link_libraries(bmindmap_smoke_test PRIVATE
-    bmindmap_core
+  target_link_libraries(mindmap_helper_smoke_test PRIVATE
+    mindmap_helper_core
   )
 
   add_test(
-    NAME bmindmap_smoke_test
-    COMMAND bmindmap_smoke_test
+    NAME mindmap_helper_smoke_test
+    COMMAND mindmap_helper_smoke_test
   )
 endif()

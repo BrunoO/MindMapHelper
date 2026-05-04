@@ -17,7 +17,7 @@
 namespace mind_map::app {
 
 int RunApp() {
-  GLFWwindow* const window = mind_map::platform::CreateMainWindow(1280, 720, "bMindMap");
+  GLFWwindow* const window = mind_map::platform::CreateMainWindow(1280, 720, "MindMap Helper");
   if (window == nullptr) {
     return 1;
   }
