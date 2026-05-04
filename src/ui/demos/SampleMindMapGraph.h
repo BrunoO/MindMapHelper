@@ -350,7 +350,7 @@ struct SampleMapBezierArms {
   const ImVec2 ref3 = (p3_border_for_normal != nullptr) ? *p3_border_for_normal : p3w;
   const ImVec2 out0 = SampleMapEdgeOutwardAxis(parent_center, parent_half, ref0);
   const ImVec2 out3 = SampleMapEdgeOutwardAxis(child_center, child_half, ref3);
-  return {{.p1_ = {p0w.x + out0.x * arm, p0w.y + out0.y * arm}, .p2_ = {p3w.x + out3.x * arm, p3w.y + out3.y * arm}}};
+  return {{p0w.x + out0.x * arm, p0w.y + out0.y * arm}, {p3w.x + out3.x * arm, p3w.y + out3.y * arm}};
 }
 
 [[nodiscard]] inline std::array<ImVec2, kSampleMindMapNodeCount> InitialSampleMapPositions() {
