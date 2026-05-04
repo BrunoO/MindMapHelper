@@ -58,3 +58,12 @@ jobs:
 
       - name: Run clang-tidy summary
         run: bash ./scripts/run_clang_tidy.sh --summary-only --output clang-tidy-report.txt
+
+      - name: Print clang-tidy summary (job log)
+        run: cat clang-tidy-report.txt
+
+      - name: Upload clang-tidy report
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-tidy-report
+          path: clang-tidy-report.txt
