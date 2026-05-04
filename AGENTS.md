@@ -62,7 +62,7 @@ See **`docs/standards/CXX17_NAMING_CONVENTIONS.md`**. Summary:
 - C++17 init-statement: `if (auto x = F(); x)` when the variable is block-local only (`docs/standards/CXX17_INIT_STATEMENT_EXAMPLES.md`).
 - `std::string_view` for read-only string parameters where lifetime is clear.
 - `return { value };` / `return {};` for braced returns where it improves clarity.
-- Explicit lambda captures in template-heavy code — avoid `[&]` / `[=]` where MSVC or lifetime is fragile.
+- Explicit lambda captures always — avoid `[&]` / `[=]` where MSVC or lifetime is fragile. When the capture list is explicit (no default mode), every local used in the lambda body must appear in the list, including `constexpr` locals. MSVC enforces this (C3493 + cascading C2064); GCC/Clang do not.
 - Const correctness: `const` on non-mutating parameters, locals, and member functions.
 - Comment every `#endif`: `#endif  // _WIN32`
 - Includes at top of file; prefer stable lowercase paths for system headers.

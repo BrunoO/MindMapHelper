@@ -25,14 +25,28 @@ int m = (std::max)(x, y);
 
 Prefer project safe string helpers (e.g. `strcpy_safe` / `strcat_safe`) over `strncpy`/`strcpy`/`strcat` for fixed buffers when the codebase provides them. MSVC warns on the latter; safe helpers should guarantee null-termination.
 
-## Lambdas in template functions
+## Lambdas — explicit capture lists (C3493 / C2064)
 
 Use **explicit** capture lists. Implicit `[&]`/`[=]` in template code can cause MSVC C2062/C2059/C2143 and cascade into STL headers.
 
+MSVC also emits **C3493** when a local variable — including a `constexpr` local — is used inside a lambda whose capture list has no default capture mode (`[&]`/`[=]`). GCC and Clang silently allow this; MSVC does not. Every cascading call to the lambda then fails with **C2064**.
+
 ```cpp
-// ✅ CORRECT
-auto fn = [&a, &b](int i) { ... };
+constexpr float kEps = 1.0e-5F;
+float best_t = 1.0e15F;
+
+// ❌ MSVC C3493: kEps used but not captured
+const auto fn = [&best_t](float t) {
+  if (t > kEps && t < best_t) { best_t = t; }
+};
+
+// ✅ capture kEps by value — it is a float constant
+const auto fn = [&best_t, kEps](float t) {
+  if (t > kEps && t < best_t) { best_t = t; }
+};
 ```
+
+Rule: when the capture list is explicit (no default mode), **every** local used in the body must appear in the list — `constexpr` or not.
 
 ## Include order and case
 
