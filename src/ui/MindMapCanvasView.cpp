@@ -9,18 +9,20 @@
 #include "imgui.h"
 
 #include <cassert>
+#include <string_view>
 
 namespace mind_map::ui {
 
 namespace {
 
 constexpr float kHandleRadius = 5.0F;
-constexpr ImU32 kColorNodeFill = IM_COL32(48, 52, 64, 255);
-constexpr ImU32 kColorNodeBorder = IM_COL32(110, 120, 145, 255);
-constexpr ImU32 kColorNodeBorderHot = IM_COL32(200, 200, 240, 255);
-constexpr ImU32 kColorNodeBorderSelected = IM_COL32(255, 220, 120, 255);
+constexpr ImU32 kColorNodeFill = IM_COL32(48, 52, 64, 255);           // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32 kColorNodeBorder = IM_COL32(110, 120, 145, 255);      // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32 kColorNodeBorderHot = IM_COL32(200, 200, 240, 255);   // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32 kColorNodeBorderSelected = IM_COL32(255, 220, 120, 255); // NOLINT(hicpp-signed-bitwise)
 
-constexpr char kMixedBranchStylesPreview[] = "Mixed (per child)";
+constexpr float kNodeBorderThickness = 1.5F;
+constexpr std::string_view kMixedBranchStylesPreview = "Mixed (per child)";
 
 void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_node, int selected_child_for_edge,
                             const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
@@ -40,24 +42,24 @@ void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_
         (i == selected_child_for_edge) &&
         (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(i)].parent_ >= 0);
     const bool hot = (i == dragging_node) || (i == hot_node);
-    const ImU32 border =
-        incoming_edge_selected ? kColorNodeBorderSelected : (hot ? kColorNodeBorderHot : kColorNodeBorder);
+    const ImU32 hot_border = hot ? kColorNodeBorderHot : kColorNodeBorder;
+    const ImU32 border = incoming_edge_selected ? kColorNodeBorderSelected : hot_border;
     ctx.draw_list->AddRectFilled(rmin, rmax, kColorNodeFill, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld);
-    ctx.draw_list->AddRect(rmin, rmax, border, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, 0, 1.5F);
+    ctx.draw_list->AddRect(rmin, rmax, border, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, 0, kNodeBorderThickness);
 
     const ImVec2 text_sz = ImGui::CalcTextSize(label);
     const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F, (rmin.y + rmax.y - text_sz.y) * 0.5F};
-    ctx.draw_list->AddText(text_pos, IM_COL32(235, 235, 245, 255), label);
+    ctx.draw_list->AddText(text_pos, IM_COL32(235, 235, 245, 255), label);  // NOLINT(hicpp-signed-bitwise)
 
     const ImVec2 left = mind_map::canvas::WorldToScreen({c.x - half.x, c.y}, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
     const ImVec2 right = mind_map::canvas::WorldToScreen({c.x + half.x, c.y}, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
-    ctx.draw_list->AddCircleFilled(left, kHandleRadius, IM_COL32(90, 200, 255, 200));
-    ctx.draw_list->AddCircleFilled(right, kHandleRadius, IM_COL32(255, 190, 90, 200));
+    ctx.draw_list->AddCircleFilled(left, kHandleRadius, IM_COL32(90, 200, 255, 200));   // NOLINT(hicpp-signed-bitwise)
+    ctx.draw_list->AddCircleFilled(right, kHandleRadius, IM_COL32(255, 190, 90, 200));  // NOLINT(hicpp-signed-bitwise)
   }
 }
 
-void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_ctx, const int child_index,
-                         const mind_map::ui::branch::BranchStyle style,
+void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_ctx, int child_index,
+                         mind_map::ui::branch::BranchStyle style,
                          const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
   switch (style) {
     case mind_map::ui::branch::BranchStyle::Bezier:
@@ -70,7 +72,7 @@ void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_
       mind_map::ui::branch::DrawSampleMindMapBranchOrganicTaper(branch_ctx, child_index, pos_world);
       return;
     default:
-      assert(false && "DrawOneChildBranch: exhaustive switch");
+      assert(false && "DrawOneChildBranch: exhaustive switch");  // NOLINT(readability-implicit-bool-conversion)
       return;
   }
 }
@@ -102,7 +104,7 @@ mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() co
       return branch_style_by_child_[static_cast<size_t>(c)];
     }
   }
-  assert(false && "sample graph must have at least one child edge");
+  assert(false && "sample graph must have at least one child edge");  // NOLINT(readability-implicit-bool-conversion)
   return mind_map::ui::branch::BranchStyle::Bezier;
 }
 
@@ -147,7 +149,7 @@ void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
   }
 }
 
-void MindMapCanvasView::OnPrimaryDrag(const MindMapPointerState& ptr) {
+void MindMapCanvasView::OnPrimaryDrag(const MindMapPointerState& ptr) {  // NOLINT(readability-make-member-function-const)
   if (dragging_node_ < 0) {
     return;
   }
@@ -173,7 +175,7 @@ void MindMapCanvasView::SetBranchStyleForAllEdges(const mind_map::ui::branch::Br
 
 const char* MindMapCanvasView::GetBranchStyleComboPreviewLabel() const {
   if (!BranchStylesAreUniform_()) {
-    return kMixedBranchStylesPreview;
+    return kMixedBranchStylesPreview.data();
   }
   return mind_map::ui::branch::GetBranchStyleDisplayName(StyleOfFirstChildEdge_());
 }
@@ -212,7 +214,7 @@ mind_map::ui::branch::BranchStyle MindMapCanvasView::GetBranchStyleForSelectedCh
   return branch_style_by_child_[static_cast<size_t>(selected_child_for_edge_style_)];
 }
 
-void MindMapCanvasView::SetBranchStyleForSelectedChildEdge(const mind_map::ui::branch::BranchStyle style) {
+void MindMapCanvasView::SetBranchStyleForSelectedChildEdge(mind_map::ui::branch::BranchStyle style) {  // NOLINT(readability-make-member-function-const)
   if (!HasSelectedIncomingEdgeStyleTarget()) {
     return;
   }

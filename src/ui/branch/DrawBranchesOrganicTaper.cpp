@@ -23,8 +23,9 @@ constexpr float kHobbyMidWaypointTension = 0.8F;
 constexpr float kHobbyMidJointVelocityScale = 1.55F;
 constexpr float kHobbyMidChordPerpOffsetFraction = 0.1F;
 
-constexpr ImU32 kColorBranchFill = IM_COL32(175, 140, 105, 255);
-constexpr ImU32 kColorBranchOutline = IM_COL32(95, 72, 52, 220);
+constexpr ImU32 kColorBranchFill = IM_COL32(175, 140, 105, 255);    // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32 kColorBranchOutline = IM_COL32(95, 72, 52, 220);  // NOLINT(hicpp-signed-bitwise)
+constexpr float kBranchOutlineThickness = 1.25F;
 
 constexpr float kTaperP0BlendCenterToBorder = 0.22F;
 constexpr float kTaperP3BlendCenterToBorder = 0.22F;
@@ -53,8 +54,9 @@ constexpr float kTaperP3BlendCenterToBorder = 0.22F;
 
 void NormalizeOrDefault(ImVec2* v) {
   assert(v != nullptr);
+  constexpr float kEpsLenSq = 1.0e-8F;
   const float len_sq = v->x * v->x + v->y * v->y;
-  if (len_sq < 1.0e-8F) {
+  if (len_sq < kEpsLenSq) {
     *v = {1.0F, 0.0F};
     return;
   }
@@ -104,14 +106,14 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
   for (int i = 0; i < kBranchStripSegments; ++i) {
     const ImVec2& l0 = left_s[static_cast<size_t>(i)];
     const ImVec2& r0 = right_s[static_cast<size_t>(i)];
-    const ImVec2& l1 = left_s[static_cast<size_t>(i + 1)];
-    const ImVec2& r1 = right_s[static_cast<size_t>(i + 1)];
+    const ImVec2& l1 = left_s[static_cast<size_t>(i) + 1];
+    const ImVec2& r1 = right_s[static_cast<size_t>(i) + 1];
     draw_list->AddTriangleFilled(l0, r0, l1, kColorBranchFill);
     draw_list->AddTriangleFilled(r0, r1, l1, kColorBranchFill);
   }
 
-  draw_list->AddPolyline(left_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, 1.25F);
-  draw_list->AddPolyline(right_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, 1.25F);
+  draw_list->AddPolyline(left_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, kBranchOutlineThickness);
+  draw_list->AddPolyline(right_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, kBranchOutlineThickness);
 }
 
 [[nodiscard]] bool BuildHobbyMidWaypointTwoCubics(ImVec2 p0w, ImVec2 p3w, ImVec2 out0_unit, ImVec2 out3_unit,
@@ -145,8 +147,9 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
   const ImVec2 u0 = {ax / a, ay / a};
   const ImVec2 u1 = {bx / b, by / b};
   ImVec2 m_dir = {u0.x + u1.x, u0.y + u1.y};
+  constexpr float kEpsDirSq = 1.0e-10F;
   const float m_len_sq = m_dir.x * m_dir.x + m_dir.y * m_dir.y;
-  if (m_len_sq < 1.0e-10F) {
+  if (m_len_sq < kEpsDirSq) {
     m_dir = PerpLeft(u0);
   }
   NormalizeOrDefault(&m_dir);
@@ -206,14 +209,14 @@ void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, Im
   for (int i = 0; i < kBranchStripSegments; ++i) {
     const ImVec2& l0 = left_s[static_cast<size_t>(i)];
     const ImVec2& r0 = right_s[static_cast<size_t>(i)];
-    const ImVec2& l1 = left_s[static_cast<size_t>(i + 1)];
-    const ImVec2& r1 = right_s[static_cast<size_t>(i + 1)];
+    const ImVec2& l1 = left_s[static_cast<size_t>(i) + 1];
+    const ImVec2& r1 = right_s[static_cast<size_t>(i) + 1];
     draw_list->AddTriangleFilled(l0, r0, l1, kColorBranchFill);
     draw_list->AddTriangleFilled(r0, r1, l1, kColorBranchFill);
   }
 
-  draw_list->AddPolyline(left_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, 1.25F);
-  draw_list->AddPolyline(right_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, 1.25F);
+  draw_list->AddPolyline(left_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, kBranchOutlineThickness);
+  draw_list->AddPolyline(right_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, kBranchOutlineThickness);
 }
 
 }  // namespace
@@ -238,8 +241,8 @@ void DrawSampleMindMapBranchOrganicTaper(
   const ImVec2 p3_border = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
       cw, child_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, pw);
 
-  const float b0 = (std::clamp)(kTaperP0BlendCenterToBorder, 0.0F, 1.0F);
-  const float b3 = (std::clamp)(kTaperP3BlendCenterToBorder, 0.0F, 1.0F);
+  const float b0 = std::clamp(kTaperP0BlendCenterToBorder, 0.0F, 1.0F);
+  const float b3 = std::clamp(kTaperP3BlendCenterToBorder, 0.0F, 1.0F);
   const ImVec2 p0w = {pw.x + (p0_border.x - pw.x) * b0, pw.y + (p0_border.y - pw.y) * b0};
   const ImVec2 p3w = {cw.x + (p3_border.x - cw.x) * b3, cw.y + (p3_border.y - cw.y) * b3};
 
@@ -263,7 +266,7 @@ void DrawSampleMindMapBranchOrganicTaper(
   else {
     const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(
         pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border);
-    DrawTaperBezierBranch(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom, p0w, arms.p1, arms.p2, p3w,
+    DrawTaperBezierBranch(ctx.draw_list, ctx.canvas_p0, ctx.pan_px, ctx.zoom, p0w, arms.p1_, arms.p2_, p3w,
                           half_width_start, half_width_end);
   }
 }

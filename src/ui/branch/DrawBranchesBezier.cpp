@@ -10,7 +10,7 @@ namespace mind_map::ui::branch {
 namespace {
 
 constexpr float kEdgeThickness = 2.0F;
-constexpr ImU32 kColorEdge = IM_COL32(140, 170, 210, 255);
+constexpr ImU32 kColorEdge = IM_COL32(140, 170, 210, 255);  // NOLINT(hicpp-signed-bitwise)
 
 }  // namespace
 
@@ -35,8 +35,8 @@ void DrawSampleMindMapBranchBezier(
       cw, child_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, pw);
   const mind_map::demos::SampleMapBezierArms arms =
       mind_map::demos::ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F);
-  const ImVec2 p1w = arms.p1;
-  const ImVec2 p2w = arms.p2;
+  const ImVec2 p1w = arms.p1_;
+  const ImVec2 p2w = arms.p2_;
 
   const ImVec2 p0 = mind_map::canvas::WorldToScreen(p0w, ctx.canvas_p0, ctx.pan_px, ctx.zoom);
   const ImVec2 p1 = mind_map::canvas::WorldToScreen(p1w, ctx.canvas_p0, ctx.pan_px, ctx.zoom);

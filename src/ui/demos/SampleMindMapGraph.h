@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 
 namespace mind_map::demos {
 
@@ -17,6 +18,10 @@ inline constexpr float kSampleMindMapNodePad = 10.0F;
 // Node model C1 (unified canvas): label-sized axis-aligned rounded rects in world space; all branch styles attach
 // via SampleMapRoundedRectAttachment* and hit-test via HitTestSampleMap.
 inline constexpr float kSampleMindMapNodeCornerRadiusWorld = 6.0F;
+inline constexpr float kCornerRadiusClampFactor = 0.98F;
+inline constexpr float kDefaultHorizontalStickiness = 1.12F;
+inline constexpr float kDefaultBlendFromNormalized = 0.22F;
+inline constexpr float kDefaultBlendToNormalized = 0.62F;
 
 struct SampleMindMapNodeSpec {
   const char* label_;
@@ -64,10 +69,11 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
 
 // Axis-aligned box boundary point from from_center toward toward_point (half = half-extents).
 [[nodiscard]] inline ImVec2 SampleMapAttachmentToward(ImVec2 from_center, ImVec2 half_extents, ImVec2 toward_point) {
+  constexpr float kEpsLenSq = 1.0e-12F;
   float vx = toward_point.x - from_center.x;
   float vy = toward_point.y - from_center.y;
   const float len_sq = vx * vx + vy * vy;
-  if (len_sq < 1.0e-12F) {
+  if (len_sq < kEpsLenSq) {
     return {from_center.x + half_extents.x, from_center.y};
   }
   const float inv_len = 1.0F / std::sqrt(len_sq);
@@ -94,12 +100,16 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
 }
 
 // First hit from box center along toward_point on a rounded-rect outline (uniform corner radius, axis-aligned).
-[[nodiscard]] inline ImVec2 SampleMapRoundedRectAttachmentToward(ImVec2 center, ImVec2 half_extents, float corner_r,
+[[nodiscard]] inline ImVec2 SampleMapRoundedRectAttachmentToward(ImVec2 center, ImVec2 half_extents, float corner_r,  // NOLINT(readability-function-cognitive-complexity)
                                                                    ImVec2 toward_point) {
+  constexpr float kEpsLenSq = 1.0e-12F;
+  constexpr float kEps = 1.0e-5F;
+  constexpr float kBestTInit = 1.0e15F;
+  constexpr float kBestTNoHit = 1.0e14F;
   float vx = toward_point.x - center.x;
   float vy = toward_point.y - center.y;
   const float len_sq = vx * vx + vy * vy;
-  if (len_sq < 1.0e-12F) {
+  if (len_sq < kEpsLenSq) {
     return {center.x + half_extents.x, center.y};
   }
   const float inv_len = 1.0F / std::sqrt(len_sq);
@@ -109,18 +119,13 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
   const float hx = half_extents.x;
   const float hy = half_extents.y;
   float r = corner_r;
-  if (r > hx * 0.98F) {
-    r = hx * 0.98F;
-  }
-  if (r > hy * 0.98F) {
-    r = hy * 0.98F;
-  }
-  if (r < 1.0e-5F) {
+  r = (std::min)(r, hx * kCornerRadiusClampFactor);
+  r = (std::min)(r, hy * kCornerRadiusClampFactor);
+  if (r < kEps) {
     return SampleMapAttachmentToward(center, half_extents, toward_point);
   }
 
-  constexpr float kEps = 1.0e-5F;
-  float best_t = 1.0e15F;
+  float best_t = kBestTInit;
   const auto consider = [&best_t, kEps](float t) {
     if (t > kEps && t < best_t) {
       best_t = t;
@@ -170,8 +175,8 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
       return;
     }
     const float srt = std::sqrt(inner);
-    const float roots[2] = {-wd + srt, -wd - srt};
-    for (float t : roots) {
+    const std::array<float, 2> roots = {-wd + srt, -wd - srt};
+    for (const float t : roots) {
       if (t <= kEps) {
         continue;
       }
@@ -203,25 +208,25 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
   consider_arc({cx + hx - r, cy - hy + r}, false, false, true, false);
   consider_arc({cx - hx + r, cy - hy + r}, false, false, false, true);
 
-  if (best_t >= 1.0e14F) {
+  if (best_t >= kBestTNoHit) {
     return SampleMapAttachmentToward(center, half_extents, toward_point);
   }
   return {cx + vx * best_t, cy + vy * best_t};
 }
 
-enum class SampleMapBoxSide { kRight, kLeft, kBottom, kTop };
+enum class SampleMapBoxSide : std::uint8_t { Right, Left, Bottom, Top };  // NOLINT(performance-enum-size)
 
 // Which face of the box `hit` lies on (normalized coords + horizontal_stickiness to prefer left/right ties).
 [[nodiscard]] inline SampleMapBoxSide SampleMapSideOfHit(ImVec2 box_center, ImVec2 half_extents, ImVec2 hit,
-                                                         float horizontal_stickiness = 1.12F) {
+                                                         float horizontal_stickiness = kDefaultHorizontalStickiness) {
   const float hx = (std::max)(half_extents.x, 1.0e-4F);
   const float hy = (std::max)(half_extents.y, 1.0e-4F);
   const float nax = std::abs(hit.x - box_center.x) / hx * horizontal_stickiness;
   const float nay = std::abs(hit.y - box_center.y) / hy;
   if (nax >= nay) {
-    return (hit.x >= box_center.x) ? SampleMapBoxSide::kRight : SampleMapBoxSide::kLeft;
+    return (hit.x >= box_center.x) ? SampleMapBoxSide::Right : SampleMapBoxSide::Left;
   }
-  return (hit.y >= box_center.y) ? SampleMapBoxSide::kBottom : SampleMapBoxSide::kTop;
+  return (hit.y >= box_center.y) ? SampleMapBoxSide::Bottom : SampleMapBoxSide::Top;
 }
 
 [[nodiscard]] inline float SampleMapSmoothstep(float edge0, float edge1, float x) {
@@ -243,13 +248,13 @@ enum class SampleMapBoxSide { kRight, kLeft, kBottom, kTop };
   const float hx = h.x;
   const float hy = h.y;
   switch (side) {
-    case SampleMapBoxSide::kRight:
+    case SampleMapBoxSide::Right:  // NOLINT(bugprone-branch-clone)
       return std::abs(hit.x - (cx + hx)) <= kEps && hit.y >= cy - hy + r - kEps && hit.y <= cy + hy - r + kEps;
-    case SampleMapBoxSide::kLeft:
+    case SampleMapBoxSide::Left:
       return std::abs(hit.x - (cx - hx)) <= kEps && hit.y >= cy - hy + r - kEps && hit.y <= cy + hy - r + kEps;
-    case SampleMapBoxSide::kBottom:
+    case SampleMapBoxSide::Bottom:
       return std::abs(hit.y - (cy + hy)) <= kEps && hit.x >= cx - hx + r - kEps && hit.x <= cx + hx - r + kEps;
-    case SampleMapBoxSide::kTop:
+    case SampleMapBoxSide::Top:
       return std::abs(hit.y - (cy - hy)) <= kEps && hit.x >= cx - hx + r - kEps && hit.x <= cx + hx - r + kEps;
   }
   return false;
@@ -259,21 +264,20 @@ enum class SampleMapBoxSide { kRight, kLeft, kBottom, kTop };
 // only when the hit lies far along that edge (smoothstep). Corner hits are left unchanged.
 [[nodiscard]] inline ImVec2 SampleMapRoundedRectAttachmentPreferEdgeMid(
     ImVec2 center, ImVec2 half_extents, float corner_r, ImVec2 toward_point,
-    float blend_from_normalized = 0.22F, float blend_to_normalized = 0.62F, float horizontal_stickiness = 1.12F) {
+    float blend_from_normalized = kDefaultBlendFromNormalized,
+    float blend_to_normalized = kDefaultBlendToNormalized,
+    float horizontal_stickiness = kDefaultHorizontalStickiness) {
+  constexpr float kEps = 1.0e-5F;
   const ImVec2 hit = SampleMapRoundedRectAttachmentToward(center, half_extents, corner_r, toward_point);
   const SampleMapBoxSide side = SampleMapSideOfHit(center, half_extents, hit, horizontal_stickiness);
   if (!SampleMapHitOnStraightSegment(center, half_extents, corner_r, side, hit)) {
     return hit;
   }
 
-  float r = corner_r;
-  if (r > half_extents.x * 0.98F) {
-    r = half_extents.x * 0.98F;
-  }
-  if (r > half_extents.y * 0.98F) {
-    r = half_extents.y * 0.98F;
-  }
-  if (r < 1.0e-5F) {
+  float r = corner_r;  // NOLINT(misc-const-correctness)
+  r = (std::min)(r, half_extents.x * kCornerRadiusClampFactor);
+  r = (std::min)(r, half_extents.y * kCornerRadiusClampFactor);
+  if (r < kEps) {
     return hit;
   }
 
@@ -284,13 +288,13 @@ enum class SampleMapBoxSide { kRight, kLeft, kBottom, kTop };
   const float span_v = (std::max)(hy - r, 1.0e-4F);
   const float span_h = (std::max)(hx - r, 1.0e-4F);
 
-  if (side == SampleMapBoxSide::kRight || side == SampleMapBoxSide::kLeft) {
+  if (side == SampleMapBoxSide::Right || side == SampleMapBoxSide::Left) {
     const float offset = hit.y - cy;
     const float u = (std::min)(std::abs(offset) / span_v, 1.0F);
     const float w = SampleMapSmoothstep(blend_from_normalized, blend_to_normalized, u);
     const float y = cy + offset * w;
-    const float y_clamped = (std::clamp)(y, cy - hy + r, cy + hy - r);
-    const float x_side = (side == SampleMapBoxSide::kRight) ? (cx + hx) : (cx - hx);
+    const float y_clamped = std::clamp(y, cy - hy + r, cy + hy - r);
+    const float x_side = (side == SampleMapBoxSide::Right) ? (cx + hx) : (cx - hx);
     return {x_side, y_clamped};
   }
 
@@ -298,14 +302,14 @@ enum class SampleMapBoxSide { kRight, kLeft, kBottom, kTop };
   const float u = (std::min)(std::abs(offset) / span_h, 1.0F);
   const float w = SampleMapSmoothstep(blend_from_normalized, blend_to_normalized, u);
   const float x = cx + offset * w;
-  const float x_clamped = (std::clamp)(x, cx - hx + r, cx + hx - r);
-  const float y_side = (side == SampleMapBoxSide::kBottom) ? (cy + hy) : (cy - hy);
+  const float x_clamped = std::clamp(x, cx - hx + r, cx + hx - r);
+  const float y_side = (side == SampleMapBoxSide::Bottom) ? (cy + hy) : (cy - hy);
   return {x_clamped, y_side};
 }
 
 struct SampleMapBezierArms {
-  ImVec2 p1;
-  ImVec2 p2;
+  ImVec2 p1_;
+  ImVec2 p2_;
 };
 
 // Outward axis normal for the flat edge (or dominant edge at corners) where attachment_point lies on the box.
@@ -329,12 +333,13 @@ struct SampleMapBezierArms {
     float min_arm_world, float span_fraction, const ImVec2* p0_border_for_normal = nullptr,
     const ImVec2* p3_border_for_normal = nullptr) {
   constexpr float kMaxArmAsChordFraction = 0.45F;
+  constexpr float kEpsChord = 1.0e-6F;
   const float dx = p3w.x - p0w.x;
   const float dy = p3w.y - p0w.y;
   const float adx = std::abs(dx);
   const float ady = std::abs(dy);
   const float chord = std::sqrt(dx * dx + dy * dy);
-  if (chord < 1.0e-6F) {
+  if (chord < kEpsChord) {
     return {p0w, p3w};
   }
   const float sep_dom = (std::max)(adx, ady);
@@ -345,18 +350,23 @@ struct SampleMapBezierArms {
   const ImVec2 ref3 = (p3_border_for_normal != nullptr) ? *p3_border_for_normal : p3w;
   const ImVec2 out0 = SampleMapEdgeOutwardAxis(parent_center, parent_half, ref0);
   const ImVec2 out3 = SampleMapEdgeOutwardAxis(child_center, child_half, ref3);
-  return {{p0w.x + out0.x * arm, p0w.y + out0.y * arm}, {p3w.x + out3.x * arm, p3w.y + out3.y * arm}};
+  return {{.p1_ = {p0w.x + out0.x * arm, p0w.y + out0.y * arm}, .p2_ = {p3w.x + out3.x * arm, p3w.y + out3.y * arm}}};
 }
 
 [[nodiscard]] inline std::array<ImVec2, kSampleMindMapNodeCount> InitialSampleMapPositions() {
+  constexpr float kDepth1X = 260.0F;
+  constexpr float kDepth2X = 520.0F;
+  constexpr float kDepth1Spread = 140.0F;
+  constexpr float kDepth2TopY = 200.0F;
+  constexpr float kDepth2BottomY = 20.0F;
   return {{
       {0.0F, 0.0F},
-      {260.0F, -140.0F},
-      {260.0F, 0.0F},
-      {260.0F, 140.0F},
-      {520.0F, -200.0F},
-      {520.0F, -100.0F},
-      {520.0F, 20.0F},
+      {kDepth1X, -kDepth1Spread},
+      {kDepth1X, 0.0F},
+      {kDepth1X, kDepth1Spread},
+      {kDepth2X, -kDepth2TopY},
+      {kDepth2X, -100.0F},
+      {kDepth2X, kDepth2BottomY},
   }};
 }
 

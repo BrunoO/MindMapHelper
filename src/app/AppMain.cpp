@@ -33,12 +33,13 @@ int RunApp() {
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init(mind_map::platform::GetGlslVersion());
 
-  ImVec4 clear_color = ImVec4(0.11F, 0.11F, 0.14F, 1.00F);
+  constexpr ImVec4 kClearColor{0.11F, 0.11F, 0.14F, 1.0F};
+  constexpr int kIconifiedSleepMs = 10;
 
   while (glfwWindowShouldClose(window) == 0) {
     glfwPollEvents();
     if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
-      ImGui_ImplGlfw_Sleep(10);
+      ImGui_ImplGlfw_Sleep(kIconifiedSleepMs);
       continue;
     }
 
@@ -53,8 +54,8 @@ int RunApp() {
     int display_h = 0;
     glfwGetFramebufferSize(window, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
-    glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w,
-                 clear_color.w);
+    glClearColor(kClearColor.x * kClearColor.w, kClearColor.y * kClearColor.w, kClearColor.z * kClearColor.w,
+                 kClearColor.w);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

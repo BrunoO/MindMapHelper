@@ -251,6 +251,7 @@ CheckOptions:
   # Local Variables and Parameters: snake_case
   readability-identifier-naming.VariableCase: lower_case
   readability-identifier-naming.ParameterCase: lower_case
+  readability-identifier-naming.ConstantParameterCase: lower_case
   readability-identifier-naming.LocalVariableCase: lower_case
   # Local constants: accept both kPascalCase and snake_case (see CXX17_NAMING_CONVENTIONS.md)
   # aNy_CasE disables enforcement so both styles pass; avoids ~150 renames and NOLINT proliferation
@@ -321,7 +322,7 @@ CheckOptions:
   # Ignore common floating point values (including UI constants)
   # UI constants: 0.2, 0.25, 0.3, 0.35, 0.4, 0.5, 0.7, 0.8 are common in ImGui code (percentages, ratios)
   # Standard values: 0.0, 0.5, 1.0, -1.0, 2.0, 100.0 are self-explanatory
-  readability-magic-numbers.IgnoredFloatingPointValues: '0.0;0.2;0.25;0.3;0.35;0.4;0.5;0.7;0.8;1.0;-1.0;2.0;100.0'
+  readability-magic-numbers.IgnoredFloatingPointValues: '0.0;0.2;0.25;0.3;0.35;0.4;0.5;0.7;0.8;1.0;-1.0;2.0;3.0;100.0'
   # Don't ignore all floating point values (we want to catch magic floats)
   readability-magic-numbers.IgnoreAllFloatingPointValues: false
   # Ignore magic numbers in template arguments (common pattern)
