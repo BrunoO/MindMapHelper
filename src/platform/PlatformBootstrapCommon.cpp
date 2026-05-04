@@ -8,7 +8,10 @@
 namespace {
 
 void GlfwErrorCallback(int error, const char* description) {
-  std::fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+  const int print_result = std::fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+  if (print_result < 0) {
+    (void)std::fputs("GLFW Error: failed to print detailed message\n", stderr);
+  }
 }
 
 }  // namespace
