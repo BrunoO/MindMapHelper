@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(MindMapHelper LANGUAGES CXX)
+project(MindMapHelper LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,6 +53,52 @@ FetchContent_Declare(
   GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(nlohmann_json)
+
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SKIP_INSTALL_ALL ON CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  zlib
+  GIT_REPOSITORY https://github.com/madler/zlib.git
+  GIT_TAG v1.3.1
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(zlib)
+
+list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+set(ENABLE_BZIP2 OFF CACHE BOOL "" FORCE)
+set(ENABLE_LZMA OFF CACHE BOOL "" FORCE)
+set(ENABLE_ZSTD OFF CACHE BOOL "" FORCE)
+set(ENABLE_GNUTLS OFF CACHE BOOL "" FORCE)
+set(ENABLE_MBEDTLS OFF CACHE BOOL "" FORCE)
+set(ENABLE_OPENSSL OFF CACHE BOOL "" FORCE)
+if(APPLE)
+  set(ENABLE_COMMONCRYPTO ON CACHE BOOL "" FORCE)
+else()
+  set(ENABLE_COMMONCRYPTO OFF CACHE BOOL "" FORCE)
+endif()
+if(WIN32)
+  set(ENABLE_WINDOWS_CRYPTO ON CACHE BOOL "" FORCE)
+  set(ENABLE_FDOPEN OFF CACHE BOOL "" FORCE)
+else()
+  set(ENABLE_WINDOWS_CRYPTO OFF CACHE BOOL "" FORCE)
+endif()
+
+set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(BUILD_REGRESS OFF CACHE BOOL "" FORCE)
+set(BUILD_OSSFUZZ OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_DOC OFF CACHE BOOL "" FORCE)
+set(LIBZIP_DO_INSTALL OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+  libzip
+  GIT_REPOSITORY https://github.com/nih-at/libzip.git
+  GIT_TAG v1.11.3
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(libzip)
 
 FetchContent_Declare(
   ImGuiFileDialog
@@ -120,6 +166,7 @@ set(BM_UI_SOURCES
 set(BM_CORE_SOURCES
   src/core/mindmap/SampleMindMapTopology.cpp
   src/core/mindmap/UuidGenerator.cpp
+  src/core/JsonNativeDocumentRepository.cpp
 )
 
 set(BM_PLATFORM_SOURCES
@@ -152,7 +199,11 @@ bm_target_use_src_includes(mindmap_helper_platform)
 bm_target_use_src_includes(mindmap_helper_ui)
 bm_target_use_imgui_includes(mindmap_helper_ui)
 
-target_link_libraries(mindmap_helper_core PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(mindmap_helper_core PRIVATE
+  nlohmann_json::nlohmann_json
+  libzip::zip
+  ZLIB::ZLIB
+)
 target_include_directories(mindmap_helper_ui PRIVATE "${imguifiledialog_SOURCE_DIR}")
 
 target_link_libraries(mindmap_helper_ui PRIVATE ${BM_GLFW_TARGET})
