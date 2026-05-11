@@ -44,6 +44,27 @@ FetchContent_MakeAvailable(imgui)
 
 set(IMGUI_DIR "${imgui_SOURCE_DIR}")
 
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+set(JSON_Install OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.12.0
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
+FetchContent_Declare(
+  ImGuiFileDialog
+  GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
+  GIT_TAG v0.6.8
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(ImGuiFileDialog)
+# We compile ImGuiFileDialog.cpp ourselves via BM_UI_SOURCES (imgui includes come from mindmap_helper_ui).
+# Exclude the library target created by ImGuiFileDialog's own CMakeLists.txt; it lacks imgui and is unused.
+set_target_properties(ImGuiFileDialog PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 function(bm_target_use_src_includes target_name)
   target_include_directories(${target_name} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -87,6 +108,7 @@ set(IMGUI_SOURCES
 )
 
 set(BM_UI_SOURCES
+  ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
   src/ui/MindMapUi.cpp
   src/ui/MindMapCanvasView.cpp
   src/ui/branch/DrawBranchesBezier.cpp
@@ -96,6 +118,7 @@ set(BM_UI_SOURCES
 
 set(BM_CORE_SOURCES
   src/core/mindmap/SampleMindMapTopology.cpp
+  src/core/mindmap/UuidGenerator.cpp
 )
 
 set(BM_PLATFORM_SOURCES
@@ -127,6 +150,9 @@ bm_target_use_src_includes(mindmap_helper_core)
 bm_target_use_src_includes(mindmap_helper_platform)
 bm_target_use_src_includes(mindmap_helper_ui)
 bm_target_use_imgui_includes(mindmap_helper_ui)
+
+target_link_libraries(mindmap_helper_core PRIVATE nlohmann_json::nlohmann_json)
+target_include_directories(mindmap_helper_ui PRIVATE "${imguifiledialog_SOURCE_DIR}")
 
 target_link_libraries(mindmap_helper_ui PRIVATE ${BM_GLFW_TARGET})
 target_link_libraries(mindmap_helper_ui PRIVATE mindmap_helper_core)
