@@ -111,6 +111,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libzip)
 
+set(PUGIXML_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  pugixml
+  GIT_REPOSITORY https://github.com/zeux/pugixml.git
+  GIT_TAG v1.15
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(pugixml)
+
 FetchContent_Declare(
   ImGuiFileDialog
   GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
@@ -214,6 +223,7 @@ target_link_libraries(mindmap_helper_core PRIVATE
   nlohmann_json::nlohmann_json
   libzip::zip
   ZLIB::ZLIB
+  pugixml::pugixml
 )
 target_include_directories(mindmap_helper_ui PRIVATE "${imguifiledialog_SOURCE_DIR}")
 
