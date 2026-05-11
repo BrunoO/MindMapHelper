@@ -61,14 +61,15 @@ void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_
 void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_ctx, int child_index,
                          mind_map::ui::branch::BranchStyle style,
                          const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
-  switch (style) {
-    case mind_map::ui::branch::BranchStyle::Bezier:
+  using BranchStyle = mind_map::ui::branch::BranchStyle;
+  switch (style) {  // NOSONAR(cpp:S6177) - C++17; `using enum` to shorten cases requires C++20
+    case BranchStyle::Bezier:
       mind_map::ui::branch::DrawSampleMindMapBranchBezier(branch_ctx, child_index, pos_world);
       return;
-    case mind_map::ui::branch::BranchStyle::Orthogonal:
+    case BranchStyle::Orthogonal:
       mind_map::ui::branch::DrawSampleMindMapBranchOrthogonal(branch_ctx, child_index, pos_world);
       return;
-    case mind_map::ui::branch::BranchStyle::OrganicTaper:
+    case BranchStyle::OrganicTaper:
       mind_map::ui::branch::DrawSampleMindMapBranchOrganicTaper(branch_ctx, child_index, pos_world);
       return;
     default:

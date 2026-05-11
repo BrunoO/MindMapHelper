@@ -30,6 +30,23 @@ constexpr float kBranchOutlineThickness = 1.25F;
 constexpr float kTaperP0BlendCenterToBorder = 0.22F;
 constexpr float kTaperP3BlendCenterToBorder = 0.22F;
 
+struct CanvasTransform {
+  ImVec2 canvas_p0_;
+  ImVec2 pan_px_;
+  float zoom_ = 1.0F;
+};
+
+struct TaperWidths {
+  float half_width_start_ = 0.0F;
+  float half_width_end_ = 0.0F;
+};
+
+struct HobbyMidWaypointParams {
+  float tension_ = 0.0F;
+  float mid_joint_scale_ = 0.0F;
+  float chord_perp_offset_fraction_ = 0.0F;
+};
+
 [[nodiscard]] ImVec2 CubicBezierPoint(const ImVec2& p0, const ImVec2& p1, const ImVec2& p2, const ImVec2& p3,
                                       float t) {
   const float u = 1.0F - t;
@@ -79,12 +96,11 @@ void NormalizeOrDefault(ImVec2* v) {
 
 [[nodiscard]] float BranchHalfWidthAlongEdge(float t, float half_width_start, float half_width_end) {
   const float narrow = std::pow(t, kTaperPower);
-  return half_width_start + (half_width_end - half_width_start) * narrow;
+  return half_width_start + (half_width_end - half_width_start) * narrow;  // NOSONAR(cpp:S6179) - C++17; std::lerp is C++20
 }
 
-void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_px, float zoom, const ImVec2& p0w,
-                           const ImVec2& p1w, const ImVec2& p2w, const ImVec2& p3w, float half_width_start,
-                           float half_width_end) {
+void DrawTaperBezierBranch(ImDrawList* draw_list, const CanvasTransform& canvas_transform, const ImVec2& p0w,
+                           const ImVec2& p1w, const ImVec2& p2w, const ImVec2& p3w, TaperWidths widths) {
   assert(draw_list != nullptr);
   std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> left_s{};
   std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> right_s{};
@@ -96,11 +112,13 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
     NormalizeOrDefault(&tan_w);
     ImVec2 n_w = PerpLeft(tan_w);
     NormalizeOrDefault(&n_w);
-    const float half_w = BranchHalfWidthAlongEdge(t, half_width_start, half_width_end);
+    const float half_w = BranchHalfWidthAlongEdge(t, widths.half_width_start_, widths.half_width_end_);
     const ImVec2 lw = {pw.x + n_w.x * half_w, pw.y + n_w.y * half_w};
     const ImVec2 rw = {pw.x - n_w.x * half_w, pw.y - n_w.y * half_w};
-    left_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(lw, canvas_p0, pan_px, zoom);
-    right_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(rw, canvas_p0, pan_px, zoom);
+    left_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(
+        lw, canvas_transform.canvas_p0_, canvas_transform.pan_px_, canvas_transform.zoom_);
+    right_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(
+        rw, canvas_transform.canvas_p0_, canvas_transform.pan_px_, canvas_transform.zoom_);
   }
 
   for (int i = 0; i < kBranchStripSegments; ++i) {
@@ -117,8 +135,7 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
 }
 
 [[nodiscard]] bool BuildHobbyMidWaypointTwoCubics(ImVec2 p0w, ImVec2 p3w, ImVec2 out0_unit, ImVec2 out3_unit,
-                                                  float tension, float mid_joint_scale, float chord_perp_offset_fraction,
-                                                  ImVec2* seg0, ImVec2* seg1) {
+                                                   const HobbyMidWaypointParams& params, ImVec2* seg0, ImVec2* seg1) {
   assert(seg0 != nullptr);
   assert(seg1 != nullptr);
   constexpr float kMinChord = 1.0e-4F;
@@ -132,7 +149,7 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
   ImVec2 perp = PerpLeft(chord_hat);
   NormalizeOrDefault(&perp);
   const ImVec2 mid_linear = {(p0w.x + p3w.x) * 0.5F, (p0w.y + p3w.y) * 0.5F};
-  const float perp_shift = chord_perp_offset_fraction * chord_len;
+  const float perp_shift = params.chord_perp_offset_fraction_ * chord_len;
   const ImVec2 mid = {mid_linear.x + perp.x * perp_shift, mid_linear.y + perp.y * perp_shift};
 
   const float ax = mid.x - p0w.x;
@@ -153,9 +170,9 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
   }
   NormalizeOrDefault(&m_dir);
 
-  const float s0 = tension * a;
-  const float s2 = tension * b;
-  const float vm = tension * mid_joint_scale * (std::min)(a, b);
+  const float s0 = params.tension_ * a;
+  const float s2 = params.tension_ * b;
+  const float vm = params.tension_ * params.mid_joint_scale_ * (std::min)(a, b);
   const ImVec2 v0 = {out0_unit.x * s0, out0_unit.y * s0};
   const ImVec2 v_end = {-out3_unit.x * s2, -out3_unit.y * s2};
   const ImVec2 vm_vec = {m_dir.x * vm, m_dir.y * vm};
@@ -172,9 +189,8 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
   return true;
 }
 
-void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_px, float zoom,
-                                    const ImVec2* seg0, const ImVec2* seg1, float half_width_start,
-                                    float half_width_end) {
+void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, const CanvasTransform& canvas_transform,
+                                     const ImVec2* seg0, const ImVec2* seg1, TaperWidths widths) {
   assert(draw_list != nullptr);
   assert(seg0 != nullptr);
   assert(seg1 != nullptr);
@@ -198,11 +214,13 @@ void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, Im
     NormalizeOrDefault(&tan_w);
     ImVec2 n_w = PerpLeft(tan_w);
     NormalizeOrDefault(&n_w);
-    const float half_w = BranchHalfWidthAlongEdge(u, half_width_start, half_width_end);
+    const float half_w = BranchHalfWidthAlongEdge(u, widths.half_width_start_, widths.half_width_end_);
     const ImVec2 lw = {pw.x + n_w.x * half_w, pw.y + n_w.y * half_w};
     const ImVec2 rw = {pw.x - n_w.x * half_w, pw.y - n_w.y * half_w};
-    left_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(lw, canvas_p0, pan_px, zoom);
-    right_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(rw, canvas_p0, pan_px, zoom);
+    left_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(
+        lw, canvas_transform.canvas_p0_, canvas_transform.pan_px_, canvas_transform.zoom_);
+    right_s[static_cast<size_t>(i)] = mind_map::canvas::WorldToScreen(
+        rw, canvas_transform.canvas_p0_, canvas_transform.pan_px_, canvas_transform.zoom_);
   }
 
   for (int i = 0; i < kBranchStripSegments; ++i) {
@@ -252,21 +270,23 @@ void DrawSampleMindMapBranchOrganicTaper(
                                                    : BranchEndHalfWidthWorld(parent_radius);
   const float half_width_end_raw = BranchEndHalfWidthWorld(child_radius);
   const float half_width_end = (std::min)(half_width_end_raw, half_width_start);
+  const CanvasTransform canvas_transform = {ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_};
+  const TaperWidths widths = {half_width_start, half_width_end};
 
   const ImVec2 out0 = mind_map::demos::SampleMapEdgeOutwardAxis(pw, parent_half, p0_border);
   const ImVec2 out3 = mind_map::demos::SampleMapEdgeOutwardAxis(cw, child_half, p3_border);
   std::array<ImVec2, 4> seg0{};
   std::array<ImVec2, 4> seg1{};
-  if (BuildHobbyMidWaypointTwoCubics(p0w, p3w, out0, out3, kHobbyMidWaypointTension, kHobbyMidJointVelocityScale,
-                                     kHobbyMidChordPerpOffsetFraction, seg0.data(), seg1.data())) {
-    DrawTaperTwoSegmentBezierBranch(ctx.draw_list_, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_, seg0.data(), seg1.data(),
-                                    half_width_start, half_width_end);
+  const HobbyMidWaypointParams hobby_params = {
+      kHobbyMidWaypointTension, kHobbyMidJointVelocityScale, kHobbyMidChordPerpOffsetFraction};
+  if (BuildHobbyMidWaypointTwoCubics(p0w, p3w, out0, out3, hobby_params, seg0.data(), seg1.data())) {
+    DrawTaperTwoSegmentBezierBranch(ctx.draw_list_, canvas_transform, seg0.data(), seg1.data(), widths);
   }
   else {
-    const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(
-        pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border);
-    DrawTaperBezierBranch(ctx.draw_list_, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_, p0w, arms.p1_, arms.p2_, p3w,
-                          half_width_start, half_width_end);
+    const mind_map::demos::SampleMapBezierArmInputs arm_inputs = {
+        pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border};
+    const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(arm_inputs);
+    DrawTaperBezierBranch(ctx.draw_list_, canvas_transform, p0w, arms.p1_, arms.p2_, p3w, widths);
   }
 }
 

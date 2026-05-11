@@ -8,7 +8,8 @@
 namespace {
 
 void GlfwErrorCallback(int error, const char* description) {
-  const int print_result = std::fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+  const int print_result =
+      std::fprintf(stderr, "GLFW Error %d: %s\n", error, description);  // NOSONAR(cpp:S6494) - C++17; std::print unavailable here
   if (print_result < 0) {
     (void)std::fputs("GLFW Error: failed to print detailed message\n", stderr);
   }

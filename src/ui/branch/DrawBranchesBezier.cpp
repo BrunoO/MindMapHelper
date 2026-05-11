@@ -33,8 +33,9 @@ void DrawSampleMindMapBranchBezier(
       pw, parent_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, cw);
   const ImVec2 p3w = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
       cw, child_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, pw);
-  const mind_map::demos::SampleMapBezierArms arms =
-      mind_map::demos::ComputeSampleMapBezierArmsWorld(pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F);
+  const mind_map::demos::SampleMapBezierArmInputs arm_inputs = {
+      pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, nullptr, nullptr};
+  const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(arm_inputs);
   const ImVec2 p1w = arms.p1_;
   const ImVec2 p2w = arms.p2_;
 

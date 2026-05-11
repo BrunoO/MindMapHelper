@@ -40,7 +40,7 @@ class UiCommandDispatcher final {
  public:
   void Dispatch(UiCommandId command, MindMapCanvasView& canvas, ImVec2& pan_px, float& zoom,
                 bool& show_status_bar) const {
-    switch (command) {
+    switch (command) {  // NOSONAR(cpp:S6177) - C++17; `using enum` to shorten cases requires C++20
       case UiCommandId::ResetLayout:
         canvas.Reset();
         return;

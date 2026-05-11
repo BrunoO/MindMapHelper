@@ -14,7 +14,7 @@ enum class BranchStyle : std::uint8_t {
 inline constexpr int kBranchStyleCount = 3;
 
 [[nodiscard]] inline const char* GetBranchStyleDisplayName(BranchStyle style) {
-  switch (style) {
+  switch (style) {  // NOSONAR(cpp:S6177) - C++17; `using enum` to shorten cases requires C++20
     case BranchStyle::Bezier:
       return "Bezier branches (rounded boxes)";
     case BranchStyle::Orthogonal:

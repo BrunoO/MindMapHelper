@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
 # Run SonarScanner CLI for SonarCloud analysis.
+#
+# If SonarCloud reports: "manual analysis while Automatic Analysis is enabled", either disable Automatic Analysis
+# for this project or rely on CI automatic runs and use scripts/fetch_sonar_results.sh for local issue snapshots.
 
 set -euo pipefail
 
@@ -26,6 +29,9 @@ Options:
     --token TOKEN          SonarCloud token (or set SONARQUBE_TOKEN env var)
     --scanner-path PATH    Path to sonar-scanner binary (if not in PATH)
     --help                 Show this help message
+
+Note:
+    SonarCloud may refuse manual scans when Automatic Analysis is enabled; use fetch_sonar_results.sh for API export.
 EOF
     exit 0
 }

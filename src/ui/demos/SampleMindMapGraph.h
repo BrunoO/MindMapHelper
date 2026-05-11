@@ -99,9 +99,105 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
   return {from_center.x + vx * t, from_center.y + vy * t};
 }
 
+struct RoundedRectRay {
+  float cx_ = 0.0F;
+  float cy_ = 0.0F;
+  float vx_ = 0.0F;
+  float vy_ = 0.0F;
+  float r_ = 0.0F;
+  float eps_ = 0.0F;
+};
+
+[[nodiscard]] inline float ConsiderBestPositiveT(float t, float eps, float best_t) {
+  if (t > eps && t < best_t) {
+    return t;
+  }
+  return best_t;
+}
+
+[[nodiscard]] inline float ConsiderRoundedCornerArcIntersection(const RoundedRectRay& ray, ImVec2 corner_center, bool br,
+                                                                bool bl, bool tr, bool tl, float best_t) {
+  const float wx = ray.cx_ - corner_center.x;
+  const float wy = ray.cy_ - corner_center.y;
+  const float wd = wx * ray.vx_ + wy * ray.vy_;
+  const float ww = wx * wx + wy * wy;
+  const float inner = wd * wd - (ww - ray.r_ * ray.r_);
+  if (inner < 0.0F) {
+    return best_t;
+  }
+  const float srt = std::sqrt(inner);
+  const std::array<float, 2> roots = {-wd + srt, -wd - srt};
+  for (const float t : roots) {
+    if (t <= ray.eps_) {
+      continue;
+    }
+    const float px = ray.cx_ + ray.vx_ * t;
+    const float py = ray.cy_ + ray.vy_ * t;
+    const float rx = px - corner_center.x;
+    const float ry = py - corner_center.y;
+    bool ok = false;
+    if (br) {
+      ok = (rx >= -ray.eps_ && ry >= -ray.eps_);
+    }
+    else if (bl) {
+      ok = (rx <= ray.eps_ && ry >= -ray.eps_);
+    }
+    else if (tr) {
+      ok = (rx >= -ray.eps_ && ry <= ray.eps_);
+    }
+    else if (tl) {
+      ok = (rx <= ray.eps_ && ry <= ray.eps_);
+    }
+    if (ok) {
+      best_t = ConsiderBestPositiveT(t, ray.eps_, best_t);
+    }
+  }
+  return best_t;
+}
+
+[[nodiscard]] inline float BestPositiveTForVerticalFlatEdges(float best_t, float k_epsilon, float cy, float vx,
+                                                             float vy, float hx, float hy, float r) {
+  if (vx > k_epsilon) {
+    const float t = hx / vx;
+    const float y = cy + vy * t;
+    if (y >= cy - hy + r - k_epsilon && y <= cy + hy - r + k_epsilon) {
+      return ConsiderBestPositiveT(t, k_epsilon, best_t);
+    }
+    return best_t;
+  }
+  if (vx < -k_epsilon) {
+    const float t = -hx / vx;
+    const float y = cy + vy * t;
+    if (y >= cy - hy + r - k_epsilon && y <= cy + hy - r + k_epsilon) {
+      return ConsiderBestPositiveT(t, k_epsilon, best_t);
+    }
+  }
+  return best_t;
+}
+
+[[nodiscard]] inline float BestPositiveTForHorizontalFlatEdges(float best_t, float k_epsilon, float cx, float vx,
+                                                               float vy, float hx, float hy, float r) {
+  if (vy > k_epsilon) {
+    const float t = hy / vy;
+    const float x = cx + vx * t;
+    if (x >= cx - hx + r - k_epsilon && x <= cx + hx - r + k_epsilon) {
+      return ConsiderBestPositiveT(t, k_epsilon, best_t);
+    }
+    return best_t;
+  }
+  if (vy < -k_epsilon) {
+    const float t = -hy / vy;
+    const float x = cx + vx * t;
+    if (x >= cx - hx + r - k_epsilon && x <= cx + hx - r + k_epsilon) {
+      return ConsiderBestPositiveT(t, k_epsilon, best_t);
+    }
+  }
+  return best_t;
+}
+
 // First hit from box center along toward_point on a rounded-rect outline (uniform corner radius, axis-aligned).
-[[nodiscard]] inline ImVec2 SampleMapRoundedRectAttachmentToward(ImVec2 center, ImVec2 half_extents, float corner_r,  // NOLINT(readability-function-cognitive-complexity)
-                                                                   ImVec2 toward_point) {
+[[nodiscard]] inline ImVec2 SampleMapRoundedRectAttachmentToward(ImVec2 center, ImVec2 half_extents, float corner_r,
+                                                                 ImVec2 toward_point) {
   constexpr float kEpsLenSq = 1.0e-12F;
   constexpr float kEps = 1.0e-5F;
   constexpr float kBestTInit = 1.0e15F;
@@ -118,95 +214,23 @@ inline constexpr std::array<SampleMindMapNodeSpec, kSampleMindMapNodeCount> kSam
 
   const float hx = half_extents.x;
   const float hy = half_extents.y;
-  float r = corner_r;
-  r = (std::min)(r, hx * kCornerRadiusClampFactor);
-  r = (std::min)(r, hy * kCornerRadiusClampFactor);
+  const float r = (std::min)({corner_r, hx * kCornerRadiusClampFactor, hy * kCornerRadiusClampFactor});
   if (r < kEps) {
     return SampleMapAttachmentToward(center, half_extents, toward_point);
   }
 
   float best_t = kBestTInit;
-  const auto consider = [&best_t, kEps](float t) {
-    if (t > kEps && t < best_t) {
-      best_t = t;
-    }
-  };
 
   const float cx = center.x;
   const float cy = center.y;
 
-  if (vx > kEps) {
-    const float t = hx / vx;
-    const float y = cy + vy * t;
-    if (y >= cy - hy + r - kEps && y <= cy + hy - r + kEps) {
-      consider(t);
-    }
-  }
-  else if (vx < -kEps) {
-    const float t = -hx / vx;
-    const float y = cy + vy * t;
-    if (y >= cy - hy + r - kEps && y <= cy + hy - r + kEps) {
-      consider(t);
-    }
-  }
-
-  if (vy > kEps) {
-    const float t = hy / vy;
-    const float x = cx + vx * t;
-    if (x >= cx - hx + r - kEps && x <= cx + hx - r + kEps) {
-      consider(t);
-    }
-  }
-  else if (vy < -kEps) {
-    const float t = -hy / vy;
-    const float x = cx + vx * t;
-    if (x >= cx - hx + r - kEps && x <= cx + hx - r + kEps) {
-      consider(t);
-    }
-  }
-
-  const auto consider_arc = [&](ImVec2 k, bool br, bool bl, bool tr, bool tl) {
-    const float wx = cx - k.x;
-    const float wy = cy - k.y;
-    const float wd = wx * vx + wy * vy;
-    const float ww = wx * wx + wy * wy;
-    const float inner = wd * wd - (ww - r * r);
-    if (inner < 0.0F) {
-      return;
-    }
-    const float srt = std::sqrt(inner);
-    const std::array<float, 2> roots = {-wd + srt, -wd - srt};
-    for (const float t : roots) {
-      if (t <= kEps) {
-        continue;
-      }
-      const float px = cx + vx * t;
-      const float py = cy + vy * t;
-      const float rx = px - k.x;
-      const float ry = py - k.y;
-      bool ok = false;
-      if (br) {
-        ok = (rx >= -kEps && ry >= -kEps);
-      }
-      else if (bl) {
-        ok = (rx <= kEps && ry >= -kEps);
-      }
-      else if (tr) {
-        ok = (rx >= -kEps && ry <= kEps);
-      }
-      else if (tl) {
-        ok = (rx <= kEps && ry <= kEps);
-      }
-      if (ok) {
-        consider(t);
-      }
-    }
-  };
-
-  consider_arc({cx + hx - r, cy + hy - r}, true, false, false, false);
-  consider_arc({cx - hx + r, cy + hy - r}, false, true, false, false);
-  consider_arc({cx + hx - r, cy - hy + r}, false, false, true, false);
-  consider_arc({cx - hx + r, cy - hy + r}, false, false, false, true);
+  best_t = BestPositiveTForVerticalFlatEdges(best_t, kEps, cy, vx, vy, hx, hy, r);
+  best_t = BestPositiveTForHorizontalFlatEdges(best_t, kEps, cx, vx, vy, hx, hy, r);
+  const RoundedRectRay ray = {cx, cy, vx, vy, r, kEps};
+  best_t = ConsiderRoundedCornerArcIntersection(ray, {cx + hx - r, cy + hy - r}, true, false, false, false, best_t);
+  best_t = ConsiderRoundedCornerArcIntersection(ray, {cx - hx + r, cy + hy - r}, false, true, false, false, best_t);
+  best_t = ConsiderRoundedCornerArcIntersection(ray, {cx + hx - r, cy - hy + r}, false, false, true, false, best_t);
+  best_t = ConsiderRoundedCornerArcIntersection(ray, {cx - hx + r, cy - hy + r}, false, false, false, true, best_t);
 
   if (best_t >= kBestTNoHit) {
     return SampleMapAttachmentToward(center, half_extents, toward_point);
@@ -273,9 +297,8 @@ enum class SampleMapBoxSide : std::uint8_t { Right, Left, Bottom, Top };  // NOL
     return hit;
   }
 
-  float r = corner_r;  // NOLINT(misc-const-correctness)
-  r = (std::min)(r, half_extents.x * kCornerRadiusClampFactor);
-  r = (std::min)(r, half_extents.y * kCornerRadiusClampFactor);
+  const float r = (std::min)({corner_r, half_extents.x * kCornerRadiusClampFactor,
+                              half_extents.y * kCornerRadiusClampFactor});
   if (r < kEps) {
     return hit;
   }
@@ -311,6 +334,19 @@ struct SampleMapBezierArms {
   ImVec2 p2_;
 };
 
+struct SampleMapBezierArmInputs {
+  ImVec2 parent_center_;
+  ImVec2 parent_half_;
+  ImVec2 child_center_;
+  ImVec2 child_half_;
+  ImVec2 p0w_;
+  ImVec2 p3w_;
+  float min_arm_world_ = 0.0F;
+  float span_fraction_ = 0.0F;
+  const ImVec2* p0_border_for_normal_ = nullptr;
+  const ImVec2* p3_border_for_normal_ = nullptr;
+};
+
 // Outward axis normal for the flat edge (or dominant edge at corners) where attachment_point lies on the box.
 [[nodiscard]] inline ImVec2 SampleMapEdgeOutwardAxis(ImVec2 box_center, ImVec2 half_extents, ImVec2 attachment_point) {
   constexpr float kTiny = 1.0e-6F;
@@ -327,29 +363,27 @@ struct SampleMapBezierArms {
 // p1 / p2 extend along edge normals so B'(0) and B'(1) match the border; strong S without peeling off the node.
 // If p0_border_for_normal / p3_border_for_normal are non-null, those points classify the edge for out0/out3 while
 // p0w/p3w remain the actual cubic endpoints (e.g. p0 inside parent, normal from border hit).
-[[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(
-    ImVec2 parent_center, ImVec2 parent_half, ImVec2 child_center, ImVec2 child_half, ImVec2 p0w, ImVec2 p3w,
-    float min_arm_world, float span_fraction, const ImVec2* p0_border_for_normal = nullptr,
-    const ImVec2* p3_border_for_normal = nullptr) {
+[[nodiscard]] inline SampleMapBezierArms ComputeSampleMapBezierArmsWorld(const SampleMapBezierArmInputs& inputs) {
   constexpr float kMaxArmAsChordFraction = 0.45F;
   constexpr float kEpsChord = 1.0e-6F;
-  const float dx = p3w.x - p0w.x;
-  const float dy = p3w.y - p0w.y;
+  const float dx = inputs.p3w_.x - inputs.p0w_.x;
+  const float dy = inputs.p3w_.y - inputs.p0w_.y;
   const float adx = std::abs(dx);
   const float ady = std::abs(dy);
   const float chord = std::sqrt(dx * dx + dy * dy);
   if (chord < kEpsChord) {
-    return {p0w, p3w};
+    return {inputs.p0w_, inputs.p3w_};
   }
   const float sep_dom = (std::max)(adx, ady);
-  float arm = (std::max)(min_arm_world, sep_dom * span_fraction);
+  float arm = (std::max)(inputs.min_arm_world_, sep_dom * inputs.span_fraction_);
   arm = (std::min)(arm, kMaxArmAsChordFraction * chord);
 
-  const ImVec2 ref0 = (p0_border_for_normal != nullptr) ? *p0_border_for_normal : p0w;
-  const ImVec2 ref3 = (p3_border_for_normal != nullptr) ? *p3_border_for_normal : p3w;
-  const ImVec2 out0 = SampleMapEdgeOutwardAxis(parent_center, parent_half, ref0);
-  const ImVec2 out3 = SampleMapEdgeOutwardAxis(child_center, child_half, ref3);
-  return {{p0w.x + out0.x * arm, p0w.y + out0.y * arm}, {p3w.x + out3.x * arm, p3w.y + out3.y * arm}};
+  const ImVec2 ref0 = (inputs.p0_border_for_normal_ != nullptr) ? *inputs.p0_border_for_normal_ : inputs.p0w_;
+  const ImVec2 ref3 = (inputs.p3_border_for_normal_ != nullptr) ? *inputs.p3_border_for_normal_ : inputs.p3w_;
+  const ImVec2 out0 = SampleMapEdgeOutwardAxis(inputs.parent_center_, inputs.parent_half_, ref0);
+  const ImVec2 out3 = SampleMapEdgeOutwardAxis(inputs.child_center_, inputs.child_half_, ref3);
+  return {{inputs.p0w_.x + out0.x * arm, inputs.p0w_.y + out0.y * arm},
+          {inputs.p3w_.x + out3.x * arm, inputs.p3w_.y + out3.y * arm}};
 }
 
 [[nodiscard]] inline std::array<ImVec2, kSampleMindMapNodeCount> InitialSampleMapPositions() {
