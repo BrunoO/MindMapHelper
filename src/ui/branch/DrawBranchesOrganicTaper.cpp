@@ -148,8 +148,7 @@ void DrawTaperBezierBranch(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 pan_p
   const ImVec2 u1 = {bx / b, by / b};
   ImVec2 m_dir = {u0.x + u1.x, u0.y + u1.y};
   constexpr float kEpsDirSq = 1.0e-10F;
-  const float m_len_sq = m_dir.x * m_dir.x + m_dir.y * m_dir.y;
-  if (m_len_sq < kEpsDirSq) {
+  if (const float m_len_sq = m_dir.x * m_dir.x + m_dir.y * m_dir.y; m_len_sq < kEpsDirSq) {
     m_dir = PerpLeft(u0);
   }
   NormalizeOrDefault(&m_dir);

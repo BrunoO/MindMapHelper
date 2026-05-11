@@ -222,8 +222,7 @@ enum class SampleMapBoxSide : std::uint8_t { Right, Left, Bottom, Top };  // NOL
   const float hx = (std::max)(half_extents.x, 1.0e-4F);
   const float hy = (std::max)(half_extents.y, 1.0e-4F);
   const float nax = std::abs(hit.x - box_center.x) / hx * horizontal_stickiness;
-  const float nay = std::abs(hit.y - box_center.y) / hy;
-  if (nax >= nay) {
+  if (const float nay = std::abs(hit.y - box_center.y) / hy; nax >= nay) {
     return (hit.x >= box_center.x) ? SampleMapBoxSide::Right : SampleMapBoxSide::Left;
   }
   return (hit.y >= box_center.y) ? SampleMapBoxSide::Bottom : SampleMapBoxSide::Top;
@@ -317,9 +316,9 @@ struct SampleMapBezierArms {
   constexpr float kTiny = 1.0e-6F;
   const float ax =
       half_extents.x > kTiny ? std::abs(attachment_point.x - box_center.x) / half_extents.x : 0.0F;
-  const float ay =
-      half_extents.y > kTiny ? std::abs(attachment_point.y - box_center.y) / half_extents.y : 0.0F;
-  if (ax >= ay) {
+  if (const float ay = half_extents.y > kTiny ? std::abs(attachment_point.y - box_center.y) / half_extents.y
+                                               : 0.0F;
+      ax >= ay) {
     return (attachment_point.x >= box_center.x) ? ImVec2{1.0F, 0.0F} : ImVec2{-1.0F, 0.0F};
   }
   return (attachment_point.y >= box_center.y) ? ImVec2{0.0F, 1.0F} : ImVec2{0.0F, -1.0F};

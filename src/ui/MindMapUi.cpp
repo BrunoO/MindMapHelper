@@ -71,8 +71,8 @@ void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas) {
   ImGui::Text("Incoming edge to \"%s\"", node_label);
   ImGui::SameLine();
   const mind_map::ui::branch::BranchStyle current = canvas.GetBranchStyleForSelectedChildEdge();
-  const char* const preview = mind_map::ui::branch::GetBranchStyleDisplayName(current);
-  if (!ImGui::BeginCombo("##SelectedIncomingEdgeBranchStyle", preview)) {
+  if (const char* const preview = mind_map::ui::branch::GetBranchStyleDisplayName(current);
+      !ImGui::BeginCombo("##SelectedIncomingEdgeBranchStyle", preview)) {
     return;
   }
 
@@ -90,8 +90,8 @@ void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas) {
 }
 
 void RenderBranchStyleSelector(MindMapCanvasView& canvas) {
-  const char* const preview = canvas.GetBranchStyleComboPreviewLabel();
-  if (!ImGui::BeginCombo("Set all branches to", preview)) {
+  if (const char* const preview = canvas.GetBranchStyleComboPreviewLabel();
+      !ImGui::BeginCombo("Set all branches to", preview)) {
     return;
   }
 
@@ -111,7 +111,7 @@ void RenderBranchStyleSelector(MindMapCanvasView& canvas) {
   ImGui::EndCombo();
 }
 
-void RenderMainMenuBar(UiCommandDispatcher& dispatcher, MindMapCanvasView& canvas, ImVec2& pan_px, float& zoom,
+void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, MindMapCanvasView& canvas, ImVec2& pan_px, float& zoom,
                        bool& show_status_bar) {
   if (!ImGui::BeginMainMenuBar()) {
     return;
@@ -242,7 +242,7 @@ void RenderStatusBar(const UiState& state) {
 
 void RenderMainUi() {
   static UiState state;
-  UiCommandDispatcher command_dispatcher;
+  const UiCommandDispatcher command_dispatcher;
   RenderMainMenuBar(command_dispatcher, state.canvas_, state.pan_px_, state.zoom_, state.show_status_bar_);
 
   const ImGuiViewport* const viewport = ImGui::GetMainViewport();
@@ -256,8 +256,9 @@ void RenderMainUi() {
                                                         ImGuiWindowFlags_NoSavedSettings);
   ImGui::Begin("MindMap Helper", nullptr, root_flags);
 
-  const float content_height = state.show_status_bar_ ? -kStatusBarHeight : 0.0F;
-  if (ImGui::BeginChild("MindMapHelperContent", ImVec2(0.0F, content_height), ImGuiChildFlags_None, ImGuiWindowFlags_None)) {
+  if (const float content_height = state.show_status_bar_ ? -kStatusBarHeight : 0.0F;
+      ImGui::BeginChild("MindMapHelperContent", ImVec2(0.0F, content_height), ImGuiChildFlags_None,
+                        ImGuiWindowFlags_None)) {
     RenderBranchStyleSelector(state.canvas_);
     ImGui::SameLine();
     if (ImGui::Button("Reset layout")) {

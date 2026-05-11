@@ -32,10 +32,10 @@ inline void DrawGrid(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 canvas_p1, 
   const ImVec2 world_min = ScreenToWorld(canvas_p0, canvas_p0, pan_px, zoom);
   const ImVec2 world_max = ScreenToWorld(canvas_p1, canvas_p0, pan_px, zoom);
 
-  const int ix0 = static_cast<int>(std::floor(world_min.x / kMinorStep));
-  const int ix1 = static_cast<int>(std::ceil(world_max.x / kMinorStep));
-  const int iy0 = static_cast<int>(std::floor(world_min.y / kMinorStep));
-  const int iy1 = static_cast<int>(std::ceil(world_max.y / kMinorStep));
+  const auto ix0 = static_cast<int>(std::floor(world_min.x / kMinorStep));
+  const auto ix1 = static_cast<int>(std::ceil(world_max.x / kMinorStep));
+  const auto iy0 = static_cast<int>(std::floor(world_min.y / kMinorStep));
+  const auto iy1 = static_cast<int>(std::ceil(world_max.y / kMinorStep));
 
   for (int ix = ix0; ix <= ix1; ++ix) {
     const float x = static_cast<float>(ix) * kMinorStep;
