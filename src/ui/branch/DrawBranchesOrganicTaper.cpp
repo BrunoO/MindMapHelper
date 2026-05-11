@@ -1,5 +1,6 @@
 #include "ui/branch/DrawBranchesOrganicTaper.h"
 
+#include "ui/branch/SampleMindMapBranchAttachments.h"
 #include "ui/canvas/CanvasMath.h"
 
 #include <algorithm>
@@ -242,30 +243,19 @@ void DrawSampleMindMapBranchOrganicTaper(
     const BranchRenderContext& ctx, const int child_index,
     const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
   assert(ctx.draw_list_ != nullptr);
-  assert(child_index >= 0 && child_index < mind_map::demos::kSampleMindMapNodeCount);
-  const int parent = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child_index)].parent_;
-  assert(parent >= 0 && parent < mind_map::demos::kSampleMindMapNodeCount);
-
-  const char* const parent_label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(parent)].label_;
-  const char* const child_label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child_index)].label_;
-  const ImVec2 parent_half = mind_map::demos::SampleMapHalfExtentForLabel(parent_label);
-  const ImVec2 child_half = mind_map::demos::SampleMapHalfExtentForLabel(child_label);
-
-  const ImVec2 pw = pos_world[static_cast<size_t>(parent)];
-  const ImVec2 cw = pos_world[static_cast<size_t>(child_index)];
-  const ImVec2 p0_border = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
-      pw, parent_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, cw);
-  const ImVec2 p3_border = mind_map::demos::SampleMapRoundedRectAttachmentPreferEdgeMid(
-      cw, child_half, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, pw);
+  SampleMindMapBranchRoundedAttachments g{};
+  FillSampleMindMapBranchRoundedAttachments(child_index, pos_world, &g);
+  const ImVec2 p0_border = g.p0_attachment_;
+  const ImVec2 p3_border = g.p3_attachment_;
 
   const float b0 = std::clamp(kTaperP0BlendCenterToBorder, 0.0F, 1.0F);
   const float b3 = std::clamp(kTaperP3BlendCenterToBorder, 0.0F, 1.0F);
-  const ImVec2 p0w = {pw.x + (p0_border.x - pw.x) * b0, pw.y + (p0_border.y - pw.y) * b0};
-  const ImVec2 p3w = {cw.x + (p3_border.x - cw.x) * b3, cw.y + (p3_border.y - cw.y) * b3};
+  const ImVec2 p0w = {g.pw_.x + (p0_border.x - g.pw_.x) * b0, g.pw_.y + (p0_border.y - g.pw_.y) * b0};
+  const ImVec2 p3w = {g.cw_.x + (p3_border.x - g.cw_.x) * b3, g.cw_.y + (p3_border.y - g.cw_.y) * b3};
 
-  const int grandparent = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(parent)].parent_;
-  const float parent_radius = mind_map::demos::SampleMapNodeRadiusWorld(parent_label);
-  const float child_radius = mind_map::demos::SampleMapNodeRadiusWorld(child_label);
+  const int grandparent = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(g.parent_)].parent_;
+  const float parent_radius = mind_map::demos::SampleMapNodeRadiusWorld(g.parent_label_);
+  const float child_radius = mind_map::demos::SampleMapNodeRadiusWorld(g.child_label_);
   const float half_width_start = (grandparent < 0) ? BranchRootStartHalfWidthWorld(parent_radius)
                                                    : BranchEndHalfWidthWorld(parent_radius);
   const float half_width_end_raw = BranchEndHalfWidthWorld(child_radius);
@@ -273,8 +263,8 @@ void DrawSampleMindMapBranchOrganicTaper(
   const CanvasTransform canvas_transform = {ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_};
   const TaperWidths widths = {half_width_start, half_width_end};
 
-  const ImVec2 out0 = mind_map::demos::SampleMapEdgeOutwardAxis(pw, parent_half, p0_border);
-  const ImVec2 out3 = mind_map::demos::SampleMapEdgeOutwardAxis(cw, child_half, p3_border);
+  const ImVec2 out0 = mind_map::demos::SampleMapEdgeOutwardAxis(g.pw_, g.parent_half_, p0_border);
+  const ImVec2 out3 = mind_map::demos::SampleMapEdgeOutwardAxis(g.cw_, g.child_half_, p3_border);
   std::array<ImVec2, 4> seg0{};
   std::array<ImVec2, 4> seg1{};
   const HobbyMidWaypointParams hobby_params = {
@@ -284,7 +274,7 @@ void DrawSampleMindMapBranchOrganicTaper(
   }
   else {
     const mind_map::demos::SampleMapBezierArmInputs arm_inputs = {
-        pw, parent_half, cw, child_half, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border};
+        g.pw_, g.parent_half_, g.cw_, g.child_half_, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border};
     const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(arm_inputs);
     DrawTaperBezierBranch(ctx.draw_list_, canvas_transform, p0w, arms.p1_, arms.p2_, p3w, widths);
   }
