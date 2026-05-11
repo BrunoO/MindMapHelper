@@ -289,4 +289,26 @@ if(BM_ENABLE_TESTS)
     NAME mindmap_helper_imx_loader_test
     COMMAND mindmap_helper_imx_loader_test
   )
+
+  add_executable(mindmap_helper_uuid_test
+    tests/UuidGeneratorTest.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_uuid_test)
+  target_link_libraries(mindmap_helper_uuid_test PRIVATE mindmap_helper_core)
+  add_test(NAME mindmap_helper_uuid_test COMMAND mindmap_helper_uuid_test)
+
+  add_executable(mindmap_helper_json_round_trip_test
+    tests/JsonRoundTripTest.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_json_round_trip_test)
+  target_link_libraries(mindmap_helper_json_round_trip_test PRIVATE mindmap_helper_core)
+  add_test(NAME mindmap_helper_json_round_trip_test COMMAND mindmap_helper_json_round_trip_test)
+
+  add_executable(mindmap_helper_imx_import_adapter_test
+    tests/ImxImportAdapterTest.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_imx_import_adapter_test)
+  target_link_libraries(mindmap_helper_imx_import_adapter_test PRIVATE mindmap_helper_core)
+  add_test(NAME mindmap_helper_imx_import_adapter_test COMMAND mindmap_helper_imx_import_adapter_test)
+
 endif()

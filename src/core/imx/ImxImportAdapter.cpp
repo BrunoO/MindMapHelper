@@ -158,4 +158,13 @@ std::optional<MindMapDocument> ImxImportAdapter::Import(std::string_view path) c
   return ImxModelToDocument(*model);
 }
 
+std::optional<MindMapDocument> ImxImportAdapter::ImportFromXml(std::string_view data_xml,
+                                                                std::string_view mapmeta_xml) const {
+  const std::optional<ImxMindMapModel> model = LoadImxMindMapModelFromXml(data_xml, mapmeta_xml);
+  if (!model) {
+    return std::nullopt;
+  }
+  return ImxModelToDocument(*model);
+}
+
 }  // namespace mind_map::core
