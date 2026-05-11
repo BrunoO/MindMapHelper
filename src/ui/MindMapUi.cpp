@@ -4,12 +4,15 @@
 #include "ui/MindMapCanvasView.h"
 #include "ui/branch/BranchStyle.h"
 #include "ui/canvas/CanvasMath.h"
+#include "ui/demos/SampleMindMapGraph.h"
 
+#include "ImGuiFileDialog.h"
 #include "imgui.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <string>
 
 namespace mind_map::ui {
 
@@ -19,6 +22,8 @@ constexpr float kMinZoom = 0.35F;
 constexpr float kMaxZoom = 3.0F;
 constexpr float kZoomStep = 0.1F;
 constexpr float kStatusBarHeight = 26.0F;
+constexpr float kFileDialogWidth = 600.0F;
+constexpr float kFileDialogHeight = 400.0F;
 
 enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   ResetLayout,
@@ -30,26 +35,25 @@ enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
 
 class UiCommandDispatcher final {
  public:
-  void Dispatch(UiCommandId command, MindMapCanvasView& canvas, ImVec2& pan_px, float& zoom,
-                bool& show_status_bar,
+  void Dispatch(UiCommandId command, UiState& state,
                 mind_map::app::DocumentSessionService& session) const {
     switch (command) {  // NOSONAR(cpp:S6177) - C++17; `using enum` to shorten cases requires C++20
       case UiCommandId::ResetLayout:
-        canvas.Reset();
+        state.canvas_.Reset();
         session.MarkDirty();
         return;
       case UiCommandId::ZoomIn:  // NOLINT(bugprone-branch-clone)
-        zoom = std::clamp(zoom + kZoomStep, kMinZoom, kMaxZoom);
+        state.zoom_ = std::clamp(state.zoom_ + kZoomStep, kMinZoom, kMaxZoom);
         return;
       case UiCommandId::ZoomOut:
-        zoom = std::clamp(zoom - kZoomStep, kMinZoom, kMaxZoom);
+        state.zoom_ = std::clamp(state.zoom_ - kZoomStep, kMinZoom, kMaxZoom);
         return;
       case UiCommandId::ResetView:
-        zoom = 1.0F;
-        pan_px = {kInitialPanX, kInitialPanY};
+        state.zoom_ = 1.0F;
+        state.pan_px_ = {kInitialPanX, kInitialPanY};
         return;
       case UiCommandId::ToggleStatusBar:
-        show_status_bar = !show_status_bar;
+        state.show_status_bar_ = !state.show_status_bar_;
         return;
     }
   }
@@ -109,35 +113,80 @@ void RenderBranchStyleSelector(MindMapCanvasView& canvas,
   ImGui::EndCombo();
 }
 
-void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, MindMapCanvasView& canvas,
-                       ImVec2& pan_px, float& zoom, bool& show_status_bar,
+void OpenSaveAsDialog(const mind_map::app::DocumentSessionService& session) {
+  IGFD::FileDialogConfig cfg;
+  cfg.path = ".";
+  cfg.fileName = "untitled.mmh";
+  if (session.HasPath()) {
+    cfg.filePathName = std::string{session.GetCurrentPath()};
+  }
+  ImGuiFileDialog::Instance()->OpenDialog("SaveAsFileDlg", "Save Mind Map As", ".mmh", cfg);
+}
+
+void HandleSaveMenuItem(UiState& state, mind_map::app::DocumentSessionService& session) {
+  if (!session.HasPath()) {
+    OpenSaveAsDialog(session);
+    return;
+  }
+  const auto doc = state.canvas_.ToDocument(state.ToViewport());
+  if (!session.Save(doc)) {
+    // Save failed; repository already logged the error to stderr.
+  }
+}
+
+void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
+                    mind_map::app::DocumentSessionService& session) {
+  if (ImGui::MenuItem("New")) {
+    mind_map::core::MindMapDocument dummy;
+    session.New(dummy);
+    const auto sample_doc = mind_map::demos::BuildSampleDocument();
+    state.canvas_.LoadFrom(sample_doc);
+    state.ApplyViewport(sample_doc.viewport_);
+  }
+  if (ImGui::MenuItem("Open...", "Cmd+O")) {
+    IGFD::FileDialogConfig cfg;
+    cfg.path = ".";
+    ImGuiFileDialog::Instance()->OpenDialog("OpenFileDlg", "Open Mind Map", ".mmh", cfg);
+  }
+  ImGui::Separator();
+  if (ImGui::MenuItem("Save", "Cmd+S")) {
+    HandleSaveMenuItem(state, session);
+  }
+  if (ImGui::MenuItem("Save As...", "Cmd+Shift+S")) {
+    OpenSaveAsDialog(session);
+  }
+  ImGui::Separator();
+  if (ImGui::MenuItem("Reset Layout")) {
+    dispatcher.Dispatch(UiCommandId::ResetLayout, state, session);
+  }
+  if (ImGui::MenuItem("Reset View")) {
+    dispatcher.Dispatch(UiCommandId::ResetView, state, session);
+  }
+}
+
+void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, UiState& state,
                        mind_map::app::DocumentSessionService& session) {
   if (!ImGui::BeginMainMenuBar()) {
     return;
   }
 
   if (ImGui::BeginMenu("File")) {
-    if (ImGui::MenuItem("Reset Layout")) {
-      dispatcher.Dispatch(UiCommandId::ResetLayout, canvas, pan_px, zoom, show_status_bar, session);
-    }
-    if (ImGui::MenuItem("Reset View")) {
-      dispatcher.Dispatch(UiCommandId::ResetView, canvas, pan_px, zoom, show_status_bar, session);
-    }
+    RenderFileMenu(dispatcher, state, session);
     ImGui::EndMenu();
   }
 
   if (ImGui::BeginMenu("View")) {
     if (ImGui::MenuItem("Zoom In", "Cmd+=")) {
-      dispatcher.Dispatch(UiCommandId::ZoomIn, canvas, pan_px, zoom, show_status_bar, session);
+      dispatcher.Dispatch(UiCommandId::ZoomIn, state, session);
     }
     if (ImGui::MenuItem("Zoom Out", "Cmd+-")) {
-      dispatcher.Dispatch(UiCommandId::ZoomOut, canvas, pan_px, zoom, show_status_bar, session);
+      dispatcher.Dispatch(UiCommandId::ZoomOut, state, session);
     }
     if (ImGui::MenuItem("Reset View", "Cmd+0")) {
-      dispatcher.Dispatch(UiCommandId::ResetView, canvas, pan_px, zoom, show_status_bar, session);
+      dispatcher.Dispatch(UiCommandId::ResetView, state, session);
     }
-    if (ImGui::MenuItem("Show Status Bar", nullptr, show_status_bar)) {
-      dispatcher.Dispatch(UiCommandId::ToggleStatusBar, canvas, pan_px, zoom, show_status_bar, session);
+    if (ImGui::MenuItem("Show Status Bar", nullptr, state.show_status_bar_)) {
+      dispatcher.Dispatch(UiCommandId::ToggleStatusBar, state, session);
     }
     ImGui::EndMenu();
   }
@@ -281,12 +330,39 @@ void RenderCloseGuardModal(UiState& state, mind_map::app::DocumentSessionService
   ImGui::EndPopup();
 }
 
+void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& session) {
+  auto* const fd = ImGuiFileDialog::Instance();
+  const ImVec2 dialog_min_size{kFileDialogWidth, kFileDialogHeight};
+
+  if (fd->Display("OpenFileDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
+    if (fd->IsOk()) {
+      const std::string path = fd->GetFilePathName();
+      mind_map::core::MindMapDocument doc;
+      if (session.Open(path, doc)) {
+        state.canvas_.LoadFrom(doc);
+        state.ApplyViewport(doc.viewport_);
+      }
+    }
+    fd->Close();
+  }
+
+  if (fd->Display("SaveAsFileDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
+    if (fd->IsOk()) {
+      const std::string path = fd->GetFilePathName();
+      const auto doc = state.canvas_.ToDocument(state.ToViewport());
+      if (!session.SaveAs(path, doc)) {
+        // Save failed; repository already logged the error to stderr.
+      }
+    }
+    fd->Close();
+  }
+}
+
 }  // namespace
 
 void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session) {
   const UiCommandDispatcher command_dispatcher;
-  RenderMainMenuBar(command_dispatcher, state.canvas_, state.pan_px_, state.zoom_,
-                    state.show_status_bar_, session);
+  RenderMainMenuBar(command_dispatcher, state, session);
 
   const ImGuiViewport* const viewport = ImGui::GetMainViewport();
   assert(viewport != nullptr);
@@ -305,8 +381,7 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
     RenderBranchStyleSelector(state.canvas_, session);
     ImGui::SameLine();
     if (ImGui::Button("Reset layout")) {
-      command_dispatcher.Dispatch(UiCommandId::ResetLayout, state.canvas_, state.pan_px_, state.zoom_,
-                                  state.show_status_bar_, session);
+      command_dispatcher.Dispatch(UiCommandId::ResetLayout, state, session);
     }
     RenderSelectedIncomingEdgeStyleSelector(state.canvas_, session);
     ImGui::TextUnformatted(
@@ -327,6 +402,8 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
 
   ImGui::End();
   ImGui::PopStyleVar(2);
+
+  RenderFileDialogs(state, session);
 }
 
 }  // namespace mind_map::ui
