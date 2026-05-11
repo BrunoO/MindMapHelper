@@ -14,6 +14,16 @@ constexpr float kPanX       = 40.0F;
 constexpr float kPanY       = 120.0F;
 constexpr float kZoom       = 1.5F;
 
+[[nodiscard]] const mind_map::core::MindMapNodeLayout* FindLayout(
+    const mind_map::core::MindMapDocument& doc, const std::string& node_id) {
+  for (const auto& layout : doc.layouts_) {
+    if (layout.node_id_ == node_id) {
+      return &layout;
+    }
+  }
+  return nullptr;
+}
+
 [[nodiscard]] mind_map::core::MindMapDocument MakeTestDocument() {
   mind_map::core::MindMapDocument doc;
 
@@ -87,6 +97,29 @@ void TestRoundTrip() {
   static_cast<void>(std::filesystem::remove(tmp));
 }
 
+void TestRoundTripLayouts() {
+  const std::filesystem::path tmp =
+      std::filesystem::temp_directory_path() / "mindmap_helper_json_round_trip_layouts_test.mmh";
+
+  const mind_map::core::JsonNativeDocumentRepository repo;
+  assert(repo.Save(tmp.string(), MakeTestDocument()));
+
+  const auto loaded_opt = repo.Load(tmp.string());
+  assert(loaded_opt.has_value());
+  const mind_map::core::MindMapDocument& loaded = *loaded_opt;
+
+  const auto* root_layout  = FindLayout(loaded, "node-1");
+  const auto* child_layout = FindLayout(loaded, "node-2");
+  assert(root_layout  != nullptr);
+  assert(child_layout != nullptr);
+  assert(root_layout->position_.x_  == 0.0F);
+  assert(root_layout->position_.y_  == 0.0F);
+  assert(child_layout->position_.x_ == kChildPosX);
+  assert(child_layout->position_.y_ == kChildPosY);
+
+  static_cast<void>(std::filesystem::remove(tmp));
+}
+
 void WriteFile(const std::filesystem::path& path, const std::string& content) {
   std::ofstream out(path.string());
   assert(out.is_open());
@@ -129,6 +162,7 @@ void TestRejectsMissingFile() {
 
 int main() {  // NOLINT(bugprone-exception-escape)
   TestRoundTrip();
+  TestRoundTripLayouts();
   TestRejectsWrongFormat();
   TestRejectsWrongVersion();
   TestRejectsMalformedJson();

@@ -1,2 +1,6 @@
 mindmap_helper_smoke_test
 mindmap_helper_imx_loader_test
+mindmap_helper_uuid_test
+mindmap_helper_json_round_trip_test
+mindmap_helper_imx_import_adapter_test
+mindmap_helper_import_service_test

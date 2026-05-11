@@ -311,4 +311,11 @@ if(BM_ENABLE_TESTS)
   target_link_libraries(mindmap_helper_imx_import_adapter_test PRIVATE mindmap_helper_core)
   add_test(NAME mindmap_helper_imx_import_adapter_test COMMAND mindmap_helper_imx_import_adapter_test)
 
+  add_executable(mindmap_helper_import_service_test
+    tests/ImportServiceTest.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_import_service_test)
+  target_link_libraries(mindmap_helper_import_service_test PRIVATE mindmap_helper_core)
+  add_test(NAME mindmap_helper_import_service_test COMMAND mindmap_helper_import_service_test)
+
 endif()
