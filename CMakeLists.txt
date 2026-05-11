@@ -64,7 +64,18 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(zlib)
 
-list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+# Stock FindZLIB (invoked from libzip's subdirectory) creates ZLIB::ZLIB without
+# GLOBAL scope, so parent targets cannot link it — CI then fails linking
+# mindmap_helper_core. Define a GLOBAL INTERFACE target up front so libzip and
+# core both use bundled zlibstatic (CMake skips recreating ZLIB::ZLIB in FindZLIB).
+if(TARGET zlibstatic AND NOT TARGET ZLIB::ZLIB)
+  add_library(ZLIB::ZLIB INTERFACE IMPORTED GLOBAL)
+  get_target_property(_bm_zlib_iface_includes zlibstatic INTERFACE_INCLUDE_DIRECTORIES)
+  set_target_properties(ZLIB::ZLIB PROPERTIES
+    INTERFACE_LINK_LIBRARIES zlibstatic
+    INTERFACE_INCLUDE_DIRECTORIES "${_bm_zlib_iface_includes}"
+  )
+endif()
 
 set(ENABLE_BZIP2 OFF CACHE BOOL "" FORCE)
 set(ENABLE_LZMA OFF CACHE BOOL "" FORCE)
