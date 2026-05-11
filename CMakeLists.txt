@@ -184,6 +184,9 @@ set(BM_UI_SOURCES
 )
 
 set(BM_CORE_SOURCES
+  src/core/imx/ImxMindMapLoader.cpp
+  src/core/imx/ImxImportAdapter.cpp
+  src/core/ImportService.cpp
   src/core/mindmap/SampleMindMapTopology.cpp
   src/core/mindmap/UuidGenerator.cpp
   src/core/JsonNativeDocumentRepository.cpp
@@ -269,5 +272,21 @@ if(BM_ENABLE_TESTS)
   add_test(
     NAME mindmap_helper_smoke_test
     COMMAND mindmap_helper_smoke_test
+  )
+
+  add_executable(mindmap_helper_imx_loader_test
+    tests/ImxMindMapLoaderTest.cpp
+  )
+
+  bm_target_use_src_includes(mindmap_helper_imx_loader_test)
+
+  target_link_libraries(mindmap_helper_imx_loader_test PRIVATE
+    mindmap_helper_core
+    libzip::zip
+  )
+
+  add_test(
+    NAME mindmap_helper_imx_loader_test
+    COMMAND mindmap_helper_imx_loader_test
   )
 endif()

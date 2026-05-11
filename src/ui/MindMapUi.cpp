@@ -1,6 +1,7 @@
 #include "ui/MindMapUi.h"
 
 #include "app/DocumentSessionService.h"
+#include "core/ImportService.h"
 #include "ui/MindMapCanvasView.h"
 #include "ui/branch/BranchStyle.h"
 #include "ui/canvas/CanvasMath.h"
@@ -154,6 +155,12 @@ void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
   }
   if (ImGui::MenuItem("Save As...", "Cmd+Shift+S")) {
     OpenSaveAsDialog(session);
+  }
+  ImGui::Separator();
+  if (ImGui::MenuItem("Import...", "Cmd+Shift+O")) {
+    IGFD::FileDialogConfig cfg;
+    cfg.path = ".";
+    ImGuiFileDialog::Instance()->OpenDialog("ImportFileDlg", "Import Mind Map", ".imx", cfg);
   }
   ImGui::Separator();
   if (ImGui::MenuItem("Reset Layout")) {
@@ -333,6 +340,21 @@ void RenderCloseGuardModal(UiState& state, mind_map::app::DocumentSessionService
 void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& session) {
   auto* const fd = ImGuiFileDialog::Instance();
   const ImVec2 dialog_min_size{kFileDialogWidth, kFileDialogHeight};
+  const mind_map::core::ImportService import_service;
+
+  if (fd->Display("ImportFileDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
+    if (fd->IsOk()) {
+      const std::string path = fd->GetFilePathName();
+      if (auto doc = import_service.ImportFile(path)) {
+        mind_map::core::MindMapDocument dummy;
+        session.New(dummy);  // clears path so Save prompts Save As
+        state.canvas_.LoadFrom(*doc);
+        state.ApplyViewport(doc->viewport_);
+        session.MarkDirty();
+      }
+    }
+    fd->Close();
+  }
 
   if (fd->Display("OpenFileDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
     if (fd->IsOk()) {
