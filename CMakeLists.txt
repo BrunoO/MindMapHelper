@@ -226,6 +226,7 @@ bm_link_opengl_for_platform(mindmap_helper_platform)
 add_executable(mindmap_helper
   src/main.cpp
   src/app/AppMain.cpp
+  src/app/DocumentSessionService.cpp
 )
 
 set_target_properties(mindmap_helper PROPERTIES OUTPUT_NAME "MindMapHelper")

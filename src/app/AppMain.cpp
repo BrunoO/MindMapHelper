@@ -1,5 +1,7 @@
 #include "app/AppMain.h"
 
+#include "app/DocumentSessionService.h"
+#include "core/JsonNativeDocumentRepository.h"
 #include "platform/PlatformBootstrap.h"
 #include "ui/MindMapUi.h"
 #include "ui/UiState.h"
@@ -19,6 +21,9 @@ namespace mind_map::app {
 
 int RunApp() {
   mind_map::ui::UiState ui_state;
+  mind_map::core::JsonNativeDocumentRepository repo;
+  mind_map::app::DocumentSessionService session(repo);
+
   GLFWwindow* const window = mind_map::platform::CreateMainWindow(1280, 720, "MindMap Helper");
   if (window == nullptr) {
     return 1;
@@ -40,6 +45,19 @@ int RunApp() {
 
   while (glfwWindowShouldClose(window) == 0) {
     glfwPollEvents();
+
+    // Intercept GLFW close when there are unsaved changes.
+    if (glfwWindowShouldClose(window) != 0 && session.IsDirty()) {
+      glfwSetWindowShouldClose(window, 0);
+      session.RequestClose();
+    }
+
+    // The close guard modal (rendered by RenderMainUi) sets IsCloseConfirmed on
+    // Save/Discard; break here so the cleanup path runs correctly.
+    if (session.IsCloseConfirmed()) {
+      break;
+    }
+
     if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
       ImGui_ImplGlfw_Sleep(kIconifiedSleepMs);
       continue;
@@ -49,7 +67,7 @@ int RunApp() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    mind_map::ui::RenderMainUi(ui_state);
+    mind_map::ui::RenderMainUi(ui_state, session);
 
     ImGui::Render();
     int display_w = 0;

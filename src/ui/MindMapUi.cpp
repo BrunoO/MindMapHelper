@@ -1,5 +1,6 @@
 #include "ui/MindMapUi.h"
 
+#include "app/DocumentSessionService.h"
 #include "ui/MindMapCanvasView.h"
 #include "ui/branch/BranchStyle.h"
 #include "ui/canvas/CanvasMath.h"
@@ -30,10 +31,12 @@ enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
 class UiCommandDispatcher final {
  public:
   void Dispatch(UiCommandId command, MindMapCanvasView& canvas, ImVec2& pan_px, float& zoom,
-                bool& show_status_bar) const {
+                bool& show_status_bar,
+                mind_map::app::DocumentSessionService& session) const {
     switch (command) {  // NOSONAR(cpp:S6177) - C++17; `using enum` to shorten cases requires C++20
       case UiCommandId::ResetLayout:
         canvas.Reset();
+        session.MarkDirty();
         return;
       case UiCommandId::ZoomIn:  // NOLINT(bugprone-branch-clone)
         zoom = std::clamp(zoom + kZoomStep, kMinZoom, kMaxZoom);
@@ -52,7 +55,8 @@ class UiCommandDispatcher final {
   }
 };
 
-void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas) {
+void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas,
+                                             mind_map::app::DocumentSessionService& session) {
   if (!canvas.HasSelectedIncomingEdgeStyleTarget()) {
     ImGui::TextDisabled("Incoming edge style: select a non-root node on the canvas.");
     return;
@@ -72,6 +76,7 @@ void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas) {
     const bool selected = (style == current);
     if (ImGui::Selectable(mind_map::ui::branch::GetBranchStyleDisplayName(style), selected)) {
       canvas.SetBranchStyleForSelectedChildEdge(style);
+      session.MarkDirty();
     }
     if (selected) {
       ImGui::SetItemDefaultFocus();
@@ -80,7 +85,8 @@ void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas) {
   ImGui::EndCombo();
 }
 
-void RenderBranchStyleSelector(MindMapCanvasView& canvas) {
+void RenderBranchStyleSelector(MindMapCanvasView& canvas,
+                               mind_map::app::DocumentSessionService& session) {
   if (const char* const preview = canvas.GetBranchStyleComboPreviewLabel();
       !ImGui::BeginCombo("Set all branches to", preview)) {
     return;
@@ -94,6 +100,7 @@ void RenderBranchStyleSelector(MindMapCanvasView& canvas) {
     const bool selected = uniform && (style == representative);
     if (ImGui::Selectable(mind_map::ui::branch::GetBranchStyleDisplayName(style), selected)) {
       canvas.SetBranchStyleForAllEdges(style);
+      session.MarkDirty();
     }
     if (selected) {
       ImGui::SetItemDefaultFocus();
@@ -102,34 +109,35 @@ void RenderBranchStyleSelector(MindMapCanvasView& canvas) {
   ImGui::EndCombo();
 }
 
-void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, MindMapCanvasView& canvas, ImVec2& pan_px, float& zoom,
-                       bool& show_status_bar) {
+void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, MindMapCanvasView& canvas,
+                       ImVec2& pan_px, float& zoom, bool& show_status_bar,
+                       mind_map::app::DocumentSessionService& session) {
   if (!ImGui::BeginMainMenuBar()) {
     return;
   }
 
   if (ImGui::BeginMenu("File")) {
     if (ImGui::MenuItem("Reset Layout")) {
-      dispatcher.Dispatch(UiCommandId::ResetLayout, canvas, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ResetLayout, canvas, pan_px, zoom, show_status_bar, session);
     }
     if (ImGui::MenuItem("Reset View")) {
-      dispatcher.Dispatch(UiCommandId::ResetView, canvas, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ResetView, canvas, pan_px, zoom, show_status_bar, session);
     }
     ImGui::EndMenu();
   }
 
   if (ImGui::BeginMenu("View")) {
     if (ImGui::MenuItem("Zoom In", "Cmd+=")) {
-      dispatcher.Dispatch(UiCommandId::ZoomIn, canvas, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ZoomIn, canvas, pan_px, zoom, show_status_bar, session);
     }
     if (ImGui::MenuItem("Zoom Out", "Cmd+-")) {
-      dispatcher.Dispatch(UiCommandId::ZoomOut, canvas, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ZoomOut, canvas, pan_px, zoom, show_status_bar, session);
     }
     if (ImGui::MenuItem("Reset View", "Cmd+0")) {
-      dispatcher.Dispatch(UiCommandId::ResetView, canvas, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ResetView, canvas, pan_px, zoom, show_status_bar, session);
     }
     if (ImGui::MenuItem("Show Status Bar", nullptr, show_status_bar)) {
-      dispatcher.Dispatch(UiCommandId::ToggleStatusBar, canvas, pan_px, zoom, show_status_bar);
+      dispatcher.Dispatch(UiCommandId::ToggleStatusBar, canvas, pan_px, zoom, show_status_bar, session);
     }
     ImGui::EndMenu();
   }
@@ -143,7 +151,8 @@ void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, MindMapCanvasView&
   ImGui::EndMainMenuBar();
 }
 
-void HandleCanvasZoom(const ImGuiIO& io, bool canvas_hovered, ImVec2 canvas_p0, ImVec2& pan_px, float& zoom) {
+void HandleCanvasZoom(const ImGuiIO& io, bool canvas_hovered, ImVec2 canvas_p0, ImVec2& pan_px,
+                      float& zoom) {
   if (!canvas_hovered || io.MouseWheel == 0.0F) {
     return;
   }
@@ -155,7 +164,9 @@ void HandleCanvasZoom(const ImGuiIO& io, bool canvas_hovered, ImVec2 canvas_p0, 
 }
 
 void HandleCanvasPointerInput(bool canvas_hovered, bool canvas_item_active, const ImGuiIO& io,
-                              const MindMapPointerState& pointer_state, ImVec2& pan_px, MindMapCanvasView& canvas) {
+                              const MindMapPointerState& pointer_state, ImVec2& pan_px,
+                              MindMapCanvasView& canvas,
+                              mind_map::app::DocumentSessionService& session) {
   if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && canvas_hovered) {
     canvas.OnPrimaryDown(pointer_state);
   }
@@ -163,6 +174,7 @@ void HandleCanvasPointerInput(bool canvas_hovered, bool canvas_item_active, cons
   if (canvas_item_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
     if (canvas.IsDraggingContent()) {
       canvas.OnPrimaryDrag(pointer_state);
+      session.MarkDirty();
     }
     else {
       pan_px.x += io.MouseDelta.x;
@@ -175,7 +187,7 @@ void HandleCanvasPointerInput(bool canvas_hovered, bool canvas_item_active, cons
   }
 }
 
-void RenderCanvas(UiState& state) {
+void RenderCanvas(UiState& state, mind_map::app::DocumentSessionService& session) {
   const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
   const ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
   const ImVec2 canvas_p1 = {canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y};
@@ -192,7 +204,8 @@ void RenderCanvas(UiState& state) {
   pointer_state.mouse_screen_ = io.MousePos;
   pointer_state.mouse_world_ = mouse_world;
   pointer_state.canvas_hovered_ = canvas_hovered;
-  HandleCanvasPointerInput(canvas_hovered, canvas_item_active, io, pointer_state, state.pan_px_, state.canvas_);
+  HandleCanvasPointerInput(canvas_hovered, canvas_item_active, io, pointer_state, state.pan_px_,
+                           state.canvas_, session);
 
   MindMapCanvasRenderContext render_context = {};
   render_context.draw_list_ = ImGui::GetWindowDrawList();
@@ -229,11 +242,51 @@ void RenderStatusBar(const UiState& state) {
   }
 }
 
+void RenderCloseGuardModal(UiState& state, mind_map::app::DocumentSessionService& session) {
+  const ImGuiViewport* const main_vp = ImGui::GetMainViewport();
+  assert(main_vp != nullptr);
+  ImGui::SetNextWindowPos(main_vp->GetCenter(), ImGuiCond_Always, ImVec2(0.5F, 0.5F));
+  if (!ImGui::BeginPopupModal("Unsaved Changes##close", nullptr,
+                              ImGuiWindowFlags_AlwaysAutoResize)) {
+    return;
+  }
+
+  ImGui::TextUnformatted("You have unsaved changes. What would you like to do?");
+  ImGui::Separator();
+
+  const bool can_save = session.HasPath();
+  if (!can_save) { ImGui::BeginDisabled(); }
+  if (ImGui::Button("Save")) {
+    const auto doc = state.canvas_.ToDocument(state.ToViewport());
+    if (session.Save(doc)) {
+      session.ConfirmClose();
+      session.CancelClose();
+      ImGui::CloseCurrentPopup();
+    }
+  }
+  if (!can_save) { ImGui::EndDisabled(); }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Discard")) {
+    session.ConfirmClose();
+    session.CancelClose();
+    ImGui::CloseCurrentPopup();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Cancel")) {
+    session.CancelClose();
+    ImGui::CloseCurrentPopup();
+  }
+
+  ImGui::EndPopup();
+}
+
 }  // namespace
 
-void RenderMainUi(UiState& state) {
+void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session) {
   const UiCommandDispatcher command_dispatcher;
-  RenderMainMenuBar(command_dispatcher, state.canvas_, state.pan_px_, state.zoom_, state.show_status_bar_);
+  RenderMainMenuBar(command_dispatcher, state.canvas_, state.pan_px_, state.zoom_,
+                    state.show_status_bar_, session);
 
   const ImGuiViewport* const viewport = ImGui::GetMainViewport();
   assert(viewport != nullptr);
@@ -249,22 +302,29 @@ void RenderMainUi(UiState& state) {
   if (const float content_height = state.show_status_bar_ ? -kStatusBarHeight : 0.0F;
       ImGui::BeginChild("MindMapHelperContent", ImVec2(0.0F, content_height), ImGuiChildFlags_None,
                         ImGuiWindowFlags_None)) {
-    RenderBranchStyleSelector(state.canvas_);
+    RenderBranchStyleSelector(state.canvas_, session);
     ImGui::SameLine();
     if (ImGui::Button("Reset layout")) {
       command_dispatcher.Dispatch(UiCommandId::ResetLayout, state.canvas_, state.pan_px_, state.zoom_,
-                                   state.show_status_bar_);
+                                  state.show_status_bar_, session);
     }
-    RenderSelectedIncomingEdgeStyleSelector(state.canvas_);
+    RenderSelectedIncomingEdgeStyleSelector(state.canvas_, session);
     ImGui::TextUnformatted(
         "Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms. Click a non-root node to edit its incoming "
         "edge style; root or empty canvas clears selection. \"Set all branches\" applies one style to every edge.");
     ImGui::Text("Zoom %.2f", static_cast<double>(state.zoom_));
-    RenderCanvas(state);
+    RenderCanvas(state, session);
   }
   ImGui::EndChild();
 
   RenderStatusBar(state);
+
+  // Close guard: open modal once when AppMain requests a close while dirty.
+  if (session.IsCloseRequested() && !ImGui::IsPopupOpen("Unsaved Changes##close")) {
+    ImGui::OpenPopup("Unsaved Changes##close");
+  }
+  RenderCloseGuardModal(state, session);
+
   ImGui::End();
   ImGui::PopStyleVar(2);
 }
