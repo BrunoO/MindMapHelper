@@ -155,41 +155,51 @@ struct RoundedRectRay {
   return best_t;
 }
 
-[[nodiscard]] inline float BestPositiveTForVerticalFlatEdges(float best_t, float k_epsilon, float cy, float vx,
-                                                             float vy, float hx, float hy, float r) {
-  if (vx > k_epsilon) {
-    const float t = hx / vx;
-    const float y = cy + vy * t;
-    if (y >= cy - hy + r - k_epsilon && y <= cy + hy - r + k_epsilon) {
-      return ConsiderBestPositiveT(t, k_epsilon, best_t);
+// Shared ray + box half-extents for flat-edge intersection helpers (keeps parameter count within Sonar S107).
+struct RoundedRectFlatRayContext {
+  float k_epsilon_ = 0.0F;
+  float vx_ = 0.0F;
+  float vy_ = 0.0F;
+  float hx_ = 0.0F;
+  float hy_ = 0.0F;
+  float r_ = 0.0F;
+};
+
+[[nodiscard]] inline float BestPositiveTForVerticalFlatEdges(float best_t, float cy,
+                                                               const RoundedRectFlatRayContext& ctx) {
+  if (ctx.vx_ > ctx.k_epsilon_) {
+    const float t = ctx.hx_ / ctx.vx_;
+    if (const float y = cy + ctx.vy_ * t;
+        y >= cy - ctx.hy_ + ctx.r_ - ctx.k_epsilon_ && y <= cy + ctx.hy_ - ctx.r_ + ctx.k_epsilon_) {
+      return ConsiderBestPositiveT(t, ctx.k_epsilon_, best_t);
     }
     return best_t;
   }
-  if (vx < -k_epsilon) {
-    const float t = -hx / vx;
-    const float y = cy + vy * t;
-    if (y >= cy - hy + r - k_epsilon && y <= cy + hy - r + k_epsilon) {
-      return ConsiderBestPositiveT(t, k_epsilon, best_t);
+  if (ctx.vx_ < -ctx.k_epsilon_) {
+    const float t = -ctx.hx_ / ctx.vx_;
+    if (const float y = cy + ctx.vy_ * t;
+        y >= cy - ctx.hy_ + ctx.r_ - ctx.k_epsilon_ && y <= cy + ctx.hy_ - ctx.r_ + ctx.k_epsilon_) {
+      return ConsiderBestPositiveT(t, ctx.k_epsilon_, best_t);
     }
   }
   return best_t;
 }
 
-[[nodiscard]] inline float BestPositiveTForHorizontalFlatEdges(float best_t, float k_epsilon, float cx, float vx,
-                                                               float vy, float hx, float hy, float r) {
-  if (vy > k_epsilon) {
-    const float t = hy / vy;
-    const float x = cx + vx * t;
-    if (x >= cx - hx + r - k_epsilon && x <= cx + hx - r + k_epsilon) {
-      return ConsiderBestPositiveT(t, k_epsilon, best_t);
+[[nodiscard]] inline float BestPositiveTForHorizontalFlatEdges(float best_t, float cx,
+                                                               const RoundedRectFlatRayContext& ctx) {
+  if (ctx.vy_ > ctx.k_epsilon_) {
+    const float t = ctx.hy_ / ctx.vy_;
+    if (const float x = cx + ctx.vx_ * t;
+        x >= cx - ctx.hx_ + ctx.r_ - ctx.k_epsilon_ && x <= cx + ctx.hx_ - ctx.r_ + ctx.k_epsilon_) {
+      return ConsiderBestPositiveT(t, ctx.k_epsilon_, best_t);
     }
     return best_t;
   }
-  if (vy < -k_epsilon) {
-    const float t = -hy / vy;
-    const float x = cx + vx * t;
-    if (x >= cx - hx + r - k_epsilon && x <= cx + hx - r + k_epsilon) {
-      return ConsiderBestPositiveT(t, k_epsilon, best_t);
+  if (ctx.vy_ < -ctx.k_epsilon_) {
+    const float t = -ctx.hy_ / ctx.vy_;
+    if (const float x = cx + ctx.vx_ * t;
+        x >= cx - ctx.hx_ + ctx.r_ - ctx.k_epsilon_ && x <= cx + ctx.hx_ - ctx.r_ + ctx.k_epsilon_) {
+      return ConsiderBestPositiveT(t, ctx.k_epsilon_, best_t);
     }
   }
   return best_t;
@@ -224,8 +234,9 @@ struct RoundedRectRay {
   const float cx = center.x;
   const float cy = center.y;
 
-  best_t = BestPositiveTForVerticalFlatEdges(best_t, kEps, cy, vx, vy, hx, hy, r);
-  best_t = BestPositiveTForHorizontalFlatEdges(best_t, kEps, cx, vx, vy, hx, hy, r);
+  const RoundedRectFlatRayContext flat_ray_ctx = {kEps, vx, vy, hx, hy, r};
+  best_t = BestPositiveTForVerticalFlatEdges(best_t, cy, flat_ray_ctx);
+  best_t = BestPositiveTForHorizontalFlatEdges(best_t, cx, flat_ray_ctx);
   const RoundedRectRay ray = {cx, cy, vx, vy, r, kEps};
   best_t = ConsiderRoundedCornerArcIntersection(ray, {cx + hx - r, cy + hy - r}, true, false, false, false, best_t);
   best_t = ConsiderRoundedCornerArcIntersection(ray, {cx - hx + r, cy + hy - r}, false, true, false, false, best_t);
