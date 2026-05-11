@@ -45,8 +45,8 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
 }
 
 [[nodiscard]] std::optional<std::string> ExtractCellTextFromPropertyNode(const pugi::xml_node& node) {
-  const pugi::xml_attribute key_attr = node.attribute("key");
-  if (key_attr.empty() || std::string_view{key_attr.value()} != kGaiaCellTextKey) {
+  if (const pugi::xml_attribute key_attr = node.attribute("key");
+      key_attr.empty() || std::string_view{key_attr.value()} != kGaiaCellTextKey) {
     return std::nullopt;
   }
   if (const pugi::xml_attribute value_attr = node.attribute("value")) {
@@ -256,7 +256,6 @@ void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pu
 
 struct ZipArchiveCloser {
   zip_t* archive_ = nullptr;
-  ZipArchiveCloser() = default;
   ZipArchiveCloser(const ZipArchiveCloser&) = delete;
   ZipArchiveCloser& operator=(const ZipArchiveCloser&) = delete;
   ~ZipArchiveCloser() {
