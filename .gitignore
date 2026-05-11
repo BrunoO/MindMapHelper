@@ -3,3 +3,9 @@
 /_deps/
 /.cache/
 imgui.ini
+
+# Local overrides and generated analysis output
+.claude/settings.local.json
+.scannerwork/
+clang-tidy-report.txt
+sonar-results/
