@@ -44,6 +44,17 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
   return {};
 }
 
+[[nodiscard]] std::optional<std::string> ExtractCellTextFromPropertyNode(const pugi::xml_node& node) {
+  const pugi::xml_attribute key_attr = node.attribute("key");
+  if (key_attr.empty() || std::string_view{key_attr.value()} != kGaiaCellTextKey) {
+    return std::nullopt;
+  }
+  if (const pugi::xml_attribute value_attr = node.attribute("value")) {
+    return std::string{value_attr.value()};
+  }
+  return std::string{node.text().get()};
+}
+
 [[nodiscard]] std::string ExtractCellText(const pugi::xml_node& node_with_id) {
   std::vector<pugi::xml_node> stack;
   stack.push_back(node_with_id);
@@ -51,13 +62,8 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
     const pugi::xml_node node = stack.back();
     stack.pop_back();
     if (node.type() == pugi::node_element && std::strcmp(node.name(), "property") == 0) {
-      if (const pugi::xml_attribute key_attr = node.attribute("key")) {
-        if (std::string_view{key_attr.value()} == kGaiaCellTextKey) {
-          if (const pugi::xml_attribute value_attr = node.attribute("value")) {
-            return {value_attr.value()};
-          }
-          return {node.text().get()};
-        }
+      if (auto result = ExtractCellTextFromPropertyNode(node)) {
+        return *result;
       }
     }
     for (pugi::xml_node child = node.last_child(); !child.empty(); child = child.previous_sibling()) {
@@ -65,6 +71,22 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
     }
   }
   return {};
+}
+
+void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pugi::xml_node& node) {
+  const pugi::xml_attribute id_attr = node.attribute("id");
+  if (id_attr.empty()) {
+    return;
+  }
+  const std::string id{id_attr.value()};
+  if (id.empty()) {
+    return;
+  }
+  const std::string text = ExtractCellText(node);
+  auto [it, inserted] = map.try_emplace(id, text);
+  if (!inserted && !text.empty()) {
+    it->second = text;
+  }
 }
 
 [[nodiscard]] std::unordered_map<std::string, std::string> BuildIdToTextMap(const pugi::xml_document& doc) {
@@ -77,16 +99,7 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
     const pugi::xml_node node = stack.back();
     stack.pop_back();
     if (node.type() == pugi::node_element) {
-      if (const pugi::xml_attribute id_attr = node.attribute("id")) {
-        const std::string id = id_attr.value();
-        if (!id.empty()) {
-          const std::string text = ExtractCellText(node);
-          auto emplaced = id_to_text.try_emplace(id, text);
-          if (!emplaced.second && !text.empty()) {
-            emplaced.first->second = text;
-          }
-        }
-      }
+      UpdateIdTextMap(id_to_text, node);
     }
     for (pugi::xml_node child = node.last_child(); !child.empty(); child = child.previous_sibling()) {
       stack.push_back(child);
@@ -121,9 +134,7 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
 [[nodiscard]] std::unordered_map<std::string, std::vector<std::string>> BuildChildrenMap(
     const std::vector<std::pair<std::string, std::string>>& edges) {
   std::unordered_map<std::string, std::vector<std::string>> children;
-  for (const auto& edge : edges) {
-    const std::string& parent = edge.first;
-    const std::string& child = edge.second;
+  for (const auto& [parent, child] : edges) {
     std::vector<std::string>& bucket = children[parent];
     if (std::find(bucket.begin(), bucket.end(), child) == bucket.end()) {  // NOLINT(llvm-use-ranges)
       bucket.push_back(child);
@@ -134,9 +145,9 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
 
 [[nodiscard]] std::optional<ImxMindMapModel> ParseDataXml(std::string_view data_xml) {
   pugi::xml_document doc;
-  const pugi::xml_parse_result parse_result =
-      doc.load_buffer(data_xml.data(), data_xml.size(), pugi::parse_default, pugi::encoding_utf8);
-  if (parse_result.status != pugi::status_ok) {
+  if (const pugi::xml_parse_result parse_result =
+          doc.load_buffer(data_xml.data(), data_xml.size(), pugi::parse_default, pugi::encoding_utf8);
+      parse_result.status != pugi::status_ok) {
     return std::nullopt;
   }
 
@@ -155,12 +166,13 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
 
   std::unordered_set<std::string> all_ids;
   all_ids.insert(root_id);
-  for (const auto& kv : id_to_text) {
-    all_ids.insert(kv.first);
+  for (const auto& [node_id, node_text] : id_to_text) {
+    static_cast<void>(node_text);
+    all_ids.insert(node_id);
   }
-  for (const auto& edge : edges) {
-    all_ids.insert(edge.first);
-    all_ids.insert(edge.second);
+  for (const auto& [src, tgt] : edges) {
+    all_ids.insert(src);
+    all_ids.insert(tgt);
   }
 
   std::vector<ImxNode> ordered_nodes;
@@ -215,9 +227,9 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
     return meta;
   }
   pugi::xml_document doc;
-  const pugi::xml_parse_result parse_result =
-      doc.load_buffer(mapmeta_xml.data(), mapmeta_xml.size(), pugi::parse_default, pugi::encoding_utf8);
-  if (parse_result.status != pugi::status_ok) {
+  if (const pugi::xml_parse_result parse_result =
+          doc.load_buffer(mapmeta_xml.data(), mapmeta_xml.size(), pugi::parse_default, pugi::encoding_utf8);
+      parse_result.status != pugi::status_ok) {
     return meta;
   }
   const pugi::xml_node map_meta = FindFirstElementByName(doc.document_element(), "MapMeta");
@@ -244,6 +256,9 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
 
 struct ZipArchiveCloser {
   zip_t* archive_ = nullptr;
+  ZipArchiveCloser() = default;
+  ZipArchiveCloser(const ZipArchiveCloser&) = delete;
+  ZipArchiveCloser& operator=(const ZipArchiveCloser&) = delete;
   ~ZipArchiveCloser() {
     if (archive_ != nullptr) {
       zip_close(archive_);

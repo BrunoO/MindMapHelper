@@ -15,7 +15,7 @@ constexpr float kPanY       = 120.0F;
 constexpr float kZoom       = 1.5F;
 
 [[nodiscard]] const mind_map::core::MindMapNodeLayout* FindLayout(
-    const mind_map::core::MindMapDocument& doc, const std::string& node_id) {
+    const mind_map::core::MindMapDocument& doc, std::string_view node_id) {
   for (const auto& layout : doc.layouts_) {
     if (layout.node_id_ == node_id) {
       return &layout;

@@ -31,8 +31,8 @@ constexpr size_t kUniquenessN  = 1000;
   if (uuid[kVersionPos] != '4') {
     return false;
   }
-  const char variant = uuid[kVariantPos];
-  if (variant != '8' && variant != '9' && variant != 'a' && variant != 'b') {
+  if (const char variant = uuid[kVariantPos];
+      variant != '8' && variant != '9' && variant != 'a' && variant != 'b') {
     return false;
   }
   for (size_t i = 0; i < kUuidLength; ++i) {

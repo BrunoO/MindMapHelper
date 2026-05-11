@@ -124,7 +124,7 @@ void OpenSaveAsDialog(const mind_map::app::DocumentSessionService& session) {
   ImGuiFileDialog::Instance()->OpenDialog("SaveAsFileDlg", "Save Mind Map As", ".mmh", cfg);
 }
 
-void HandleSaveMenuItem(UiState& state, mind_map::app::DocumentSessionService& session) {
+void HandleSaveMenuItem(const UiState& state, mind_map::app::DocumentSessionService& session) {
   if (!session.HasPath()) {
     OpenSaveAsDialog(session);
     return;
@@ -298,7 +298,7 @@ void RenderStatusBar(const UiState& state) {
   }
 }
 
-void RenderCloseGuardModal(UiState& state, mind_map::app::DocumentSessionService& session) {
+void RenderCloseGuardModal(const UiState& state, mind_map::app::DocumentSessionService& session) {
   const ImGuiViewport* const main_vp = ImGui::GetMainViewport();
   assert(main_vp != nullptr);
   ImGui::SetNextWindowPos(main_vp->GetCenter(), ImGuiCond_Always, ImVec2(0.5F, 0.5F));

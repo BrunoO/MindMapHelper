@@ -25,7 +25,7 @@ constexpr const char* kFallbackLabel = "(no text)";
   std::unordered_map<std::string, std::string> map;
   map.reserve(model.nodes_.size());
   for (const ImxNode& node : model.nodes_) {
-    map.emplace(node.id_, mind_map::core::mindmap::GenerateUuidV4());
+    map.try_emplace(node.id_, mind_map::core::mindmap::GenerateUuidV4());
   }
   return map;
 }
@@ -74,7 +74,7 @@ constexpr const char* kFallbackLabel = "(no text)";
   std::unordered_map<std::string, const ImxNode*> by_id;
   by_id.reserve(model.nodes_.size());
   for (const ImxNode& n : model.nodes_) {
-    by_id.emplace(n.id_, &n);
+    by_id.try_emplace(n.id_, &n);
   }
 
   std::deque<std::string> queue;

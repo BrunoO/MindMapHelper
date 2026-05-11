@@ -111,7 +111,7 @@ std::optional<MindMapDocument> JsonNativeDocumentRepository::Load(std::string_vi
 
     return FromJson(j);
   }
-  catch (const std::exception& e) {
+  catch (const nlohmann::json::exception& e) {
     std::cerr << "JsonNativeDocumentRepository: load failed — " << e.what() << '\n';
     return std::nullopt;
   }
@@ -133,7 +133,7 @@ bool JsonNativeDocumentRepository::Save(std::string_view path, const MindMapDocu
     }
     return true;
   }
-  catch (const std::exception& e) {
+  catch (const nlohmann::json::exception& e) {
     std::cerr << "JsonNativeDocumentRepository: save failed — " << e.what() << '\n';
     return false;
   }
