@@ -23,9 +23,9 @@ void DrawSampleMindMapBranchBezier(
   FillSampleMindMapBranchRoundedAttachments(child_index, pos_world, &g);
   const ImVec2 p0w = g.p0_attachment_;
   const ImVec2 p3w = g.p3_attachment_;
-  const mind_map::demos::SampleMapBezierArmInputs arm_inputs = {
+  const mind_map::canvas::BezierArmInputs arm_inputs = {
       g.pw_, g.parent_half_, g.cw_, g.child_half_, p0w, p3w, 96.0F, 0.55F, nullptr, nullptr};
-  const mind_map::demos::SampleMapBezierArms arms = mind_map::demos::ComputeSampleMapBezierArmsWorld(arm_inputs);
+  const mind_map::canvas::BezierArms arms = mind_map::canvas::ComputeBezierArmsWorld(arm_inputs);
   const ImVec2 p1w = arms.p1_;
   const ImVec2 p2w = arms.p2_;
 

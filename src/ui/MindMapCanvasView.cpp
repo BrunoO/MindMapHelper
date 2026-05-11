@@ -31,7 +31,7 @@ void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_
 
   for (int i = 0; i < mind_map::demos::kSampleMindMapNodeCount; ++i) {
     const char* const label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(i)].label_;
-    const ImVec2 half = mind_map::demos::SampleMapHalfExtentForLabel(label);
+    const ImVec2 half = mind_map::canvas::NodeHalfExtentForLabel(label);
     const ImVec2 c = pos_world[static_cast<size_t>(i)];
     const ImVec2 rmin_w = {c.x - half.x, c.y - half.y};
     const ImVec2 rmax_w = {c.x + half.x, c.y + half.y};
@@ -44,8 +44,8 @@ void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_
     const bool hot = (i == dragging_node) || (i == hot_node);
     const ImU32 hot_border = hot ? kColorNodeBorderHot : kColorNodeBorder;
     const ImU32 border = incoming_edge_selected ? kColorNodeBorderSelected : hot_border;
-    ctx.draw_list_->AddRectFilled(rmin, rmax, kColorNodeFill, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld);
-    ctx.draw_list_->AddRect(rmin, rmax, border, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, 0, kNodeBorderThickness);
+    ctx.draw_list_->AddRectFilled(rmin, rmax, kColorNodeFill, mind_map::canvas::kNodeCornerRadiusWorld);
+    ctx.draw_list_->AddRect(rmin, rmax, border, mind_map::canvas::kNodeCornerRadiusWorld, 0, kNodeBorderThickness);
 
     const ImVec2 text_sz = ImGui::CalcTextSize(label);
     const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F, (rmin.y + rmax.y - text_sz.y) * 0.5F};

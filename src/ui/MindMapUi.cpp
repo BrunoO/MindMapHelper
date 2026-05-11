@@ -18,8 +18,6 @@ constexpr float kMinZoom = 0.35F;
 constexpr float kMaxZoom = 3.0F;
 constexpr float kZoomStep = 0.1F;
 constexpr float kStatusBarHeight = 26.0F;
-constexpr float kInitialPanX = 40.0F;
-constexpr float kInitialPanY = 120.0F;
 
 enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   ResetLayout,
@@ -27,13 +25,6 @@ enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   ZoomOut,
   ResetView,
   ToggleStatusBar
-};
-
-struct UiState {
-  MindMapCanvasView canvas_;
-  ImVec2 pan_px_ = {kInitialPanX, kInitialPanY};
-  float zoom_ = 1.0F;
-  bool show_status_bar_ = true;
 };
 
 class UiCommandDispatcher final {
@@ -240,8 +231,7 @@ void RenderStatusBar(const UiState& state) {
 
 }  // namespace
 
-void RenderMainUi() {
-  static UiState state;
+void RenderMainUi(UiState& state) {
   const UiCommandDispatcher command_dispatcher;
   RenderMainMenuBar(command_dispatcher, state.canvas_, state.pan_px_, state.zoom_, state.show_status_bar_);
 

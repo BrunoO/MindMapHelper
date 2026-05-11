@@ -2,6 +2,7 @@
 
 #include "platform/PlatformBootstrap.h"
 #include "ui/MindMapUi.h"
+#include "ui/UiState.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -17,6 +18,7 @@
 namespace mind_map::app {
 
 int RunApp() {
+  mind_map::ui::UiState ui_state;
   GLFWwindow* const window = mind_map::platform::CreateMainWindow(1280, 720, "MindMap Helper");
   if (window == nullptr) {
     return 1;
@@ -47,7 +49,7 @@ int RunApp() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    mind_map::ui::RenderMainUi();
+    mind_map::ui::RenderMainUi(ui_state);
 
     ImGui::Render();
     int display_w = 0;
