@@ -13,18 +13,44 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
+#include <string>
+#include <string_view>
+
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif  // _MSC_VER && (_MSC_VER >= 1900) && !IMGUI_DISABLE_WIN32_FUNCTIONS
 
 namespace mind_map::app {
 
-int RunApp() {
+namespace {
+
+[[nodiscard]] std::string FilenameFromPath(std::string_view path) {
+  const auto sep = path.find_last_of("/\\");
+  return std::string{sep == std::string_view::npos ? path : path.substr(sep + 1)};
+}
+
+[[nodiscard]] std::string WindowTitleForPath(std::string_view path) {
+  return path.empty() ? "MindMap Helper"
+                      : FilenameFromPath(path) + " - MindMap Helper";
+}
+
+}  // namespace
+
+int RunApp(std::string_view startup_path) {
   mind_map::ui::UiState ui_state;
   mind_map::core::JsonNativeDocumentRepository repo;
   mind_map::app::DocumentSessionService session(repo);
 
-  GLFWwindow* const window = mind_map::platform::CreateMainWindow(1280, 720, "MindMap Helper");
+  if (!startup_path.empty()) {
+    mind_map::core::MindMapDocument doc;
+    if (session.Open(startup_path, doc)) {
+      ui_state.canvas_.LoadFrom(doc);
+      ui_state.ApplyViewport(doc.viewport_);
+    }
+  }
+
+  const std::string initial_title = WindowTitleForPath(session.GetCurrentPath());
+  GLFWwindow* const window = mind_map::platform::CreateMainWindow(1280, 720, initial_title.c_str());
   if (window == nullptr) {
     return 1;
   }
@@ -42,6 +68,7 @@ int RunApp() {
 
   constexpr ImVec4 kClearColor{0.11F, 0.11F, 0.14F, 1.0F};
   constexpr int kIconifiedSleepMs = 10;
+  std::string last_path{session.GetCurrentPath()};
 
   while (glfwWindowShouldClose(window) == 0) {
     glfwPollEvents();
@@ -68,6 +95,11 @@ int RunApp() {
     ImGui::NewFrame();
 
     mind_map::ui::RenderMainUi(ui_state, session);
+
+    if (session.GetCurrentPath() != last_path) {
+      last_path = session.GetCurrentPath();
+      glfwSetWindowTitle(window, WindowTitleForPath(last_path).c_str());
+    }
 
     ImGui::Render();
     int display_w = 0;
