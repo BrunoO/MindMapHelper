@@ -45,4 +45,14 @@ inline void FillSampleMindMapBranchRoundedAttachments(
       out->cw_, out->child_half_, mind_map::demos::kSampleMindMapNodeCornerRadiusWorld, out->pw_);
 }
 
+template <typename DrawOneFn>
+inline void ForEachSampleMindMapChildBranch(const DrawOneFn& draw_one) {
+  for (int child = 0; child < mind_map::demos::kSampleMindMapNodeCount; ++child) {
+    if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].parent_ < 0) {
+      continue;
+    }
+    draw_one(child);
+  }
+}
+
 }  // namespace mind_map::ui::branch

@@ -41,12 +41,9 @@ void DrawAllSampleMindMapBranchesOrthogonal(
     const BranchRenderContext& ctx,
     const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
   assert(ctx.draw_list_ != nullptr);
-  for (int child = 0; child < mind_map::demos::kSampleMindMapNodeCount; ++child) {
-    if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].parent_ < 0) {
-      continue;
-    }
+  ForEachSampleMindMapChildBranch([&ctx, &pos_world](int child) {
     DrawSampleMindMapBranchOrthogonal(ctx, child, pos_world);
-  }
+  });
 }
 
 }  // namespace mind_map::ui::branch
