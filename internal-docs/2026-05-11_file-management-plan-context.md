@@ -140,7 +140,9 @@ Separate `MindMapCanvasView` state by one criterion: **would losing this state l
 1. If `dirty_` is true, show "Unsaved changes — save before continuing?" (Save / Discard / Cancel). Abort on Cancel.
 2. Call `canvas.LoadFrom(document_state)`: replaces all document-state fields and resets all interaction fields to zero/default.
 
-This means topology differences between the current and incoming document are irrelevant — the old state is gone entirely. `File > New` follows the same path with an empty `MindMapDocument` as input.
+This means topology differences between the current and incoming document are irrelevant — the old state is gone entirely. `File > New` follows this same path with a minimal `MindMapDocument` as input — one root node with a generated UUID and label "New Mind Map".
+
+**Demo initialisation persistence:** Until node-creation UI exists, the app must have something to display at startup. `BuildSampleDocument()` in `src/ui/demos/` converts `SampleMindMapTopology` + `InitialSampleMapPositions()` into a `MindMapDocument` (including stable per-edge style defaults and UUIDs). `MindMapCanvasView()` calls `LoadFrom(BuildSampleDocument())`. `Reset()` continues to reset only positions and interaction state (not styles), so it remains "Reset Layout" semantically. `SampleMindMapTopology.h/.cpp`, `InitialSampleMapPositions()`, and `BuildSampleDocument()` are deleted together when node-creation UI lands — at that point startup goes through `File > New`.
 
 Pattern: **Presentation Model** — pure data model, view adds interaction on top.
 
@@ -178,7 +180,7 @@ Use a strict versioned top-level shape:
 
 0. Add `FetchContent_Declare` blocks for `nlohmann/json` and `ImGuiFileDialog` in CMakeLists. Link `nlohmann_json::nlohmann_json` to `mindmap_helper_core`; add ImGuiFileDialog source to `BM_UI_SOURCES`. Confirm clean build.
 1. Add `UuidGenerator` helper in `src/core/mindmap/` (UUID v4 via `<random>`). Add canonical `MindMapDocument` types in `src/core/`.
-2. Implement mapping between current canvas/sample state and `MindMapDocument`, following the document/UI state split defined in Design Plan §5.
+2. Add `BuildSampleDocument()` factory in `src/ui/demos/SampleMindMapGraph.cpp` (converts sample topology + initial positions + default per-edge styles into a `MindMapDocument` with stable UUIDs). Add `LoadFrom(const MindMapDocument&)` and `ToDocument(const MindMapViewport&) const` to `MindMapCanvasView`; add `node_ids_` and `edge_ids_` arrays as identity bridge. Wire constructor to `LoadFrom(BuildSampleDocument())`. `HitTestSampleMap` and `InitialSampleMapPositions` remain in `SampleMindMapGraph.h` for now; `InitDefaultPerChildBranchStyles_()` is removed (styles now come from the document). Follows the document/UI state split in Design Plan §5.
 3. Add JSON native `Save`/`Load` via `JsonNativeDocumentRepository` (no import yet). Uses `nlohmann_json` in `core`.
 4. Add `DocumentSessionService` in `src/app/` (`current_path_`, `dirty_`, operation results: `New`, `Open`, `Save`, `SaveAs`). Update `RenderMainUi()` signature to accept `DocumentSessionService&`.
 5. Wire File menu to real actions (`New`, `Open`, `Save`, `Save As`) using `ImGuiFileDialog` for path selection and `DocumentSessionService` for I/O.
@@ -215,7 +217,7 @@ Use a strict versioned top-level shape:
 ## Risks to Address Early
 
 - Existing sample/static topology approach is not yet a full dynamic document model.
-- Topology duplication resolved; geometry promoted: stable algorithms live in `src/ui/canvas/NodeGeometry.h` (names stripped of `SampleMap` prefix, namespace `mind_map::canvas`). `SampleMindMapGraph.h` now contains only `HitTestSampleMap` + `InitialSampleMapPositions`; both are deleted in step 2 when the document model replaces hardcoded data.
+- Topology duplication resolved; geometry promoted: stable algorithms live in `src/ui/canvas/NodeGeometry.h` (names stripped of `SampleMap` prefix, namespace `mind_map::canvas`). `SampleMindMapGraph.h` now contains only `HitTestSampleMap` + `InitialSampleMapPositions`; both survive until node-creation UI lands. `BuildSampleDocument()` (added in step 2) consumes them internally and is the single startup-document factory. All three are deleted together when node creation makes a startup document unnecessary.
 - `Reset()` behavior resolved: `Open` and `New` both perform a full canvas replace after a dirty-check confirmation. See Design Plan §5.
 - File dialog lives in `ui` (ImGuiFileDialog widget), not `platform` — old assumption corrected.
 - Unsaved-changes close guard: handled inline in `AppMain.cpp` after `glfwPollEvents()` — if `glfwWindowShouldClose` is set and `session.IsDirty()`, call `glfwSetWindowShouldClose(window, 0)` to veto and `session.RequestClose()` to set a flag. `RenderMainUi()` checks the flag and opens the ImGui confirmation modal. On Discard/Save the modal calls `glfwSetWindowShouldClose(window, 1)`; on Cancel it clears the flag. No callbacks, no cross-layer wiring.

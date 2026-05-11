@@ -109,6 +109,7 @@ set(IMGUI_SOURCES
 
 set(BM_UI_SOURCES
   ${imguifiledialog_SOURCE_DIR}/ImGuiFileDialog.cpp
+  src/ui/demos/SampleMindMapGraph.cpp
   src/ui/MindMapUi.cpp
   src/ui/MindMapCanvasView.cpp
   src/ui/branch/DrawBranchesBezier.cpp

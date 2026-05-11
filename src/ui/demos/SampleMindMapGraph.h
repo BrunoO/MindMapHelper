@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/MindMapDocument.h"
 #include "core/mindmap/SampleMindMapTopology.h"
 
 #include "ui/canvas/CanvasMath.h"
@@ -16,6 +17,10 @@ namespace mind_map::demos {
 using mind_map::core::mindmap::kSampleMindMapNodeCount;
 using mind_map::core::mindmap::kSampleMindMapSpecs;
 using mind_map::core::mindmap::SampleMindMapNodeSpec;
+
+// Builds a MindMapDocument from the sample topology with stable UUIDs and initial layout.
+// Deleted together with HitTestSampleMap and InitialSampleMapPositions when node-creation UI lands.
+[[nodiscard]] mind_map::core::MindMapDocument BuildSampleDocument();
 
 // Hit-tests the fixed sample node array. Deleted in step 2 when topology moves to MindMapDocument.
 [[nodiscard]] inline int HitTestSampleMap(ImVec2 world_pos,

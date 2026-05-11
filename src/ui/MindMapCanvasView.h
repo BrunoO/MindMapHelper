@@ -1,11 +1,13 @@
 #pragma once
 
+#include "core/MindMapDocument.h"
 #include "ui/branch/BranchStyle.h"
 #include "ui/demos/SampleMindMapGraph.h"
 
 #include "imgui.h"
 
 #include <array>
+#include <string>
 
 namespace mind_map::ui {
 
@@ -43,6 +45,9 @@ class MindMapCanvasView {
 
   void Reset();
 
+  void LoadFrom(const mind_map::core::MindMapDocument& doc);
+  [[nodiscard]] mind_map::core::MindMapDocument ToDocument(const mind_map::core::MindMapViewport& viewport) const;
+
   void OnPrimaryDown(const MindMapPointerState& ptr);
   void OnPrimaryDrag(const MindMapPointerState& ptr);
   void OnPrimaryUp();
@@ -68,8 +73,6 @@ class MindMapCanvasView {
   [[nodiscard]] mind_map::ui::branch::BranchStyle RepresentativeChildEdgeStyle() const;
 
  private:
-  void InitDefaultPerChildBranchStyles_();
-
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
   [[nodiscard]] bool BranchStylesAreUniform_() const;
 
@@ -78,6 +81,8 @@ class MindMapCanvasView {
   ImVec2 grab_offset_world_;
   int selected_child_for_edge_style_ = -1;
   std::array<mind_map::ui::branch::BranchStyle, mind_map::demos::kSampleMindMapNodeCount> branch_style_by_child_{};
+  std::array<std::string, mind_map::demos::kSampleMindMapNodeCount> node_ids_{};
+  std::array<std::string, mind_map::demos::kSampleMindMapNodeCount> edge_ids_{};
 };
 
 }  // namespace mind_map::ui

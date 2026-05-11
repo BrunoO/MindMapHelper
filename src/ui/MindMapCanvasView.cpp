@@ -15,6 +15,23 @@ namespace mind_map::ui {
 
 namespace {
 
+[[nodiscard]] std::string_view BranchStyleToString(mind_map::ui::branch::BranchStyle style) {
+  using mind_map::ui::branch::BranchStyle;
+  switch (style) {  // NOSONAR(cpp:S6177)
+    case BranchStyle::Bezier:       return "bezier";
+    case BranchStyle::Orthogonal:   return "orthogonal";
+    case BranchStyle::OrganicTaper: return "organic_taper";
+    default:                        return "bezier";
+  }
+}
+
+[[nodiscard]] mind_map::ui::branch::BranchStyle BranchStyleFromString(std::string_view s) {
+  using mind_map::ui::branch::BranchStyle;
+  if (s == "orthogonal")    { return BranchStyle::Orthogonal; }
+  if (s == "organic_taper") { return BranchStyle::OrganicTaper; }
+  return BranchStyle::Bezier;
+}
+
 constexpr float kHandleRadius = 5.0F;
 constexpr ImU32 kColorNodeFill = IM_COL32(48, 52, 64, 255);           // NOLINT(hicpp-signed-bitwise)
 constexpr ImU32 kColorNodeBorder = IM_COL32(110, 120, 145, 255);      // NOLINT(hicpp-signed-bitwise)
@@ -81,22 +98,7 @@ void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_
 }  // namespace
 
 MindMapCanvasView::MindMapCanvasView() {
-  pos_world_ = mind_map::demos::InitialSampleMapPositions();
-  InitDefaultPerChildBranchStyles_();
-}
-
-void MindMapCanvasView::InitDefaultPerChildBranchStyles_() {
-  using mind_map::ui::branch::BranchStyle;
-  // Root index 0 unused; children 1–6 use mixed styles to validate Milestone D (per-edge dispatch).
-  branch_style_by_child_ = {{
-      BranchStyle::Bezier,
-      BranchStyle::Bezier,
-      BranchStyle::Orthogonal,
-      BranchStyle::OrganicTaper,
-      BranchStyle::Orthogonal,
-      BranchStyle::Bezier,
-      BranchStyle::OrganicTaper,
-  }};
+  LoadFrom(mind_map::demos::BuildSampleDocument());
 }
 
 mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() const {
@@ -126,6 +128,69 @@ void MindMapCanvasView::Reset() {
   pos_world_ = mind_map::demos::InitialSampleMapPositions();
   dragging_node_ = -1;
   selected_child_for_edge_style_ = -1;
+}
+
+void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
+  dragging_node_ = -1;
+  selected_child_for_edge_style_ = -1;
+
+  const size_t node_count = std::min(doc.nodes_.size(), node_ids_.size());
+  for (size_t i = 0; i < node_count; ++i) {
+    node_ids_[i] = doc.nodes_[i].id_;
+  }
+
+  for (const auto& layout : doc.layouts_) {
+    for (size_t i = 0; i < node_count; ++i) {
+      if (node_ids_[i] == layout.node_id_) {
+        pos_world_[i] = {layout.position_.x_, layout.position_.y_};
+        break;
+      }
+    }
+  }
+
+  branch_style_by_child_ = {};
+  for (const auto& edge : doc.edges_) {
+    for (size_t i = 0; i < node_count; ++i) {
+      if (node_ids_[i] == edge.child_id_) {
+        edge_ids_[i] = edge.id_;
+        branch_style_by_child_[i] = BranchStyleFromString(edge.style_);
+        break;
+      }
+    }
+  }
+}
+
+mind_map::core::MindMapDocument MindMapCanvasView::ToDocument(const mind_map::core::MindMapViewport& viewport) const {
+  using mind_map::core::mindmap::kSampleMindMapNodeCount;
+  using mind_map::core::mindmap::kSampleMindMapSpecs;
+
+  mind_map::core::MindMapDocument doc;
+  doc.viewport_ = viewport;
+
+  for (int i = 0; i < kSampleMindMapNodeCount; ++i) {
+    const auto idx = static_cast<size_t>(i);
+
+    mind_map::core::MindMapNode node;
+    node.id_ = node_ids_[idx];
+    node.label_ = kSampleMindMapSpecs[idx].label_;
+    doc.nodes_.push_back(std::move(node));
+
+    mind_map::core::MindMapNodeLayout layout;
+    layout.node_id_ = node_ids_[idx];
+    layout.position_ = {pos_world_[idx].x, pos_world_[idx].y};
+    doc.layouts_.push_back(std::move(layout));
+
+    if (kSampleMindMapSpecs[idx].parent_ >= 0) {
+      mind_map::core::MindMapEdge edge;
+      edge.id_ = edge_ids_[idx];
+      edge.parent_id_ = node_ids_[static_cast<size_t>(kSampleMindMapSpecs[idx].parent_)];
+      edge.child_id_ = node_ids_[idx];
+      edge.style_ = std::string(BranchStyleToString(branch_style_by_child_[idx]));
+      doc.edges_.push_back(std::move(edge));
+    }
+  }
+
+  return doc;
 }
 
 void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
