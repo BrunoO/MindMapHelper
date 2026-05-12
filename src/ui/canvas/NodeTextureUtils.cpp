@@ -18,10 +18,11 @@
 #include "stb/stb_image.h"
 
 #include <cstdint>
+#include <string_view>
 
 namespace mind_map::ui {
 
-ImTextureID UploadPngTexture(const std::string& png_bytes) {
+ImTextureID UploadPngTexture(std::string_view png_bytes) {
   if (png_bytes.empty()) {
     return 0;
   }

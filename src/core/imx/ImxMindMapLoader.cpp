@@ -146,6 +146,21 @@ void MaybeCaptureHtmlLabelFallback(const pugi::xml_node& property_node, std::str
   return std::string(end == std::string_view::npos ? value : value.substr(0, end));
 }
 
+void TryRegisterImageAssetFromElement(const pugi::xml_node& node,
+                                      std::unordered_map<std::string, std::string>* result) {
+  assert(result != nullptr);
+  const pugi::xml_attribute id_attr = node.attribute("id");
+  const pugi::xml_attribute style_attr = node.attribute("style");
+  if (id_attr.empty() || style_attr.empty()) {
+    return;
+  }
+  const std::string image_id = ExtractImageIdFromStyle(style_attr.value());
+  if (image_id.empty()) {
+    return;
+  }
+  result->try_emplace(std::string{id_attr.value()}, image_id);
+}
+
 [[nodiscard]] std::unordered_map<std::string, std::string> BuildIdToImageAssetIdMap(
     const pugi::xml_document& doc) {
   std::unordered_map<std::string, std::string> result;
@@ -157,14 +172,7 @@ void MaybeCaptureHtmlLabelFallback(const pugi::xml_node& property_node, std::str
     const pugi::xml_node node = stack.back();
     stack.pop_back();
     if (node.type() == pugi::node_element) {
-      const pugi::xml_attribute id_attr = node.attribute("id");
-      const pugi::xml_attribute style_attr = node.attribute("style");
-      if (!id_attr.empty() && !style_attr.empty()) {
-        const std::string image_id = ExtractImageIdFromStyle(style_attr.value());
-        if (!image_id.empty()) {
-          result.try_emplace(std::string{id_attr.value()}, image_id);
-        }
-      }
+      TryRegisterImageAssetFromElement(node, &result);
     }
     for (pugi::xml_node child = node.last_child(); !child.empty(); child = child.previous_sibling()) {
       stack.push_back(child);
@@ -443,8 +451,7 @@ struct ZipArchiveCloser {
 }
 
 [[nodiscard]] zip_int64_t LocateImageEntry(zip_t* archive, const std::string& image_id) {
-  const zip_int64_t idx = LocateEntryByBasename(archive, image_id.c_str());
-  if (idx >= 0) {
+  if (const zip_int64_t idx = LocateEntryByBasename(archive, image_id.c_str()); idx >= 0) {
     return idx;
   }
   const std::string with_png = image_id + ".png";
