@@ -1,20 +1,19 @@
 #pragma once
 
-#include "core/mindmap/SampleMindMapTopology.h"
-
+#include "ui/canvas/CanvasNode.h"
 #include "ui/canvas/NodeGeometry.h"
 
 #include "imgui.h"
 
-#include <array>
 #include <cassert>
 #include <cstddef>
+#include <vector>
 
 namespace mind_map::ui::branch {
 
-// Shared world-space attachment points for sample-mind-map edges (rounded-rect toward opposite node).
-struct SampleMindMapBranchRoundedAttachments {
-  int parent_ = -1;
+// Shared world-space attachment points for mind-map edges (rounded-rect toward opposite node).
+struct BranchEdgeData {
+  bool parent_is_root_ = false;
   const char* parent_label_ = nullptr;
   const char* child_label_ = nullptr;
   ImVec2 parent_half_;
@@ -25,40 +24,29 @@ struct SampleMindMapBranchRoundedAttachments {
   ImVec2 p3_attachment_;
 };
 
-// Preconditions: child_index is a valid sample node index; caller must only invoke for nodes with parent >= 0.
-inline void FillSampleMindMapBranchRoundedAttachments(
+// Preconditions: child_index is valid; nodes[child_index].parent_idx_ >= 0.
+inline void FillBranchEdgeData(
     int child_index,
-    const std::array<ImVec2, mind_map::core::mindmap::kSampleMindMapNodeCount>& pos_world,
-    SampleMindMapBranchRoundedAttachments* out) {
+    const std::vector<mind_map::ui::CanvasNode>& nodes,
+    BranchEdgeData* out) {
   assert(out != nullptr);
-  assert(child_index >= 0 && child_index < mind_map::core::mindmap::kSampleMindMapNodeCount);
-  const int parent =
-      mind_map::core::mindmap::kSampleMindMapSpecs[static_cast<size_t>(child_index)].parent_;
-  assert(parent >= 0 && parent < mind_map::core::mindmap::kSampleMindMapNodeCount);
+  assert(child_index >= 0 && child_index < static_cast<int>(nodes.size()));
+  const mind_map::ui::CanvasNode& child = nodes[static_cast<size_t>(child_index)];
+  const int parent = child.parent_idx_;
+  assert(parent >= 0 && parent < static_cast<int>(nodes.size()));
+  const mind_map::ui::CanvasNode& par = nodes[static_cast<size_t>(parent)];
 
-  out->parent_ = parent;
-  out->parent_label_ =
-      mind_map::core::mindmap::kSampleMindMapSpecs[static_cast<size_t>(parent)].label_;
-  out->child_label_ =
-      mind_map::core::mindmap::kSampleMindMapSpecs[static_cast<size_t>(child_index)].label_;
+  out->parent_is_root_ = (par.parent_idx_ < 0);
+  out->parent_label_ = par.label_.c_str();
+  out->child_label_ = child.label_.c_str();
   out->parent_half_ = mind_map::canvas::NodeHalfExtentForLabel(out->parent_label_);
   out->child_half_ = mind_map::canvas::NodeHalfExtentForLabel(out->child_label_);
-  out->pw_ = pos_world[static_cast<size_t>(parent)];
-  out->cw_ = pos_world[static_cast<size_t>(child_index)];
+  out->pw_ = par.pos_world_;
+  out->cw_ = child.pos_world_;
   out->p0_attachment_ = mind_map::canvas::RoundedRectAttachmentPreferEdgeMid(
       out->pw_, out->parent_half_, mind_map::canvas::kNodeCornerRadiusWorld, out->cw_);
   out->p3_attachment_ = mind_map::canvas::RoundedRectAttachmentPreferEdgeMid(
       out->cw_, out->child_half_, mind_map::canvas::kNodeCornerRadiusWorld, out->pw_);
-}
-
-template <typename DrawOneFn>
-inline void ForEachSampleMindMapChildBranch(const DrawOneFn& draw_one) {
-  for (int child = 0; child < mind_map::core::mindmap::kSampleMindMapNodeCount; ++child) {
-    if (mind_map::core::mindmap::kSampleMindMapSpecs[static_cast<size_t>(child)].parent_ < 0) {
-      continue;
-    }
-    draw_one(child);
-  }
 }
 
 }  // namespace mind_map::ui::branch

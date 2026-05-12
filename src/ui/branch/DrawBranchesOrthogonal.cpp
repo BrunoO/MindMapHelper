@@ -4,7 +4,6 @@
 #include "ui/canvas/CanvasMath.h"
 
 #include <cassert>
-#include <cstddef>
 
 namespace mind_map::ui::branch {
 
@@ -15,12 +14,12 @@ constexpr ImU32 kColorEdge = IM_COL32(120, 200, 150, 255);  // NOLINT(hicpp-sign
 
 }  // namespace
 
-void DrawSampleMindMapBranchOrthogonal(
+void DrawMindMapBranchOrthogonal(
     const BranchRenderContext& ctx, const int child_index,
-    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
+    const std::vector<mind_map::ui::CanvasNode>& nodes) {
   assert(ctx.draw_list_ != nullptr);
-  SampleMindMapBranchRoundedAttachments g{};
-  FillSampleMindMapBranchRoundedAttachments(child_index, pos_world, &g);
+  BranchEdgeData g{};
+  FillBranchEdgeData(child_index, nodes, &g);
   const ImVec2 p0w = g.p0_attachment_;
   const ImVec2 p3w = g.p3_attachment_;
   const float mid_x = 0.5F * (p0w.x + p3w.x);
@@ -35,15 +34,6 @@ void DrawSampleMindMapBranchOrthogonal(
   ctx.draw_list_->AddLine(s0, s1, kColorEdge, kEdgeThickness);
   ctx.draw_list_->AddLine(s1, s2, kColorEdge, kEdgeThickness);
   ctx.draw_list_->AddLine(s2, s3, kColorEdge, kEdgeThickness);
-}
-
-void DrawAllSampleMindMapBranchesOrthogonal(
-    const BranchRenderContext& ctx,
-    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
-  assert(ctx.draw_list_ != nullptr);
-  ForEachSampleMindMapChildBranch([&ctx, &pos_world](int child) {
-    DrawSampleMindMapBranchOrthogonal(ctx, child, pos_world);
-  });
 }
 
 }  // namespace mind_map::ui::branch

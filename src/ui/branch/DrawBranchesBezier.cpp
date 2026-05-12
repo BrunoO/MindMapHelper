@@ -4,7 +4,6 @@
 #include "ui/canvas/CanvasMath.h"
 
 #include <cassert>
-#include <cstddef>
 
 namespace mind_map::ui::branch {
 
@@ -15,12 +14,12 @@ constexpr ImU32 kColorEdge = IM_COL32(140, 170, 210, 255);  // NOLINT(hicpp-sign
 
 }  // namespace
 
-void DrawSampleMindMapBranchBezier(
+void DrawMindMapBranchBezier(
     const BranchRenderContext& ctx, const int child_index,
-    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
+    const std::vector<mind_map::ui::CanvasNode>& nodes) {
   assert(ctx.draw_list_ != nullptr);
-  SampleMindMapBranchRoundedAttachments g{};
-  FillSampleMindMapBranchRoundedAttachments(child_index, pos_world, &g);
+  BranchEdgeData g{};
+  FillBranchEdgeData(child_index, nodes, &g);
   const ImVec2 p0w = g.p0_attachment_;
   const ImVec2 p3w = g.p3_attachment_;
   const mind_map::canvas::BezierArmInputs arm_inputs = {
@@ -35,15 +34,6 @@ void DrawSampleMindMapBranchBezier(
   const ImVec2 p3 = mind_map::canvas::WorldToScreen(p3w, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
 
   ctx.draw_list_->AddBezierCubic(p0, p1, p2, p3, kColorEdge, kEdgeThickness);
-}
-
-void DrawAllSampleMindMapBranchesBezier(
-    const BranchRenderContext& ctx,
-    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
-  assert(ctx.draw_list_ != nullptr);
-  ForEachSampleMindMapChildBranch([&ctx, &pos_world](int child) {
-    DrawSampleMindMapBranchBezier(ctx, child, pos_world);
-  });
 }
 
 }  // namespace mind_map::ui::branch

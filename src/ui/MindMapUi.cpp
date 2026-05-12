@@ -149,10 +149,12 @@ void HandleSaveMenuItem(const UiState& state, mind_map::app::DocumentSessionServ
 }
 
 void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
-                    mind_map::app::DocumentSessionService& session) {
+                    mind_map::app::DocumentSessionService& session,
+                    commands::CommandHistory& history) {
   if (ImGui::MenuItem("New")) {
     mind_map::core::MindMapDocument dummy;
     session.New(dummy);
+    history.Clear();
     const auto sample_doc = mind_map::demos::BuildSampleDocument();
     state.canvas_.LoadFrom(sample_doc);
     state.ApplyViewport(sample_doc.viewport_);
@@ -186,13 +188,13 @@ void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
 
 void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, UiState& state,
                        mind_map::app::DocumentSessionService& session,
-                       const commands::CommandHistory& history) {
+                       commands::CommandHistory& history) {
   if (!ImGui::BeginMainMenuBar()) {
     return;
   }
 
   if (ImGui::BeginMenu("File")) {
-    RenderFileMenu(dispatcher, state, session);
+    RenderFileMenu(dispatcher, state, session, history);
     ImGui::EndMenu();
   }
 
@@ -356,7 +358,8 @@ void RenderCloseGuardModal(const UiState& state, mind_map::app::DocumentSessionS
   ImGui::EndPopup();
 }
 
-void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& session) {
+void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& session,
+                       commands::CommandHistory& history) {
   auto* const fd = ImGuiFileDialog::Instance();
   const ImVec2 dialog_min_size{kFileDialogWidth, kFileDialogHeight};
   const mind_map::core::ImportService import_service;
@@ -367,6 +370,7 @@ void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& se
       if (auto doc = import_service.ImportFile(path)) {
         mind_map::core::MindMapDocument dummy;
         session.New(dummy);  // clears path so Save prompts Save As
+        history.Clear();
         state.canvas_.LoadFrom(*doc);
         state.ApplyViewport(doc->viewport_);
         session.MarkDirty();
@@ -380,6 +384,7 @@ void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& se
       const std::string path = fd->GetFilePathName();
       mind_map::core::MindMapDocument doc;
       if (session.Open(path, doc)) {
+        history.Clear();
         state.canvas_.LoadFrom(doc);
         state.ApplyViewport(doc.viewport_);
       }
@@ -446,7 +451,7 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
   ImGui::End();
   ImGui::PopStyleVar(2);
 
-  RenderFileDialogs(state, session);
+  RenderFileDialogs(state, session, history);
 }
 
 }  // namespace mind_map::ui

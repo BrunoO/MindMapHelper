@@ -8,6 +8,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <vector>
 
 namespace mind_map::ui::branch {
 
@@ -238,12 +239,12 @@ void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, const CanvasTransfor
 
 }  // namespace
 
-void DrawSampleMindMapBranchOrganicTaper(
+void DrawMindMapBranchOrganicTaper(
     const BranchRenderContext& ctx, const int child_index,
-    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
+    const std::vector<mind_map::ui::CanvasNode>& nodes) {
   assert(ctx.draw_list_ != nullptr);
-  SampleMindMapBranchRoundedAttachments g{};
-  FillSampleMindMapBranchRoundedAttachments(child_index, pos_world, &g);
+  BranchEdgeData g{};
+  FillBranchEdgeData(child_index, nodes, &g);
   const ImVec2 p0_border = g.p0_attachment_;
   const ImVec2 p3_border = g.p3_attachment_;
 
@@ -252,11 +253,10 @@ void DrawSampleMindMapBranchOrganicTaper(
   const ImVec2 p0w = {g.pw_.x + (p0_border.x - g.pw_.x) * b0, g.pw_.y + (p0_border.y - g.pw_.y) * b0};
   const ImVec2 p3w = {g.cw_.x + (p3_border.x - g.cw_.x) * b3, g.cw_.y + (p3_border.y - g.cw_.y) * b3};
 
-  const int grandparent = mind_map::core::mindmap::kSampleMindMapSpecs[static_cast<size_t>(g.parent_)].parent_;
   const float parent_radius = mind_map::canvas::NodeRadiusWorld(g.parent_label_);
   const float child_radius = mind_map::canvas::NodeRadiusWorld(g.child_label_);
-  const float half_width_start = (grandparent < 0) ? BranchRootStartHalfWidthWorld(parent_radius)
-                                                   : BranchEndHalfWidthWorld(parent_radius);
+  const float half_width_start = g.parent_is_root_ ? BranchRootStartHalfWidthWorld(parent_radius)
+                                                    : BranchEndHalfWidthWorld(parent_radius);
   const float half_width_end_raw = BranchEndHalfWidthWorld(child_radius);
   const float half_width_end = (std::min)(half_width_end_raw, half_width_start);
   const CanvasTransform canvas_transform = {ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_};
@@ -277,15 +277,6 @@ void DrawSampleMindMapBranchOrganicTaper(
     const mind_map::canvas::BezierArms arms = mind_map::canvas::ComputeBezierArmsWorld(arm_inputs);
     DrawTaperBezierBranch(ctx.draw_list_, canvas_transform, p0w, arms.p1_, arms.p2_, p3w, widths);
   }
-}
-
-void DrawAllSampleMindMapBranchesOrganicTaper(
-    const BranchRenderContext& ctx,
-    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
-  assert(ctx.draw_list_ != nullptr);
-  ForEachSampleMindMapChildBranch([&ctx, &pos_world](int child) {
-    DrawSampleMindMapBranchOrganicTaper(ctx, child, pos_world);
-  });
 }
 
 }  // namespace mind_map::ui::branch

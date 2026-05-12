@@ -1,18 +1,15 @@
 #pragma once
 
 #include "ui/branch/BranchRenderContext.h"
-#include "ui/demos/SampleMindMapGraph.h"
+#include "ui/canvas/CanvasNode.h"
 
-#include <array>
+#include <vector>
 
 namespace mind_map::ui::branch {
 
-void DrawSampleMindMapBranchOrthogonal(
+// child_index must satisfy nodes[child_index].parent_idx_ >= 0.
+void DrawMindMapBranchOrthogonal(
     const BranchRenderContext& ctx, int child_index,
-    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world);
-
-void DrawAllSampleMindMapBranchesOrthogonal(
-    const BranchRenderContext& ctx,
-    const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world);
+    const std::vector<mind_map::ui::CanvasNode>& nodes);
 
 }  // namespace mind_map::ui::branch

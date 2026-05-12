@@ -39,6 +39,11 @@ class CommandHistory {
   [[nodiscard]] bool CanUndo() const { return !undo_stack_.empty(); }
   [[nodiscard]] bool CanRedo() const { return !redo_stack_.empty(); }
 
+  void Clear() {
+    undo_stack_.clear();
+    redo_stack_.clear();
+  }
+
  private:
   std::vector<std::unique_ptr<ICommand>> undo_stack_;
   std::vector<std::unique_ptr<ICommand>> redo_stack_;

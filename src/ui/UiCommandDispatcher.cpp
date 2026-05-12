@@ -44,14 +44,17 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       if (const int sel = state.canvas_.GetSelectedChildForBranchStyle(); sel > 0) {
         // sel > 0: root (index 0) cannot be deleted
         history_.Push(std::make_unique<commands::DeleteNodeCommand>(state.canvas_, sel));
+        session.MarkDirty();
       }
       return;
     }
     case UiCommandId::Undo:
       history_.Undo();
+      session.MarkDirty();
       return;
     case UiCommandId::Redo:
       history_.Redo();
+      session.MarkDirty();
       return;
   }
 }

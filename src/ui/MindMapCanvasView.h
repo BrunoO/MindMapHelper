@@ -2,12 +2,10 @@
 
 #include "core/MindMapDocument.h"
 #include "ui/branch/BranchStyle.h"
-#include "ui/demos/SampleMindMapGraph.h"
+#include "ui/canvas/CanvasNode.h"
 
 #include "imgui.h"
 
-#include <array>
-#include <string>
 #include <vector>
 
 namespace mind_map::ui {
@@ -28,18 +26,16 @@ struct MindMapPointerState {
   bool canvas_hovered_ = false;
 };
 
-// Single sample-map canvas: pan/zoom stay in MindMapUi; this owns layout, drag, and drawing.
+// Single canvas view: pan/zoom stay in MindMapUi; this owns layout, drag, and drawing.
 //
-// Node model **C1** (see internal-docs/2026-05-02_mindmap-demos-to-branch-styles-plan.md, Milestone C): one canonical
-// representation — rounded rectangles from SampleMapHalfExtentForLabel + kSampleMindMapNodeCornerRadiusWorld.
-// Pointer hit-testing uses mind_map::demos::HitTestSampleMap only; branch styles may differ in edge geometry but share
-// the same attachments (e.g. orthogonal uses SampleMapRoundedRectAttachmentPreferEdgeMid, not circles).
+// Node model: each CanvasNode in nodes_ carries id, label, world position, parent index (-1 for
+// root), edge id, branch style, and active flag. LoadFrom rebuilds nodes_ from any MindMapDocument.
 //
-// Milestone D: each child node index owns the style of its incoming edge (`branch_style_by_child_[child]`); root slot
-// is unused. Reset() restores positions only, not per-edge styles.
+// Per-edge branch styles: nodes_[child].branch_style_ owns the style of the incoming edge.
+// Reset() restores world positions from the initial_pos_world_ snapshot taken at LoadFrom time.
 //
-// Milestone E: click a non-root node to select it; the incoming edge (parent → child) style is edited via the toolbar
-// combo. Click empty canvas or root to clear selection.
+// Click a non-root node to select it; its incoming edge style is edited via the toolbar combo.
+// Click empty canvas or root to clear selection.
 class MindMapCanvasView {
  public:
   MindMapCanvasView();
@@ -57,7 +53,7 @@ class MindMapCanvasView {
 
   void Render(const MindMapCanvasRenderContext& ctx);
 
-  // Applies one style to every edge (all child indices with a parent).
+  // Applies one style to every edge (all child nodes with a parent).
   void SetBranchStyleForAllEdges(mind_map::ui::branch::BranchStyle style);
 
   [[nodiscard]] bool HasSelectedIncomingEdgeStyleTarget() const;
@@ -75,7 +71,7 @@ class MindMapCanvasView {
 
   // Node activation — used by DeleteNodeCommand to hide/restore nodes without
   // modifying the document model (deletion is view-layer only; not serialized).
-  // Pending persistence: node_active_ is view-only until the document format can store it.
+  // Pending persistence: node active_ is view-only until the document format can store it.
   void SetNodeActive(int idx, bool active);
   [[nodiscard]] bool IsNodeActive(int idx) const;
   // Returns the indices of all currently active nodes in the subtree rooted at idx.
@@ -85,14 +81,11 @@ class MindMapCanvasView {
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
   [[nodiscard]] bool BranchStylesAreUniform_() const;
 
-  std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount> pos_world_{};
+  std::vector<CanvasNode> nodes_;
+  std::vector<ImVec2> initial_pos_world_;
   int dragging_node_ = -1;
   ImVec2 grab_offset_world_;
   int selected_child_for_edge_style_ = -1;
-  std::array<mind_map::ui::branch::BranchStyle, mind_map::demos::kSampleMindMapNodeCount> branch_style_by_child_{};
-  std::array<std::string, mind_map::demos::kSampleMindMapNodeCount> node_ids_{};
-  std::array<std::string, mind_map::demos::kSampleMindMapNodeCount> edge_ids_{};
-  std::array<bool, mind_map::demos::kSampleMindMapNodeCount> node_active_{};
 };
 
 }  // namespace mind_map::ui
