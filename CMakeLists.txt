@@ -78,6 +78,18 @@ else()
 endif()
 FetchContent_MakeAvailable(zlib)
 
+# libzip calls find_package(ZLIB), which runs FindZLIB. That module only searches
+# system prefixes (and ZLIB_ROOT), not the in-tree zlib from FetchContent. MSVC
+# environments often have no system zlib, so ZLIB_INCLUDE_DIR / ZLIB_LIBRARY
+# stay empty and configure fails even though target zlibstatic exists. Other
+# platforms frequently "succeeded" because FindZLIB picked up a system zlib by
+# accident while we still linked zlibstatic via ZLIB::ZLIB below.
+# Pre-fill FindZLIB's REQUIRED_VARS; actual compile/link uses ZLIB::ZLIB -> zlibstatic.
+if(TARGET zlibstatic)
+  set(ZLIB_INCLUDE_DIR "${zlib_SOURCE_DIR}" CACHE PATH "Bundled zlib (FindZLIB for libzip)" FORCE)
+  set(ZLIB_LIBRARY "${zlib_SOURCE_DIR}/zlib.h" CACHE FILEPATH "Bundled zlib sentinel for FindZLIB (libzip)" FORCE)
+endif()
+
 # Stock FindZLIB (invoked from libzip's subdirectory) creates ZLIB::ZLIB without
 # GLOBAL scope, so parent targets cannot link it — CI then fails linking
 # mindmap_helper_core. Define a GLOBAL INTERFACE target up front so libzip and

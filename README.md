@@ -119,7 +119,9 @@ Then rerun the configure and build steps for your platform.
 
 ### Local zlib (offline builds)
 
-**zlib** is normally fetched from GitHub during configure (same as other FetchContent dependencies). On machines where that step fails—for example limited download rights or a policy-blocked automatic clone—you can use a copy of the sources you obtained separately (clone or zip of **[madler/zlib](https://github.com/madler/zlib)**).
+**zlib** is normally fetched from GitHub during configure (same as other FetchContent dependencies). A **local clone** only fixes blocked **git** access during configure; a separate failure is **`Could NOT find ZLIB` from `libzip`**: CMake’s **FindZLIB** looks for an *installed* zlib (include dir + import library), not the in-tree **zlibstatic** target. Windows MSVC setups often have no system zlib, so configure fails until the project pre-seeds FindZLIB for the bundled tree (handled in top-level `CMakeLists.txt`). If you still see the error, use a **clean build directory** so stale `ZLIB_*` cache entries are not reused.
+
+On machines where the zlib **FetchContent** step fails—for example limited download rights or a policy-blocked automatic clone—you can use a copy of the sources you obtained separately (clone or zip of **[madler/zlib](https://github.com/madler/zlib)**).
 
 1. Check out **tag `v1.3.1`** (the version pinned in `CMakeLists.txt`) where your environment allows, e.g.  
    `git clone --depth 1 --branch v1.3.1 https://github.com/madler/zlib.git C:\deps\zlib` (adjust the path).
