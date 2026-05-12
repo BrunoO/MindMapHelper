@@ -18,6 +18,7 @@ namespace mind_map::core {
 namespace {
 
 constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
+constexpr std::string_view kGaiaHTMLLabelKey = "com.thinkbuzan.gaia.entities.HTMLLabel";
 
 [[nodiscard]] std::string AttrOrEmpty(const pugi::xml_node& node, const char* key) {
   if (const pugi::xml_attribute attr = node.attribute(key)) {
@@ -44,6 +45,54 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
   return {};
 }
 
+[[nodiscard]] std::string StripHtmlTags(std::string_view html) {
+  std::string result;
+  result.reserve(html.size());
+  bool in_tag = false;
+  for (const char ch : html) {
+    if (ch == '<') {
+      in_tag = true;
+    } else if (ch == '>') {
+      in_tag = false;
+    } else if (!in_tag) {
+      result += ch;
+    }
+  }
+  const auto first = result.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos) {
+    return {};
+  }
+  return result.substr(first, result.find_last_not_of(" \t\r\n") - first + 1);
+}
+
+[[nodiscard]] std::optional<std::string> ExtractHtmlLabelText(const pugi::xml_node& property_node) {
+  if (const pugi::xml_attribute key_attr = property_node.attribute("key");
+      key_attr.empty() || std::string_view{key_attr.value()} != kGaiaHTMLLabelKey) {
+    return std::nullopt;
+  }
+  const pugi::xml_node html_label = property_node.child("HTMLLabel");
+  if (html_label.empty()) {
+    return std::nullopt;
+  }
+  std::string inner;
+  std::vector<pugi::xml_node> stack;
+  stack.push_back(html_label);
+  while (!stack.empty()) {
+    const pugi::xml_node n = stack.back();
+    stack.pop_back();
+    if (n.type() == pugi::node_pcdata || n.type() == pugi::node_cdata) {
+      inner += n.value();
+    }
+    for (pugi::xml_node child = n.last_child(); !child.empty(); child = child.previous_sibling()) {
+      stack.push_back(child);
+    }
+  }
+  if (inner.empty()) {
+    return std::nullopt;
+  }
+  return StripHtmlTags(inner);
+}
+
 [[nodiscard]] std::optional<std::string> ExtractCellTextFromPropertyNode(const pugi::xml_node& node) {
   if (const pugi::xml_attribute key_attr = node.attribute("key");
       key_attr.empty() || std::string_view{key_attr.value()} != kGaiaCellTextKey) {
@@ -56,6 +105,7 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
 }
 
 [[nodiscard]] std::string ExtractCellText(const pugi::xml_node& node_with_id) {
+  std::string html_label_fallback;
   std::vector<pugi::xml_node> stack;
   stack.push_back(node_with_id);
   while (!stack.empty()) {
@@ -65,12 +115,17 @@ constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
       if (auto result = ExtractCellTextFromPropertyNode(node)) {
         return *result;
       }
+      if (html_label_fallback.empty()) {
+        if (auto result = ExtractHtmlLabelText(node)) {
+          html_label_fallback = std::move(*result);
+        }
+      }
     }
     for (pugi::xml_node child = node.last_child(); !child.empty(); child = child.previous_sibling()) {
       stack.push_back(child);
     }
   }
-  return {};
+  return html_label_fallback;
 }
 
 void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pugi::xml_node& node) {
@@ -108,8 +163,14 @@ void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pu
   return id_to_text;
 }
 
-[[nodiscard]] std::vector<std::pair<std::string, std::string>> CollectBranches(const pugi::xml_document& doc) {
-  std::vector<std::pair<std::string, std::string>> edges;
+struct ImxBranchEdge {
+  std::string source_;
+  std::string target_;
+  std::string text_;
+};
+
+[[nodiscard]] std::vector<ImxBranchEdge> CollectBranches(const pugi::xml_document& doc) {
+  std::vector<ImxBranchEdge> edges;
   std::vector<pugi::xml_node> stack;
   if (const pugi::xml_node root = doc.document_element()) {
     stack.push_back(root);
@@ -121,7 +182,7 @@ void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pu
       const std::string source = AttrOrEmpty(node, "source");
       const std::string target = AttrOrEmpty(node, "target");
       if (!source.empty() && !target.empty()) {
-        edges.emplace_back(source, target);
+        edges.push_back({source, target, ExtractCellText(node)});
       }
     }
     for (pugi::xml_node child = node.last_child(); !child.empty(); child = child.previous_sibling()) {
@@ -132,12 +193,12 @@ void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pu
 }
 
 [[nodiscard]] std::unordered_map<std::string, std::vector<std::string>> BuildChildrenMap(
-    const std::vector<std::pair<std::string, std::string>>& edges) {
+    const std::vector<ImxBranchEdge>& edges) {
   std::unordered_map<std::string, std::vector<std::string>> children;
-  for (const auto& [parent, child] : edges) {
-    std::vector<std::string>& bucket = children[parent];
-    if (std::find(bucket.begin(), bucket.end(), child) == bucket.end()) {  // NOLINT(llvm-use-ranges)
-      bucket.push_back(child);
+  for (const auto& edge : edges) {
+    std::vector<std::string>& bucket = children[edge.source_];
+    if (std::find(bucket.begin(), bucket.end(), edge.target_) == bucket.end()) {  // NOLINT(llvm-use-ranges)
+      bucket.push_back(edge.target_);
     }
   }
   return children;
@@ -160,20 +221,37 @@ void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pu
     return std::nullopt;
   }
 
-  const std::unordered_map<std::string, std::string> id_to_text = BuildIdToTextMap(doc);
-  const std::vector<std::pair<std::string, std::string>> edges = CollectBranches(doc);
+  const std::unordered_map<std::string, std::string> element_text = BuildIdToTextMap(doc);
+  const std::vector<ImxBranchEdge> edges = CollectBranches(doc);
   const std::unordered_map<std::string, std::vector<std::string>> children_by_parent = BuildChildrenMap(edges);
 
+  // In real IMX files the node label lives on the incoming branch edge, not on the
+  // branchNode target element. Build a target→text map from branch edge texts.
+  std::unordered_map<std::string, std::string> branch_text_by_target;
+  for (const auto& edge : edges) {
+    if (!edge.text_.empty()) {
+      branch_text_by_target.try_emplace(edge.target_, edge.text_);
+    }
+  }
+
+  // Only include structural node IDs (graph endpoints), never branch element IDs.
   std::unordered_set<std::string> all_ids;
   all_ids.insert(root_id);
-  for (const auto& [node_id, node_text] : id_to_text) {
-    static_cast<void>(node_text);
-    all_ids.insert(node_id);
+  for (const auto& edge : edges) {
+    all_ids.insert(edge.source_);
+    all_ids.insert(edge.target_);
   }
-  for (const auto& [src, tgt] : edges) {
-    all_ids.insert(src);
-    all_ids.insert(tgt);
-  }
+
+  // Branch edge text takes priority; fall back to the element's own text.
+  auto resolve_text = [&](const std::string& id) -> std::string {
+    if (const auto it = branch_text_by_target.find(id); it != branch_text_by_target.end()) {
+      return it->second;
+    }
+    if (const auto it = element_text.find(id); it != element_text.end()) {
+      return it->second;
+    }
+    return {};
+  };
 
   std::vector<ImxNode> ordered_nodes;
   std::unordered_set<std::string> visited;
@@ -188,9 +266,7 @@ void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pu
     }
     ImxNode node;
     node.id_ = id;
-    if (const auto it = id_to_text.find(id); it != id_to_text.end()) {
-      node.text_ = it->second;
-    }
+    node.text_ = resolve_text(id);
     if (const auto it = children_by_parent.find(id); it != children_by_parent.end()) {
       node.children_ = it->second;
       for (const std::string& child_id : node.children_) {
@@ -206,9 +282,7 @@ void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pu
     }
     ImxNode node;
     node.id_ = id;
-    if (const auto it = id_to_text.find(id); it != id_to_text.end()) {
-      node.text_ = it->second;
-    }
+    node.text_ = resolve_text(id);
     if (const auto it = children_by_parent.find(id); it != children_by_parent.end()) {
       node.children_ = it->second;
     }
@@ -236,21 +310,23 @@ void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pu
   if (!map_meta) {
     return meta;
   }
-  meta.title_ = AttrOrEmpty(map_meta, "title");
-  if (meta.title_.empty()) {
-    meta.title_ = AttrOrEmpty(map_meta, "Title");
-  }
-  meta.author_ = AttrOrEmpty(map_meta, "author");
-  if (meta.author_.empty()) {
-    meta.author_ = AttrOrEmpty(map_meta, "Author");
-  }
-  meta.created_ = AttrOrEmpty(map_meta, "created");
-  if (meta.created_.empty()) {
-    meta.created_ = AttrOrEmpty(map_meta, "creationDate");
-  }
-  if (meta.created_.empty()) {
-    meta.created_ = AttrOrEmpty(map_meta, "Created");
-  }
+  // Try attribute on MapMeta (unit-test format), then child element (real IMX format).
+  auto read_meta_field = [&](std::initializer_list<const char*> attr_names,
+                             const char* child_element_name) -> std::string {
+    for (const char* attr : attr_names) {
+      if (std::string v = AttrOrEmpty(map_meta, attr); !v.empty()) {
+        return v;
+      }
+    }
+    if (const pugi::xml_node child = map_meta.child(child_element_name)) {
+      return AttrOrEmpty(child, "value");
+    }
+    return {};
+  };
+
+  meta.title_ = read_meta_field({"title", "Title"}, "Title");
+  meta.author_ = read_meta_field({"author", "Author"}, "InitialAuthor");
+  meta.created_ = read_meta_field({"created", "creationDate", "Created"}, "CreationTime");
   return meta;
 }
 
