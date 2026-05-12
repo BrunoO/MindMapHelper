@@ -56,12 +56,26 @@ FetchContent_MakeAvailable(nlohmann_json)
 
 set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SKIP_INSTALL_ALL ON CACHE BOOL "" FORCE)
-FetchContent_Declare(
-  zlib
-  GIT_REPOSITORY https://github.com/madler/zlib.git
-  GIT_TAG v1.3.1
-  GIT_SHALLOW TRUE
-)
+
+# Zlib: normally fetched via git during configure. On locked-down networks you can
+# clone madler/zlib separately (tag v1.3.1) and point CMake at it — no fetch at
+# configure time. Power users may instead set -DFETCHCONTENT_SOURCE_DIR_ZLIB=...
+set(BM_ZLIB_SOURCE_DIR "" CACHE PATH
+  "Optional absolute path to a pre-cloned https://github.com/madler/zlib tree (use tag v1.3.1). Skips FetchContent git download.")
+
+if(BM_ZLIB_SOURCE_DIR)
+  if(NOT EXISTS "${BM_ZLIB_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "BM_ZLIB_SOURCE_DIR must point to zlib sources (CMakeLists.txt missing): ${BM_ZLIB_SOURCE_DIR}")
+  endif()
+  FetchContent_Declare(zlib SOURCE_DIR "${BM_ZLIB_SOURCE_DIR}")
+else()
+  FetchContent_Declare(
+    zlib
+    GIT_REPOSITORY https://github.com/madler/zlib.git
+    GIT_TAG v1.3.1
+    GIT_SHALLOW TRUE
+  )
+endif()
 FetchContent_MakeAvailable(zlib)
 
 # Stock FindZLIB (invoked from libzip's subdirectory) creates ZLIB::ZLIB without

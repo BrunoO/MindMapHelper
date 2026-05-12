@@ -9,7 +9,7 @@ Cross-platform **C++17** mind-map UI built with **Dear ImGui**, **GLFW 3**, and 
 - **CMake** 3.16 or newer  
 - A **C++17** compiler (Apple Clang, GCC, or MSVC)  
 - **OpenGL** development libraries for your OS  
-- Network access on the first **CMake configure** (to fetch GLFW and ImGui)
+- Network access on the first **CMake configure** (CMake **FetchContent** downloads several dependencies). If automated downloads are blocked for zlib only, you can point the build at a **local zlib** tree; see [Local zlib (offline builds)](#local-zlib-offline-builds) under Troubleshooting.
 
 ---
 
@@ -116,6 +116,24 @@ rm -rf build
 ```
 
 Then rerun the configure and build steps for your platform.
+
+### Local zlib (offline builds)
+
+**zlib** is normally fetched from GitHub during configure (same as other FetchContent dependencies). On machines where that step fails—for example limited download rights or a policy-blocked automatic clone—you can use a copy of the sources you obtained separately (clone or zip of **[madler/zlib](https://github.com/madler/zlib)**).
+
+1. Check out **tag `v1.3.1`** (the version pinned in `CMakeLists.txt`) where your environment allows, e.g.  
+   `git clone --depth 1 --branch v1.3.1 https://github.com/madler/zlib.git C:\deps\zlib` (adjust the path).
+2. Configure with an **absolute** path to that directory:
+
+   ```powershell
+   cmake -S . -B build -A x64 -DBM_ENABLE_TESTS=ON -DBM_ZLIB_SOURCE_DIR=C:/deps/zlib
+   ```
+
+   On macOS / Linux, pass `-DBM_ZLIB_SOURCE_DIR=/path/to/zlib` instead.
+
+3. If you change `BM_ZLIB_SOURCE_DIR`, use a **fresh build directory** or clear the CMake cache for that variable so FetchContent does not reuse an old `_deps/zlib-src`.
+
+CMake’s built-in override also works without project-specific names: set **`FETCHCONTENT_SOURCE_DIR_ZLIB`** to the same directory before the first successful zlib populate.
 
 ## Third-party libraries
 
