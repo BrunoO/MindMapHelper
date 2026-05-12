@@ -71,8 +71,8 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
     dispatcher.Dispatch(UiCommandId::InsertChildNode, state, session);
   }
   const int sel = state.canvas_.GetSelectedChildForBranchStyle();
-  const bool can_delete = sel > 0;  // root (index 0) cannot be deleted
-  if (ImGui::MenuItem("Delete Node", FormatLabel(FindShortcut(ShortcutAction::DeleteNode)).c_str(),
+  if (const bool can_delete = sel > 0;  // root (index 0) cannot be deleted
+      ImGui::MenuItem("Delete Node", FormatLabel(FindShortcut(ShortcutAction::DeleteNode)).c_str(),
                       /*selected=*/false, can_delete)) {
     dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);
   }
