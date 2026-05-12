@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1220" viewBox="0 0 1600 1220" role="img" aria-labelledby="title desc">
+  <title id="title">MindMap Helper Current Architecture</title>
+  <desc id="desc">Layered architecture diagram for the MindMap Helper C++17 desktop application.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2d3748"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1a202c" flood-opacity="0.18"/>
+    </filter>
+    <style>
+      .bg { fill: #f7fafc; }
+      .title { font: 700 34px Arial, sans-serif; fill: #1a202c; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #4a5568; }
+      .section-title { font: 700 22px Arial, sans-serif; fill: #2d3748; }
+      .box-title { font: 700 18px Arial, sans-serif; fill: #1a202c; }
+      .box-text { font: 400 15px Arial, sans-serif; fill: #2d3748; }
+      .small { font: 400 13px Arial, sans-serif; fill: #4a5568; }
+      .pill-text { font: 700 13px Arial, sans-serif; fill: #ffffff; }
+      .layer-label { font: 700 17px Arial, sans-serif; fill: #ffffff; }
+      .flow-label { font: 700 13px Arial, sans-serif; fill: #2d3748; }
+      .frame { fill: #ffffff; stroke: #cbd5e0; stroke-width: 2; rx: 24; filter: url(#shadow); }
+      .runtime { fill: #ebf8ff; stroke: #3182ce; stroke-width: 2; rx: 18; }
+      .app { fill: #fef5e7; stroke: #dd6b20; stroke-width: 2; rx: 18; }
+      .ui { fill: #faf5ff; stroke: #805ad5; stroke-width: 2; rx: 18; }
+      .core { fill: #f0fff4; stroke: #38a169; stroke-width: 2; rx: 18; }
+      .platform { fill: #e6fffa; stroke: #319795; stroke-width: 2; rx: 18; }
+      .external { fill: #edf2f7; stroke: #718096; stroke-width: 2; rx: 16; }
+      .test { fill: #fff5f5; stroke: #e53e3e; stroke-width: 2; rx: 18; }
+      .arrow { stroke: #2d3748; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .soft-arrow { stroke: #718096; stroke-width: 2; stroke-dasharray: 7 6; fill: none; marker-end: url(#arrow); }
+      .data-arrow { stroke: #2f855a; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .render-arrow { stroke: #6b46c1; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .layer-band-app { fill: #dd6b20; rx: 10; }
+      .layer-band-ui { fill: #805ad5; rx: 10; }
+      .layer-band-core { fill: #38a169; rx: 10; }
+      .layer-band-platform { fill: #319795; rx: 10; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1100"/>
+
+  <text x="70" y="70" class="title">MindMap Helper Current Architecture</text>
+  <text x="70" y="102" class="subtitle">C++17 desktop app: Dear ImGui + GLFW + OpenGL, with platform, UI, app, and core targets wired by CMake.</text>
+
+  <rect x="55" y="135" width="1490" height="885" class="frame"/>
+
+  <rect x="90" y="175" width="1380" height="110" class="runtime"/>
+  <text x="120" y="210" class="section-title">Executable and Frame Loop</text>
+  <text x="120" y="242" class="box-title">mindmap_helper / MindMapHelper</text>
+  <text x="120" y="268" class="box-text">src/main.cpp -> AppMain::RunApp()</text>
+  <text x="520" y="242" class="box-text">Poll GLFW events -> ImGui NewFrame -> RenderMainUi -> OpenGL draw -> swap buffers</text>
+  <text x="520" y="268" class="small">Window title, dirty-close guard, startup file loading, ImGui context lifetime</text>
+
+  <rect x="90" y="320" width="160" height="520" class="layer-band-app"/>
+  <text x="125" y="588" class="layer-label">app</text>
+
+  <rect x="285" y="320" width="330" height="215" class="app"/>
+  <text x="315" y="355" class="box-title">App Orchestration</text>
+  <text x="315" y="387" class="box-text">AppMain.cpp</text>
+  <text x="315" y="414" class="box-text">DocumentSessionService</text>
+  <text x="315" y="441" class="small">Single-document lifecycle</text>
+  <text x="315" y="464" class="small">Current path, dirty flag, close guard</text>
+  <text x="315" y="487" class="small">Composes platform + UI + repository</text>
+
+  <rect x="650" y="320" width="160" height="520" class="layer-band-ui"/>
+  <text x="708" y="588" class="layer-label">ui</text>
+
+  <rect x="845" y="320" width="570" height="235" class="ui"/>
+  <text x="875" y="355" class="box-title">Immediate-Mode UI</text>
+  <text x="875" y="387" class="box-text">RenderMainUi(UiState, DocumentSessionService, CommandHistory)</text>
+  <text x="875" y="414" class="box-text">Menus, toolbar, file dialogs, close modal, shortcuts</text>
+  <text x="875" y="441" class="small">UiCommandDispatcher decouples UI actions from state mutation</text>
+  <text x="875" y="464" class="small">CommandHistory + DeleteNodeCommand support undoable view commands</text>
+
+  <rect x="845" y="585" width="570" height="255" class="ui"/>
+  <text x="875" y="620" class="box-title">Canvas Rendering and Interaction</text>
+  <text x="875" y="652" class="box-text">MindMapCanvasView owns node positions, drag state, selection, branch styles</text>
+  <text x="875" y="679" class="box-text">CanvasMath and NodeGeometry handle transforms and hit testing</text>
+  <text x="875" y="706" class="box-text">Branch renderers: Bezier, Orthogonal, OrganicTaper</text>
+  <text x="875" y="733" class="small">SampleMindMapGraph / SampleMindMapTopology provide demo topology and geometry helpers</text>
+  <text x="875" y="756" class="small">LoadFrom / ToDocument bridge UI state to the persisted core document model</text>
+
+  <rect x="90" y="875" width="1380" height="1" fill="#cbd5e0"/>
+
+  <rect x="90" y="565" width="160" height="275" class="layer-band-core"/>
+  <text x="123" y="710" class="layer-label">core</text>
+
+  <rect x="285" y="565" width="330" height="275" class="core"/>
+  <text x="315" y="600" class="box-title">Document and Persistence</text>
+  <text x="315" y="632" class="box-text">MindMapDocument</text>
+  <text x="315" y="659" class="box-text">nodes, edges, layouts, viewport</text>
+  <text x="315" y="686" class="box-text">IDocumentRepository</text>
+  <text x="315" y="713" class="box-text">JsonNativeDocumentRepository</text>
+  <text x="315" y="740" class="small">Platform-neutral data model and JSON round-trip</text>
+
+  <rect x="285" y="865" width="330" height="130" class="core"/>
+  <text x="315" y="900" class="box-title">Import Pipeline</text>
+  <text x="315" y="932" class="box-text">ImportService -> ImxImportAdapter</text>
+  <text x="315" y="959" class="box-text">ImxMindMapLoader -> MindMapDocument</text>
+  <text x="315" y="982" class="small">IMX archive/XML import path</text>
+
+  <rect x="650" y="865" width="160" height="130" class="layer-band-platform"/>
+  <text x="683" y="936" class="layer-label">platform</text>
+
+  <rect x="845" y="865" width="570" height="130" class="platform"/>
+  <text x="875" y="900" class="box-title">Platform Bootstrap</text>
+  <text x="875" y="932" class="box-text">CreateMainWindow / DestroyMainWindow / GetGlslVersion</text>
+  <text x="875" y="959" class="small">Common entry point plus macOS, Windows, and Linux implementations</text>
+
+  <rect x="80" y="960" width="110" height="34" fill="#2d3748" rx="17"/>
+  <text x="101" y="982" class="pill-text">runtime</text>
+  <rect x="205" y="960" width="102" height="34" fill="#6b46c1" rx="17"/>
+  <text x="228" y="982" class="pill-text">render</text>
+  <rect x="322" y="960" width="92" height="34" fill="#2f855a" rx="17"/>
+  <text x="347" y="982" class="pill-text">data</text>
+  <rect x="429" y="960" width="118" height="34" fill="#718096" rx="17"/>
+  <text x="453" y="982" class="pill-text">external</text>
+
+  <rect x="55" y="950" width="1" height="1" fill="none"/>
+
+  <path class="arrow" d="M 450 285 L 450 320"/>
+  <text x="466" y="309" class="flow-label">starts</text>
+
+  <path class="arrow" d="M 615 428 L 845 428"/>
+  <text x="690" y="412" class="flow-label">renders UI</text>
+
+  <path class="render-arrow" d="M 1130 555 L 1130 585"/>
+  <text x="1148" y="575" class="flow-label">canvas</text>
+
+  <path class="data-arrow" d="M 450 535 L 450 565"/>
+  <text x="466" y="555" class="flow-label">save/open</text>
+
+  <path class="data-arrow" d="M 615 690 C 700 690 745 690 845 690"/>
+  <text x="665" y="673" class="flow-label">document state</text>
+
+  <path class="data-arrow" d="M 450 840 L 450 865"/>
+  <text x="466" y="858" class="flow-label">import</text>
+
+  <path class="arrow" d="M 615 460 C 720 500 760 880 845 930"/>
+  <text x="690" y="535" class="flow-label">creates window</text>
+
+  <path class="arrow" d="M 1040 320 C 1040 275 830 275 730 285"/>
+  <text x="850" y="298" class="flow-label">called each frame</text>
+
+  <rect x="55" y="1040" width="1490" height="120" class="frame"/>
+  <text x="80" y="1080" class="section-title">Third-Party Dependencies</text>
+
+  <rect x="80" y="1105" width="160" height="38" class="external"/>
+  <text x="105" y="1129" class="box-text">Dear ImGui 1.91.9</text>
+  <rect x="260" y="1105" width="115" height="38" class="external"/>
+  <text x="290" y="1129" class="box-text">GLFW 3.4</text>
+  <rect x="395" y="1105" width="115" height="38" class="external"/>
+  <text x="424" y="1129" class="box-text">OpenGL 3</text>
+  <rect x="530" y="1105" width="155" height="38" class="external"/>
+  <text x="555" y="1129" class="box-text">ImGuiFileDialog</text>
+  <rect x="705" y="1105" width="165" height="38" class="external"/>
+  <text x="735" y="1129" class="box-text">nlohmann_json</text>
+  <rect x="890" y="1105" width="105" height="38" class="external"/>
+  <text x="922" y="1129" class="box-text">libzip</text>
+  <rect x="1015" y="1105" width="90" height="38" class="external"/>
+  <text x="1045" y="1129" class="box-text">zlib</text>
+  <rect x="1125" y="1105" width="100" height="38" class="external"/>
+  <text x="1151" y="1129" class="box-text">pugixml</text>
+  <rect x="1245" y="1105" width="235" height="38" class="test"/>
+  <text x="1274" y="1129" class="box-text">ctest: core + command tests</text>
+
+  <path class="soft-arrow" d="M 160 1105 C 250 960 640 470 845 430"/>
+  <path class="soft-arrow" d="M 317 1105 C 475 960 675 315 1060 285"/>
+  <path class="soft-arrow" d="M 452 1105 C 640 960 820 320 1160 285"/>
+  <path class="soft-arrow" d="M 607 1105 C 700 960 770 460 845 455"/>
+  <path class="soft-arrow" d="M 787 1105 C 650 1025 585 760 615 715"/>
+  <path class="soft-arrow" d="M 942 1105 C 760 1080 610 960 615 930"/>
+  <path class="soft-arrow" d="M 1060 1105 C 830 1085 610 960 615 930"/>
+  <path class="soft-arrow" d="M 1175 1105 C 940 1085 620 970 615 930"/>
+
+  <text x="70" y="1190" class="small">Generated 2026-05-12 from current source layout and CMake target wiring.</text>
+</svg>
