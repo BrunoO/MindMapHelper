@@ -16,28 +16,32 @@ enum class ShortcutAction : std::uint8_t {
   ZoomOut,
   ResetView,
   DeleteNode,
+  InsertChildNode,
   Undo,
   Redo,
   Count
 };
 
 struct ShortcutDef {
-  ImGuiKey key_;
-  bool primary_modifier_;
-  bool shift_;
-  bool want_text_input_exempt_;  // fires even when io.WantTextInput is true
-  const char* key_label_;
-  const char* description_;
+  ImGuiKey key_ = ImGuiKey_None;
+  bool primary_modifier_ = false;
+  bool shift_ = false;
+  bool want_text_input_exempt_ = false;  // fires even when io.WantTextInput is true
+  const char* key_label_ = nullptr;
+  const char* description_ = nullptr;
+  ImGuiKey alt_key_ = ImGuiKey_None;        // optional second key; same modifier rules apply
+  const char* alt_key_label_ = nullptr;
 };
 
 // clang-format off
 inline constexpr std::array<ShortcutDef, static_cast<size_t>(ShortcutAction::Count)> kShortcuts = {{
-  /* ZoomIn    */ {ImGuiKey_Equal,  true,  false, false, "=",      "Zoom In"},
-  /* ZoomOut   */ {ImGuiKey_Minus,  true,  false, false, "-",      "Zoom Out"},
-  /* ResetView */ {ImGuiKey_0,      true,  false, false, "0",      "Reset View"},
-  /* DeleteNode*/ {ImGuiKey_Delete, false, false, false, "Delete", "Delete selected node"},
-  /* Undo      */ {ImGuiKey_Z,      true,  false, true,  "Z",      "Undo"},
-  /* Redo      */ {ImGuiKey_Z,      true,  true,  true,  "Z",      "Redo"},
+  /* ZoomIn         */ {ImGuiKey_Equal,  true,  false, false, "=",      "Zoom In"},
+  /* ZoomOut        */ {ImGuiKey_Minus,  true,  false, false, "-",      "Zoom Out"},
+  /* ResetView      */ {ImGuiKey_0,      true,  false, false, "0",      "Reset View"},
+  /* DeleteNode     */ {ImGuiKey_Delete, false, false, false, "Delete", "Delete selected node"},
+  /* InsertChildNode*/ {ImGuiKey_Tab,    false, false, false, "Tab",    "Insert child node", ImGuiKey_Insert, "Insert"},
+  /* Undo           */ {ImGuiKey_Z,      true,  false, true,  "Z",      "Undo"},
+  /* Redo           */ {ImGuiKey_Z,      true,  true,  true,  "Z",      "Redo"},
 }};
 // clang-format on
 
@@ -59,19 +63,26 @@ static_assert(std::size(kShortcuts) == static_cast<size_t>(ShortcutAction::Count
   if (def.primary_modifier_ && (def.shift_ != io.KeyShift)) {
     return false;  // shift must match when a primary modifier is used
   }
-  return ImGui::IsKeyPressed(def.key_, /*repeat=*/false);
+  if (ImGui::IsKeyPressed(def.key_, /*repeat=*/false)) {
+    return true;
+  }
+  return def.alt_key_ != ImGuiKey_None && ImGui::IsKeyPressed(def.alt_key_, /*repeat=*/false);
 }
 
 [[nodiscard]] inline std::string FormatLabel(const ShortcutDef& def) {
-  if (!def.primary_modifier_) {
-    return {def.key_label_};
+  std::string label;
+  if (def.primary_modifier_) {
+    label = GetPrimaryModifierName();
+    if (def.shift_) {
+      label += "+Shift";
+    }
+    label += "+";
   }
-  std::string label = GetPrimaryModifierName();
-  if (def.shift_) {
-    label += "+Shift";
-  }
-  label += "+";
   label += def.key_label_;
+  if (def.alt_key_ != ImGuiKey_None && def.alt_key_label_ != nullptr) {
+    label += " / ";
+    label += def.alt_key_label_;
+  }
   return label;
 }
 

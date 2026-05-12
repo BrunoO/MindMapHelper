@@ -1,5 +1,6 @@
 #include "ui/MindMapCanvasView.h"
 
+#include "core/mindmap/UuidGenerator.h"
 #include "ui/branch/BranchRenderContext.h"
 #include "ui/branch/DrawBranchesBezier.h"
 #include "ui/branch/DrawBranchesOrganicTaper.h"
@@ -375,6 +376,37 @@ std::vector<int> MindMapCanvasView::CollectActiveSubtree(int idx) const {
     }
   }
   return result;
+}
+
+int MindMapCanvasView::InsertChildNode(int parent_idx) {
+  assert(parent_idx >= 0 && parent_idx < static_cast<int>(nodes_.size()));
+  const CanvasNode& parent = nodes_[static_cast<size_t>(parent_idx)];
+
+  int sibling_count = 0;
+  for (const auto& node : nodes_) {
+    if (node.active_ && node.parent_idx_ == parent_idx) {
+      ++sibling_count;
+    }
+  }
+
+  constexpr float kChildOffsetX = 260.0F;
+  constexpr float kSiblingStepY = 120.0F;
+
+  CanvasNode child;
+  child.id_ = mind_map::core::mindmap::GenerateUuidV4();
+  child.edge_id_ = mind_map::core::mindmap::GenerateUuidV4();
+  child.label_ = "New node";
+  child.parent_idx_ = parent_idx;
+  child.branch_style_ = parent.parent_idx_ < 0 ? RepresentativeChildEdgeStyle() : parent.branch_style_;
+  child.pos_world_ = {parent.pos_world_.x + kChildOffsetX,
+                      parent.pos_world_.y + static_cast<float>(sibling_count) * kSiblingStepY};
+  child.active_ = true;
+
+  const auto new_idx = static_cast<int>(nodes_.size());
+  initial_pos_world_.push_back(child.pos_world_);
+  nodes_.push_back(std::move(child));
+  selected_child_for_edge_style_ = new_idx;
+  return new_idx;
 }
 
 }  // namespace mind_map::ui

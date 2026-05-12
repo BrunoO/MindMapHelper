@@ -3,7 +3,8 @@
 Extract mind map structure from an iMindMap / MindManager-style .imx (ZIP) archive.
 
 Reads data.xml and mapmeta.xml from the archive, builds a tree from floatingIdea +
-branch edges, identifies embedded / floating raster images, and writes JSON, plain
+branch edges, identifies embedded / floating raster images, resolves branch and
+node captions when a raster's parent is a ``<branch/>``, and writes JSON, plain
 text, and OPML under the output directory.
 """
 
@@ -113,6 +114,99 @@ def direct_property_map(elem: ET.Element) -> Dict[str, str]:
     return out
 
 
+def build_incoming_branch_label_by_target(data_root: ET.Element) -> Dict[str, str]:
+    """
+    Map branch endpoint id -> label text shown on the incoming connector.
+
+    In IMX, ``branchNode`` topic titles are often stored on the ``<branch/>`` whose
+    ``target`` is that node, not on the node element itself.
+    """
+    out: Dict[str, str] = {}
+    for br in data_root.iter("branch"):
+        tid = br.get("target")
+        if not tid:
+            continue
+        if tid in out:
+            continue
+        label = get_text(br)
+        if label:
+            out[tid] = label
+    return out
+
+
+def node_caption_summary(
+    node_id: Optional[str],
+    elem_map: Dict[str, ET.Element],
+    incoming_by_target: Dict[str, str],
+) -> Dict[str, Any]:
+    if not node_id:
+        return {"id": None, "element": None, "caption": ""}
+    node = elem_map.get(node_id)
+    caption = incoming_by_target.get(node_id, "")
+    if not caption and node is not None:
+        caption = get_text(node)
+    return {
+        "id": node_id,
+        "element": node.tag if node is not None else None,
+        "caption": caption,
+    }
+
+
+def resolve_graph_link_for_parent(
+    parent_id: Optional[str],
+    elem_map: Dict[str, ET.Element],
+    incoming_by_target: Dict[str, str],
+) -> Optional[Dict[str, Any]]:
+    """
+    Interpret ``parent`` of a raster cell.
+
+    Sketch / floating images are usually parented by id to a ``<branch/>``; the
+    branch's ``source`` / ``target`` identify the linked graph endpoints.
+    """
+    if not parent_id:
+        return None
+    parent_el = elem_map.get(parent_id)
+    if parent_el is None:
+        return {
+            "relation": "unknown_parent",
+            "parent_id": parent_id,
+        }
+    if parent_el.tag == "branch":
+        src = parent_el.get("source")
+        tgt = parent_el.get("target")
+        return {
+            "relation": "branch",
+            "branch_id": parent_id,
+            "branch_edge_label": get_text(parent_el),
+            "source": node_caption_summary(src, elem_map, incoming_by_target),
+            "target": node_caption_summary(tgt, elem_map, incoming_by_target),
+        }
+    return {
+        "relation": "other",
+        "parent_element": parent_el.tag,
+        "parent_id": parent_id,
+    }
+
+
+def format_graph_link_one_line(graph_link: Optional[Dict[str, Any]]) -> str:
+    """Compact human-readable summary for TXT / OPML."""
+    if not isinstance(graph_link, dict):
+        return ""
+    rel = graph_link.get("relation")
+    if rel == "branch":
+        src = graph_link.get("source") or {}
+        tgt = graph_link.get("target") or {}
+        bel = graph_link.get("branch_edge_label") or ""
+        sc = src.get("caption") or src.get("id") or "?"
+        tc = tgt.get("caption") or tgt.get("id") or "?"
+        return f"branch {graph_link.get('branch_id')} '{bel}': {sc} -> {tc}"
+    if rel == "other":
+        return f"parent <{graph_link.get('parent_element')}> id={graph_link.get('parent_id')}"
+    if rel == "unknown_parent":
+        return f"missing parent id={graph_link.get('parent_id')}"
+    return ""
+
+
 def data_zip_paths_for_resource(zip_names: Set[str], resource_id: str) -> List[str]:
     forward = f"data/{resource_id}"
     if forward in zip_names:
@@ -147,6 +241,9 @@ def collect_embedded_graphics(
 
     Raster cells may appear as ``<image/>`` (common in older exports) or as
     ``<appcell/>`` with ``shape=image;image=<id>`` (e.g. ThinkBuzan sketch cells).
+
+    When ``parent`` references a ``<branch/>``, ``graph_link`` resolves ``source`` /
+    ``target`` endpoints and captions (incoming branch labels).
     """
     central: Optional[Dict[str, Any]] = None
     fi_style = floating_idea.get("style") or ""
@@ -167,6 +264,13 @@ def collect_embedded_graphics(
             "style": fi_style if fi_style else None,
         }
 
+    elem_map: Dict[str, ET.Element] = {}
+    for el in data_root.iter():
+        eid = el.get("id")
+        if eid:
+            elem_map[eid] = el
+    incoming_by_target = build_incoming_branch_label_by_target(data_root)
+
     floating_images: List[Dict[str, Any]] = []
     seen_cell_ids: Set[str] = set()
 
@@ -182,12 +286,13 @@ def collect_embedded_graphics(
             seen_cell_ids.add(cid)
         paths = data_zip_paths_for_resource(zip_names, rid) if rid else []
         props = direct_property_map(el)
+        parent_id = el.get("parent")
         floating_images.append(
             {
                 "kind": kind,
                 "element": element_tag,
                 "id": cid,
-                "parent_cell_id": el.get("parent"),
+                "parent_cell_id": parent_id,
                 "connectable": el.get("connectable"),
                 "vertex": el.get("vertex"),
                 "image_resource_id": rid,
@@ -196,6 +301,7 @@ def collect_embedded_graphics(
                 "geometry": mx_geometry_dict(el),
                 "style": style if style else None,
                 "properties": props if props else None,
+                "graph_link": resolve_graph_link_for_parent(parent_id, elem_map, incoming_by_target),
             }
         )
 
@@ -338,6 +444,10 @@ def graphics_summary_lines(graphics: Dict[str, Any]) -> List[str]:
             geo = fi.get("geometry")
             if geo:
                 lines.append(f"      geometry: {geo}")
+            gl = fi.get("graph_link")
+            gl_line = format_graph_link_one_line(gl if isinstance(gl, dict) else None)
+            if gl_line:
+                lines.append(f"      {gl_line}")
     lines.append("")
     return lines
 
@@ -385,7 +495,10 @@ def build_opml_assets_section(graphics: Dict[str, Any]) -> str:
         pid = fi.get("parent_cell_id") or "?"
         kind = fi.get("kind") or "image"
         elname = fi.get("element") or "?"
-        t = opml_escape(f"[{kind} <{elname}>] data/{rid} (cell {fi.get('id')}, parent {pid})")
+        gl = fi.get("graph_link")
+        extra = format_graph_link_one_line(gl if isinstance(gl, dict) else None)
+        suffix = f" — {extra}" if extra else ""
+        t = opml_escape(f"[{kind} <{elname}>] data/{rid} (cell {fi.get('id')}, parent {pid}){suffix}")
         outlines.append(f'<outline text="{t}" />')
 
     if not outlines:

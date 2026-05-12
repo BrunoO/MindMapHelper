@@ -77,6 +77,10 @@ class MindMapCanvasView {
   // Returns the indices of all currently active nodes in the subtree rooted at idx.
   [[nodiscard]] std::vector<int> CollectActiveSubtree(int idx) const;
 
+  // Appends a new child node under parent_idx, selects it, and returns its index.
+  // The node is appended to nodes_ and initial_pos_world_; undo toggles active_ only.
+  int InsertChildNode(int parent_idx);
+
  private:
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
   [[nodiscard]] bool BranchStylesAreUniform_() const;

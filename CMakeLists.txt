@@ -206,6 +206,7 @@ set(BM_UI_SOURCES
   src/ui/MindMapCanvasView.cpp
   src/ui/UiCommandDispatcher.cpp
   src/ui/commands/DeleteNodeCommand.cpp
+  src/ui/commands/InsertChildNodeCommand.cpp
   src/ui/branch/DrawBranchesBezier.cpp
   src/ui/branch/DrawBranchesOrthogonal.cpp
   src/ui/branch/DrawBranchesOrganicTaper.cpp

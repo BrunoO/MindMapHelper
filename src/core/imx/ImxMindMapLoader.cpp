@@ -4,6 +4,7 @@
 #include <zip.h>
 
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 #include <deque>
 #include <optional>
@@ -93,6 +94,16 @@ constexpr std::string_view kGaiaHTMLLabelKey = "com.thinkbuzan.gaia.entities.HTM
   return StripHtmlTags(inner);
 }
 
+void MaybeCaptureHtmlLabelFallback(const pugi::xml_node& property_node, std::string* html_label_fallback) {
+  assert(html_label_fallback != nullptr);
+  if (!html_label_fallback->empty()) {
+    return;
+  }
+  if (auto result = ExtractHtmlLabelText(property_node)) {
+    *html_label_fallback = std::move(*result);
+  }
+}
+
 [[nodiscard]] std::optional<std::string> ExtractCellTextFromPropertyNode(const pugi::xml_node& node) {
   if (const pugi::xml_attribute key_attr = node.attribute("key");
       key_attr.empty() || std::string_view{key_attr.value()} != kGaiaCellTextKey) {
@@ -115,11 +126,7 @@ constexpr std::string_view kGaiaHTMLLabelKey = "com.thinkbuzan.gaia.entities.HTM
       if (auto result = ExtractCellTextFromPropertyNode(node)) {
         return *result;
       }
-      if (html_label_fallback.empty()) {
-        if (auto result = ExtractHtmlLabelText(node)) {
-          html_label_fallback = std::move(*result);
-        }
-      }
+      MaybeCaptureHtmlLabelFallback(node, &html_label_fallback);
     }
     for (pugi::xml_node child = node.last_child(); !child.empty(); child = child.previous_sibling()) {
       stack.push_back(child);

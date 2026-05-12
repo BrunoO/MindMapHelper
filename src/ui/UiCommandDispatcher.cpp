@@ -4,6 +4,7 @@
 #include "ui/UiState.h"
 #include "ui/commands/CommandHistory.h"
 #include "ui/commands/DeleteNodeCommand.h"
+#include "ui/commands/InsertChildNodeCommand.h"
 
 #include <algorithm>
 #include <memory>
@@ -46,6 +47,13 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
         history_.Push(std::make_unique<commands::DeleteNodeCommand>(state.canvas_, sel));
         session.MarkDirty();
       }
+      return;
+    }
+    case UiCommandId::InsertChildNode: {
+      const int sel = state.canvas_.GetSelectedChildForBranchStyle();
+      const int parent = (sel > 0) ? sel : 0;  // default to root when nothing selected
+      history_.Push(std::make_unique<commands::InsertChildNodeCommand>(state.canvas_, parent));
+      session.MarkDirty();
       return;
     }
     case UiCommandId::Undo:

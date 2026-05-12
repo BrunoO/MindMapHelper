@@ -42,13 +42,14 @@ void HandleMindMapKeyboardShortcuts(const ImGuiIO& io, const UiCommandDispatcher
       continue;
     }
     switch (action) {
-      case SA::ZoomIn:      dispatcher.Dispatch(UiCommandId::ZoomIn, state, session);      break;
-      case SA::ZoomOut:     dispatcher.Dispatch(UiCommandId::ZoomOut, state, session);     break;
-      case SA::ResetView:   dispatcher.Dispatch(UiCommandId::ResetView, state, session);   break;
-      case SA::DeleteNode:  dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);  break;
-      case SA::Undo:        dispatcher.Dispatch(UiCommandId::Undo, state, session);        break;
-      case SA::Redo:        dispatcher.Dispatch(UiCommandId::Redo, state, session);        break;
-      case SA::Count:       break;
+      case SA::ZoomIn:         dispatcher.Dispatch(UiCommandId::ZoomIn, state, session);         break;
+      case SA::ZoomOut:        dispatcher.Dispatch(UiCommandId::ZoomOut, state, session);        break;
+      case SA::ResetView:      dispatcher.Dispatch(UiCommandId::ResetView, state, session);      break;
+      case SA::DeleteNode:     dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);     break;
+      case SA::InsertChildNode:dispatcher.Dispatch(UiCommandId::InsertChildNode, state, session);break;
+      case SA::Undo:           dispatcher.Dispatch(UiCommandId::Undo, state, session);           break;
+      case SA::Redo:           dispatcher.Dispatch(UiCommandId::Redo, state, session);           break;
+      case SA::Count:          break;
     }
   }
 }
@@ -65,6 +66,9 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
     dispatcher.Dispatch(UiCommandId::Redo, state, session);
   }
   ImGui::Separator();
+  if (ImGui::MenuItem("Insert Child Node", FormatLabel(FindShortcut(ShortcutAction::InsertChildNode)).c_str())) {
+    dispatcher.Dispatch(UiCommandId::InsertChildNode, state, session);
+  }
   const int sel = state.canvas_.GetSelectedChildForBranchStyle();
   const bool can_delete = sel > 0;  // root (index 0) cannot be deleted
   if (ImGui::MenuItem("Delete Node", FormatLabel(FindShortcut(ShortcutAction::DeleteNode)).c_str(),
