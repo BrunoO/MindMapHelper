@@ -49,6 +49,7 @@ void HandleMindMapKeyboardShortcuts(const ImGuiIO& io, const UiCommandDispatcher
       case SA::InsertChildNode:dispatcher.Dispatch(UiCommandId::InsertChildNode, state, session);break;
       case SA::Undo:           dispatcher.Dispatch(UiCommandId::Undo, state, session);           break;
       case SA::Redo:           dispatcher.Dispatch(UiCommandId::Redo, state, session);           break;
+      case SA::PasteImage:     dispatcher.Dispatch(UiCommandId::PasteImage, state, session);     break;
       case SA::Count:          break;
     }
   }
@@ -74,6 +75,12 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
   if (ImGui::MenuItem("Delete Node", FormatLabel(FindShortcut(ShortcutAction::DeleteNode)).c_str(),
                       /*selected=*/false, can_delete)) {
     dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);
+  }
+  ImGui::Separator();
+  const bool can_paste = sel >= 0;
+  if (ImGui::MenuItem("Paste Image", FormatLabel(FindShortcut(ShortcutAction::PasteImage)).c_str(),
+                      /*selected=*/false, can_paste)) {
+    dispatcher.Dispatch(UiCommandId::PasteImage, state, session);
   }
 }
 

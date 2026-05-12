@@ -1,10 +1,13 @@
 #include "ui/UiCommandDispatcher.h"
 
 #include "app/DocumentSessionService.h"
+#include "core/Base64.h"
 #include "ui/UiState.h"
+#include "ui/canvas/ClipboardImage.h"
 #include "ui/commands/CommandHistory.h"
 #include "ui/commands/DeleteNodeCommand.h"
 #include "ui/commands/InsertChildNodeCommand.h"
+#include "ui/commands/PasteImageCommand.h"
 
 #include <algorithm>
 #include <memory>
@@ -64,6 +67,16 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       history_.Redo();
       session.MarkDirty();
       return;
+    case UiCommandId::PasteImage: {
+      const int sel = state.canvas_.GetSelectedChildForBranchStyle();
+      if (sel < 0) { return; }
+      const auto png = GetClipboardImagePng();
+      if (!png) { return; }
+      history_.Push(std::make_unique<commands::PasteImageCommand>(
+          state.canvas_, sel, mind_map::core::Base64Encode(*png)));
+      session.MarkDirty();
+      return;
+    }
   }
 }
 

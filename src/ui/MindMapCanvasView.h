@@ -6,6 +6,7 @@
 
 #include "imgui.h"
 
+#include <string_view>
 #include <vector>
 
 namespace mind_map::ui {
@@ -84,6 +85,11 @@ class MindMapCanvasView {
   // Appends a new child node under parent_idx, selects it, and returns its index.
   // The node is appended to nodes_ and initial_pos_world_; undo toggles active_ only.
   int InsertChildNode(int parent_idx);
+
+  // Sets (or clears when png_base64 is empty) the image on the node at idx.
+  // Releases the previous GL texture and uploads a new one if png_base64 is non-empty.
+  void SetNodeImage(int idx, std::string_view png_base64);
+  [[nodiscard]] const std::string& GetNodeImageBase64(int idx) const;
 
  private:
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;

@@ -18,7 +18,8 @@ enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   DeleteNode,
   InsertChildNode,
   Undo,
-  Redo
+  Redo,
+  PasteImage
 };
 
 class UiCommandDispatcher final {

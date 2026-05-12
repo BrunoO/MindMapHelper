@@ -413,6 +413,27 @@ std::vector<int> MindMapCanvasView::CollectActiveSubtree(int idx) const {
   return result;
 }
 
+void MindMapCanvasView::SetNodeImage(int idx, std::string_view png_base64) {
+  if (idx < 0 || idx >= static_cast<int>(nodes_.size())) {
+    return;
+  }
+  auto& node = nodes_[static_cast<size_t>(idx)];
+  ReleaseTexture(node.texture_id_);
+  node.texture_id_ = 0;
+  node.image_png_base64_ = png_base64;
+  if (!png_base64.empty()) {
+    node.texture_id_ = UploadPngTexture(mind_map::core::Base64Decode(node.image_png_base64_));
+  }
+}
+
+const std::string& MindMapCanvasView::GetNodeImageBase64(int idx) const {
+  static const std::string kEmpty;
+  if (idx < 0 || idx >= static_cast<int>(nodes_.size())) {
+    return kEmpty;
+  }
+  return nodes_[static_cast<size_t>(idx)].image_png_base64_;
+}
+
 int MindMapCanvasView::InsertChildNode(int parent_idx) {
   assert(parent_idx >= 0 && parent_idx < static_cast<int>(nodes_.size()));
   const CanvasNode& parent = nodes_[static_cast<size_t>(parent_idx)];

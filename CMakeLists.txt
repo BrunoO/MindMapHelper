@@ -211,6 +211,7 @@ set(BM_UI_SOURCES
   src/ui/branch/DrawBranchesOrthogonal.cpp
   src/ui/branch/DrawBranchesOrganicTaper.cpp
   src/ui/canvas/NodeTextureUtils.cpp
+  src/ui/commands/PasteImageCommand.cpp
 )
 
 set(BM_CORE_SOURCES
@@ -263,6 +264,15 @@ target_include_directories(mindmap_helper_ui PRIVATE "${imguifiledialog_SOURCE_D
 target_link_libraries(mindmap_helper_ui PRIVATE ${BM_GLFW_TARGET})
 target_link_libraries(mindmap_helper_ui PRIVATE mindmap_helper_core)
 bm_link_opengl_for_platform(mindmap_helper_ui)
+
+if(APPLE)
+  target_sources(mindmap_helper_ui PRIVATE src/ui/canvas/ClipboardImage_macos.mm)
+  target_link_libraries(mindmap_helper_ui PRIVATE "-framework AppKit")
+elseif(WIN32)
+  target_sources(mindmap_helper_ui PRIVATE src/ui/canvas/ClipboardImage_windows.cpp)
+elseif(UNIX)
+  target_sources(mindmap_helper_ui PRIVATE src/ui/canvas/ClipboardImage_linux.cpp)
+endif()
 
 target_link_libraries(mindmap_helper_platform PRIVATE ${BM_GLFW_TARGET})
 bm_link_opengl_for_platform(mindmap_helper_platform)
