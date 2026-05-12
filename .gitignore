@@ -13,3 +13,7 @@ sonar-results/
 # Local test fixtures and app scratch files (not for version control)
 tests/private_data/
 *.mmh
+
+# Python
+__pycache__/
+*.py[cod]
