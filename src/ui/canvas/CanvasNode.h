@@ -16,6 +16,8 @@ struct CanvasNode {
   std::string edge_id_;
   branch::BranchStyle branch_style_ = branch::BranchStyle::Bezier;
   bool active_ = true;
+  std::string image_png_base64_;      // kept for serialization round-trip
+  ImTextureID texture_id_ = 0;  // GPU texture; 0 means no image
 };
 
 }  // namespace mind_map::ui

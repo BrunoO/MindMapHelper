@@ -19,6 +19,7 @@ EXTRA_ARGS=()
 if [[ -n "$SDK_PATH" ]]; then
   EXTRA_ARGS+=("--extra-arg=-I${SDK_PATH}/usr/include/c++/v1")
   EXTRA_ARGS+=("--extra-arg=-I${SDK_PATH}/usr/include")
+  EXTRA_ARGS+=("--extra-arg=-F${SDK_PATH}/System/Library/Frameworks")
 fi
 
 exec "$CLANG_TIDY" "${EXTRA_ARGS[@]}" "$@"

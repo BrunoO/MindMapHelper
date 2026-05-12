@@ -39,6 +39,10 @@ struct MindMapPointerState {
 class MindMapCanvasView {
  public:
   MindMapCanvasView();
+  ~MindMapCanvasView();
+
+  MindMapCanvasView(const MindMapCanvasView&) = delete;
+  MindMapCanvasView& operator=(const MindMapCanvasView&) = delete;
 
   void Reset();
 

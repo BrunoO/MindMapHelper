@@ -210,6 +210,7 @@ set(BM_UI_SOURCES
   src/ui/branch/DrawBranchesBezier.cpp
   src/ui/branch/DrawBranchesOrthogonal.cpp
   src/ui/branch/DrawBranchesOrganicTaper.cpp
+  src/ui/canvas/NodeTextureUtils.cpp
 )
 
 set(BM_CORE_SOURCES
@@ -261,6 +262,7 @@ target_include_directories(mindmap_helper_ui PRIVATE "${imguifiledialog_SOURCE_D
 
 target_link_libraries(mindmap_helper_ui PRIVATE ${BM_GLFW_TARGET})
 target_link_libraries(mindmap_helper_ui PRIVATE mindmap_helper_core)
+bm_link_opengl_for_platform(mindmap_helper_ui)
 
 target_link_libraries(mindmap_helper_platform PRIVATE ${BM_GLFW_TARGET})
 bm_link_opengl_for_platform(mindmap_helper_platform)
@@ -352,5 +354,11 @@ if(BM_ENABLE_TESTS)
   )
   bm_target_use_src_includes(mindmap_helper_command_history_test)
   add_test(NAME mindmap_helper_command_history_test COMMAND mindmap_helper_command_history_test)
+
+  add_executable(mindmap_helper_base64_test
+    tests/Base64Test.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_base64_test)
+  add_test(NAME mindmap_helper_base64_test COMMAND mindmap_helper_base64_test)
 
 endif()

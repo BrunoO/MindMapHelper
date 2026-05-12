@@ -1,5 +1,6 @@
 #include "ui/MindMapCanvasView.h"
 
+#include "core/Base64.h"
 #include "core/mindmap/UuidGenerator.h"
 #include "ui/branch/BranchRenderContext.h"
 #include "ui/branch/DrawBranchesBezier.h"
@@ -7,6 +8,7 @@
 #include "ui/branch/DrawBranchesOrthogonal.h"
 #include "ui/canvas/CanvasMath.h"
 #include "ui/canvas/NodeGeometry.h"
+#include "ui/canvas/NodeTextureUtils.h"
 #include "ui/demos/SampleMindMapGraph.h"
 
 #include "imgui.h"
@@ -86,6 +88,12 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_node, 
     const ImU32 hot_border = hot ? kColorNodeBorderHot : kColorNodeBorder;
     const ImU32 border = incoming_edge_selected ? kColorNodeBorderSelected : hot_border;
     ctx.draw_list_->AddRectFilled(rmin, rmax, kColorNodeFill, mind_map::canvas::kNodeCornerRadiusWorld);
+    if (node.texture_id_ != 0) {
+      ctx.draw_list_->AddImageRounded(node.texture_id_, rmin, rmax,
+                                      {0.0F, 0.0F}, {1.0F, 1.0F},
+                                      IM_COL32_WHITE,  // NOLINT(hicpp-signed-bitwise)
+                                      mind_map::canvas::kNodeCornerRadiusWorld);
+    }
     ctx.draw_list_->AddRect(rmin, rmax, border, mind_map::canvas::kNodeCornerRadiusWorld, 0, kNodeBorderThickness);
 
     const ImVec2 text_sz = ImGui::CalcTextSize(label);
@@ -125,6 +133,13 @@ MindMapCanvasView::MindMapCanvasView() {
   LoadFrom(mind_map::demos::BuildSampleDocument());
 }
 
+MindMapCanvasView::~MindMapCanvasView() {
+  for (auto& node : nodes_) {
+    ReleaseTexture(node.texture_id_);
+    node.texture_id_ = 0;
+  }
+}
+
 mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() const {
   for (const auto& node : nodes_) {
     if (node.active_ && node.parent_idx_ >= 0) {
@@ -154,6 +169,10 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
   dragging_node_ = -1;
   selected_child_for_edge_style_ = -1;
 
+  for (auto& node : nodes_) {
+    ReleaseTexture(node.texture_id_);
+    node.texture_id_ = 0;
+  }
   nodes_.clear();
   nodes_.reserve(doc.nodes_.size());
 
@@ -162,6 +181,10 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
     node.id_ = n.id_;
     node.label_ = n.label_;
     node.active_ = true;
+    if (!n.image_png_base64_.empty()) {
+      node.image_png_base64_ = n.image_png_base64_;
+      node.texture_id_ = UploadPngTexture(mind_map::core::Base64Decode(n.image_png_base64_));
+    }
     nodes_.push_back(std::move(node));
   }
 
@@ -208,6 +231,7 @@ mind_map::core::MindMapDocument MindMapCanvasView::ToDocument(const mind_map::co
     mind_map::core::MindMapNode n;
     n.id_ = node.id_;
     n.label_ = node.label_;
+    n.image_png_base64_ = node.image_png_base64_;
     doc.nodes_.push_back(std::move(n));
 
     mind_map::core::MindMapNodeLayout layout;

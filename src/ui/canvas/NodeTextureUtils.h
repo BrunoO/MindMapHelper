@@ -1,0 +1,17 @@
+#pragma once
+
+#include "imgui.h"
+
+#include <string>
+
+namespace mind_map::ui {
+
+// Decodes PNG bytes and uploads a GL texture. Returns 0 on failure.
+// Must be called from the main (GL) thread.
+[[nodiscard]] ImTextureID UploadPngTexture(const std::string& png_bytes);
+
+// Deletes a GL texture created by UploadPngTexture. No-op when tex_id == 0.
+// Must be called from the main (GL) thread.
+void ReleaseTexture(ImTextureID tex_id);
+
+}  // namespace mind_map::ui

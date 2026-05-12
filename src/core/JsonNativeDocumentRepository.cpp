@@ -20,6 +20,7 @@ MindMapDocument FromJson(const nlohmann::json& j) {
     MindMapNode node;
     node.id_ = n.at("id").get<std::string>();
     node.label_ = n.at("label").get<std::string>();
+    node.image_png_base64_ = n.value("image", std::string{});
     doc.nodes_.push_back(std::move(node));
   }
 
@@ -55,7 +56,11 @@ nlohmann::json ToJson(const MindMapDocument& doc) {
 
   j["nodes"] = nlohmann::json::array();
   for (const auto& node : doc.nodes_) {
-    j["nodes"].push_back({{"id", node.id_}, {"label", node.label_}});
+    nlohmann::json n = {{"id", node.id_}, {"label", node.label_}};
+    if (!node.image_png_base64_.empty()) {
+      n["image"] = node.image_png_base64_;
+    }
+    j["nodes"].push_back(std::move(n));
   }
 
   j["edges"] = nlohmann::json::array();

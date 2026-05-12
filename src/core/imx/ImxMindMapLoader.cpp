@@ -20,6 +20,7 @@ namespace {
 
 constexpr std::string_view kGaiaCellTextKey = "com.thinkbuzan.gaia.cell.text";
 constexpr std::string_view kGaiaHTMLLabelKey = "com.thinkbuzan.gaia.entities.HTMLLabel";
+constexpr std::string_view kImageStyleKey = "image=";
 
 [[nodiscard]] std::string AttrOrEmpty(const pugi::xml_node& node, const char* key) {
   if (const pugi::xml_attribute attr = node.attribute(key)) {
@@ -135,6 +136,43 @@ void MaybeCaptureHtmlLabelFallback(const pugi::xml_node& property_node, std::str
   return html_label_fallback;
 }
 
+[[nodiscard]] std::string ExtractImageIdFromStyle(std::string_view style) {
+  const auto pos = style.find(kImageStyleKey);
+  if (pos == std::string_view::npos) {
+    return {};
+  }
+  const std::string_view value = style.substr(pos + kImageStyleKey.size());
+  const auto end = value.find_first_of(";, \t");
+  return std::string(end == std::string_view::npos ? value : value.substr(0, end));
+}
+
+[[nodiscard]] std::unordered_map<std::string, std::string> BuildIdToImageAssetIdMap(
+    const pugi::xml_document& doc) {
+  std::unordered_map<std::string, std::string> result;
+  std::vector<pugi::xml_node> stack;
+  if (const pugi::xml_node root = doc.document_element()) {
+    stack.push_back(root);
+  }
+  while (!stack.empty()) {
+    const pugi::xml_node node = stack.back();
+    stack.pop_back();
+    if (node.type() == pugi::node_element) {
+      const pugi::xml_attribute id_attr = node.attribute("id");
+      const pugi::xml_attribute style_attr = node.attribute("style");
+      if (!id_attr.empty() && !style_attr.empty()) {
+        const std::string image_id = ExtractImageIdFromStyle(style_attr.value());
+        if (!image_id.empty()) {
+          result.try_emplace(std::string{id_attr.value()}, image_id);
+        }
+      }
+    }
+    for (pugi::xml_node child = node.last_child(); !child.empty(); child = child.previous_sibling()) {
+      stack.push_back(child);
+    }
+  }
+  return result;
+}
+
 void UpdateIdTextMap(std::unordered_map<std::string, std::string>& map, const pugi::xml_node& node) {
   const pugi::xml_attribute id_attr = node.attribute("id");
   if (id_attr.empty()) {
@@ -211,6 +249,13 @@ struct ImxBranchEdge {
   return children;
 }
 
+void ApplyImageAssetId(ImxNode& node,
+                       const std::unordered_map<std::string, std::string>& id_to_image_asset) {
+  if (const auto it = id_to_image_asset.find(node.id_); it != id_to_image_asset.end()) {
+    node.image_asset_id_ = it->second;
+  }
+}
+
 [[nodiscard]] std::optional<ImxMindMapModel> ParseDataXml(std::string_view data_xml) {
   pugi::xml_document doc;
   if (const pugi::xml_parse_result parse_result =
@@ -229,6 +274,7 @@ struct ImxBranchEdge {
   }
 
   const std::unordered_map<std::string, std::string> element_text = BuildIdToTextMap(doc);
+  const std::unordered_map<std::string, std::string> id_to_image_asset = BuildIdToImageAssetIdMap(doc);
   const std::vector<ImxBranchEdge> edges = CollectBranches(doc);
   const std::unordered_map<std::string, std::vector<std::string>> children_by_parent = BuildChildrenMap(edges);
 
@@ -274,6 +320,7 @@ struct ImxBranchEdge {
     ImxNode node;
     node.id_ = id;
     node.text_ = resolve_text(id);
+    ApplyImageAssetId(node, id_to_image_asset);
     if (const auto it = children_by_parent.find(id); it != children_by_parent.end()) {
       node.children_ = it->second;
       for (const std::string& child_id : node.children_) {
@@ -290,6 +337,7 @@ struct ImxBranchEdge {
     ImxNode node;
     node.id_ = id;
     node.text_ = resolve_text(id);
+    ApplyImageAssetId(node, id_to_image_asset);
     if (const auto it = children_by_parent.find(id); it != children_by_parent.end()) {
       node.children_ = it->second;
     }
@@ -394,6 +442,15 @@ struct ZipArchiveCloser {
   return {std::move(buffer)};
 }
 
+[[nodiscard]] zip_int64_t LocateImageEntry(zip_t* archive, const std::string& image_id) {
+  const zip_int64_t idx = LocateEntryByBasename(archive, image_id.c_str());
+  if (idx >= 0) {
+    return idx;
+  }
+  const std::string with_png = image_id + ".png";
+  return LocateEntryByBasename(archive, with_png.c_str());
+}
+
 }  // namespace
 
 std::optional<ImxMindMapModel> LoadImxMindMapModelFromXml(const std::string_view data_xml,
@@ -428,7 +485,25 @@ std::optional<ImxMindMapModel> LoadImxMindMapModelFromFile(const std::string_vie
     return std::nullopt;
   }
 
-  return LoadImxMindMapModelFromXml(*data_xml, *mapmeta_xml);
+  std::optional<ImxMindMapModel> model = LoadImxMindMapModelFromXml(*data_xml, *mapmeta_xml);
+  if (!model) {
+    return std::nullopt;
+  }
+
+  for (auto& node : model->nodes_) {
+    if (node.image_asset_id_.empty()) {
+      continue;
+    }
+    const zip_int64_t img_index = LocateImageEntry(raw, node.image_asset_id_);
+    if (img_index < 0) {
+      continue;
+    }
+    if (auto bytes = ReadZipEntryUncompressed(raw, static_cast<zip_uint64_t>(img_index))) {
+      node.image_bytes_ = std::move(*bytes);
+    }
+  }
+
+  return model;
 }
 
 }  // namespace mind_map::core

@@ -13,6 +13,7 @@ struct Vec2 {
 struct MindMapNode {
   std::string id_;
   std::string label_;
+  std::string image_png_base64_;  // base64-encoded PNG bytes; empty when no image
 };
 
 struct MindMapEdge {

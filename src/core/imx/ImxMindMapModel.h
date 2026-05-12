@@ -9,6 +9,8 @@ struct ImxNode {
   std::string id_;
   std::string text_;
   std::vector<std::string> children_;
+  std::string image_asset_id_;  // numeric ID extracted from style="image=<id>;..." attribute
+  std::string image_bytes_;     // raw PNG bytes read from ZIP; empty when no image
 };
 
 struct ImxMapMeta {

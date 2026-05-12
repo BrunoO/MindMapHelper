@@ -1,5 +1,6 @@
 #include "core/imx/ImxImportAdapter.h"
 
+#include "core/Base64.h"
 #include "core/imx/ImxMindMapLoader.h"
 #include "core/imx/ImxMindMapModel.h"
 #include "core/mindmap/UuidGenerator.h"
@@ -39,6 +40,9 @@ constexpr const char* kFallbackLabel = "(no text)";
     MindMapNode node;
     node.id_ = id_to_uuid.at(imx_node.id_);
     node.label_ = imx_node.text_.empty() ? kFallbackLabel : imx_node.text_;
+    if (!imx_node.image_bytes_.empty()) {
+      node.image_png_base64_ = Base64Encode(imx_node.image_bytes_);
+    }
     nodes.push_back(std::move(node));
   }
   return nodes;
