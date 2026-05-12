@@ -98,6 +98,14 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_node, 
 
     const ImVec2 text_sz = ImGui::CalcTextSize(label);
     const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F, (rmin.y + rmax.y - text_sz.y) * 0.5F};
+    if (node.texture_id_ != 0) {
+      // 4-direction dark outline so white text stays legible on any image.
+      constexpr ImU32 kColorTextOutline = IM_COL32(0, 0, 0, 200);  // NOLINT(hicpp-signed-bitwise)
+      ctx.draw_list_->AddText({text_pos.x - 1.0F, text_pos.y},        kColorTextOutline, label);
+      ctx.draw_list_->AddText({text_pos.x + 1.0F, text_pos.y},        kColorTextOutline, label);
+      ctx.draw_list_->AddText({text_pos.x,         text_pos.y - 1.0F}, kColorTextOutline, label);
+      ctx.draw_list_->AddText({text_pos.x,         text_pos.y + 1.0F}, kColorTextOutline, label);
+    }
     ctx.draw_list_->AddText(text_pos, IM_COL32(235, 235, 245, 255), label);  // NOLINT(hicpp-signed-bitwise)
 
     const ImVec2 left = mind_map::canvas::WorldToScreen({c.x - half.x, c.y}, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
