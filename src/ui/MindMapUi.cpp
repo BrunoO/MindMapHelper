@@ -3,8 +3,11 @@
 #include "app/DocumentSessionService.h"
 #include "core/ImportService.h"
 #include "ui/MindMapCanvasView.h"
+#include "ui/ShortcutRegistry.h"
+#include "ui/UiCommandDispatcher.h"
 #include "ui/branch/BranchStyle.h"
 #include "ui/canvas/CanvasMath.h"
+#include "ui/commands/CommandHistory.h"
 #include "ui/demos/SampleMindMapGraph.h"
 
 #include "ImGuiFileDialog.h"
@@ -12,7 +15,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstdint>
 #include <string>
 
 namespace mind_map::ui {
@@ -26,39 +28,50 @@ constexpr float kStatusBarHeight = 26.0F;
 constexpr float kFileDialogWidth = 600.0F;
 constexpr float kFileDialogHeight = 400.0F;
 
-enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
-  ResetLayout,
-  ZoomIn,
-  ZoomOut,
-  ResetView,
-  ToggleStatusBar
-};
-
-class UiCommandDispatcher final {
- public:
-  void Dispatch(UiCommandId command, UiState& state,
-                mind_map::app::DocumentSessionService& session) const {
-    switch (command) {  // NOSONAR(cpp:S6177) - C++17; `using enum` to shorten cases requires C++20
-      case UiCommandId::ResetLayout:
-        state.canvas_.Reset();
-        session.MarkDirty();
-        return;
-      case UiCommandId::ZoomIn:  // NOLINT(bugprone-branch-clone)
-        state.zoom_ = std::clamp(state.zoom_ + kZoomStep, kMinZoom, kMaxZoom);
-        return;
-      case UiCommandId::ZoomOut:
-        state.zoom_ = std::clamp(state.zoom_ - kZoomStep, kMinZoom, kMaxZoom);
-        return;
-      case UiCommandId::ResetView:
-        state.zoom_ = 1.0F;
-        state.pan_px_ = {kInitialPanX, kInitialPanY};
-        return;
-      case UiCommandId::ToggleStatusBar:
-        state.show_status_bar_ = !state.show_status_bar_;
-        return;
+void HandleMindMapKeyboardShortcuts(const ImGuiIO& io, const UiCommandDispatcher& dispatcher,
+                                    UiState& state,
+                                    mind_map::app::DocumentSessionService& session) {
+  using SA = ShortcutAction;
+  for (int i = 0; i < static_cast<int>(SA::Count); ++i) {
+    const auto action = static_cast<SA>(i);
+    const ShortcutDef& def = FindShortcut(action);
+    if (!def.want_text_input_exempt_ && io.WantTextInput) {
+      continue;
+    }
+    if (!IsTriggered(def, io)) {
+      continue;
+    }
+    switch (action) {
+      case SA::ZoomIn:      dispatcher.Dispatch(UiCommandId::ZoomIn, state, session);      break;
+      case SA::ZoomOut:     dispatcher.Dispatch(UiCommandId::ZoomOut, state, session);     break;
+      case SA::ResetView:   dispatcher.Dispatch(UiCommandId::ResetView, state, session);   break;
+      case SA::DeleteNode:  dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);  break;
+      case SA::Undo:        dispatcher.Dispatch(UiCommandId::Undo, state, session);        break;
+      case SA::Redo:        dispatcher.Dispatch(UiCommandId::Redo, state, session);        break;
+      case SA::Count:       break;
     }
   }
-};
+}
+
+void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
+                    mind_map::app::DocumentSessionService& session,
+                    const commands::CommandHistory& history) {
+  if (ImGui::MenuItem("Undo", FormatLabel(FindShortcut(ShortcutAction::Undo)).c_str(),
+                      /*selected=*/false, history.CanUndo())) {
+    dispatcher.Dispatch(UiCommandId::Undo, state, session);
+  }
+  if (ImGui::MenuItem("Redo", FormatLabel(FindShortcut(ShortcutAction::Redo)).c_str(),
+                      /*selected=*/false, history.CanRedo())) {
+    dispatcher.Dispatch(UiCommandId::Redo, state, session);
+  }
+  ImGui::Separator();
+  const int sel = state.canvas_.GetSelectedChildForBranchStyle();
+  const bool can_delete = sel > 0;  // root (index 0) cannot be deleted
+  if (ImGui::MenuItem("Delete Node", FormatLabel(FindShortcut(ShortcutAction::DeleteNode)).c_str(),
+                      /*selected=*/false, can_delete)) {
+    dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);
+  }
+}
 
 void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas,
                                              mind_map::app::DocumentSessionService& session) {
@@ -172,13 +185,19 @@ void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
 }
 
 void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, UiState& state,
-                       mind_map::app::DocumentSessionService& session) {
+                       mind_map::app::DocumentSessionService& session,
+                       const commands::CommandHistory& history) {
   if (!ImGui::BeginMainMenuBar()) {
     return;
   }
 
   if (ImGui::BeginMenu("File")) {
     RenderFileMenu(dispatcher, state, session);
+    ImGui::EndMenu();
+  }
+
+  if (ImGui::BeginMenu("Edit")) {
+    RenderEditMenu(dispatcher, state, session, history);
     ImGui::EndMenu();
   }
 
@@ -382,9 +401,11 @@ void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& se
 
 }  // namespace
 
-void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session) {
-  const UiCommandDispatcher command_dispatcher;
-  RenderMainMenuBar(command_dispatcher, state, session);
+void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session,
+                  commands::CommandHistory& history) {
+  const UiCommandDispatcher command_dispatcher{history};
+  HandleMindMapKeyboardShortcuts(ImGui::GetIO(), command_dispatcher, state, session);
+  RenderMainMenuBar(command_dispatcher, state, session, history);
 
   const ImGuiViewport* const viewport = ImGui::GetMainViewport();
   assert(viewport != nullptr);

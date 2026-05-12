@@ -8,6 +8,7 @@
 
 #include <array>
 #include <string>
+#include <vector>
 
 namespace mind_map::ui {
 
@@ -72,6 +73,14 @@ class MindMapCanvasView {
   [[nodiscard]] bool BranchStylesAreUniform() const;
   [[nodiscard]] mind_map::ui::branch::BranchStyle RepresentativeChildEdgeStyle() const;
 
+  // Node activation — used by DeleteNodeCommand to hide/restore nodes without
+  // modifying the document model (deletion is view-layer only; not serialized).
+  // TODO(MindMapHelper): serialize node_active_ once the document format supports it.
+  void SetNodeActive(int idx, bool active);
+  [[nodiscard]] bool IsNodeActive(int idx) const;
+  // Returns the indices of all currently active nodes in the subtree rooted at idx.
+  [[nodiscard]] std::vector<int> CollectActiveSubtree(int idx) const;
+
  private:
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
   [[nodiscard]] bool BranchStylesAreUniform_() const;
@@ -83,6 +92,7 @@ class MindMapCanvasView {
   std::array<mind_map::ui::branch::BranchStyle, mind_map::demos::kSampleMindMapNodeCount> branch_style_by_child_{};
   std::array<std::string, mind_map::demos::kSampleMindMapNodeCount> node_ids_{};
   std::array<std::string, mind_map::demos::kSampleMindMapNodeCount> edge_ids_{};
+  std::array<bool, mind_map::demos::kSampleMindMapNodeCount> node_active_{};
 };
 
 }  // namespace mind_map::ui

@@ -178,6 +178,8 @@ set(BM_UI_SOURCES
   src/ui/demos/SampleMindMapGraph.cpp
   src/ui/MindMapUi.cpp
   src/ui/MindMapCanvasView.cpp
+  src/ui/UiCommandDispatcher.cpp
+  src/ui/commands/DeleteNodeCommand.cpp
   src/ui/branch/DrawBranchesBezier.cpp
   src/ui/branch/DrawBranchesOrthogonal.cpp
   src/ui/branch/DrawBranchesOrganicTaper.cpp
@@ -317,5 +319,11 @@ if(BM_ENABLE_TESTS)
   bm_target_use_src_includes(mindmap_helper_import_service_test)
   target_link_libraries(mindmap_helper_import_service_test PRIVATE mindmap_helper_core)
   add_test(NAME mindmap_helper_import_service_test COMMAND mindmap_helper_import_service_test)
+
+  add_executable(mindmap_helper_command_history_test
+    tests/CommandHistoryTest.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_command_history_test)
+  add_test(NAME mindmap_helper_command_history_test COMMAND mindmap_helper_command_history_test)
 
 endif()

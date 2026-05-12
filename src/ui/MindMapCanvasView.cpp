@@ -10,6 +10,7 @@
 
 #include <cassert>
 #include <string_view>
+#include <vector>
 
 namespace mind_map::ui {
 
@@ -42,11 +43,16 @@ constexpr float kNodeBorderThickness = 1.5F;
 constexpr std::string_view kMixedBranchStylesPreview = "Mixed (per child)";
 
 void DrawSampleMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_node, int selected_child_for_edge,
-                            const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world) {
+                            const std::array<ImVec2, mind_map::demos::kSampleMindMapNodeCount>& pos_world,
+                            const std::array<bool, mind_map::demos::kSampleMindMapNodeCount>& node_active) {
   assert(ctx.draw_list_ != nullptr);
-  const int hot_node = ctx.canvas_hovered_ ? mind_map::demos::HitTestSampleMap(ctx.mouse_world_, pos_world) : -1;
+  const int raw_hot = ctx.canvas_hovered_ ? mind_map::demos::HitTestSampleMap(ctx.mouse_world_, pos_world) : -1;
+  const int hot_node = (raw_hot >= 0 && node_active[static_cast<size_t>(raw_hot)]) ? raw_hot : -1;
 
   for (int i = 0; i < mind_map::demos::kSampleMindMapNodeCount; ++i) {
+    if (!node_active[static_cast<size_t>(i)]) {
+      continue;
+    }
     const char* const label = mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(i)].label_;
     const ImVec2 half = mind_map::canvas::NodeHalfExtentForLabel(label);
     const ImVec2 c = pos_world[static_cast<size_t>(i)];
@@ -98,22 +104,28 @@ void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_
 }  // namespace
 
 MindMapCanvasView::MindMapCanvasView() {
+  node_active_.fill(true);
   LoadFrom(mind_map::demos::BuildSampleDocument());
 }
 
 mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() const {
   for (int c = 0; c < mind_map::demos::kSampleMindMapNodeCount; ++c) {
+    if (!node_active_[static_cast<size_t>(c)]) {
+      continue;
+    }
     if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(c)].parent_ >= 0) {
       return branch_style_by_child_[static_cast<size_t>(c)];
     }
   }
-  assert(false && "sample graph must have at least one child edge");  // NOLINT(readability-implicit-bool-conversion)
   return mind_map::ui::branch::BranchStyle::Bezier;
 }
 
 bool MindMapCanvasView::BranchStylesAreUniform_() const {
   const mind_map::ui::branch::BranchStyle ref = StyleOfFirstChildEdge_();
   for (int c = 0; c < mind_map::demos::kSampleMindMapNodeCount; ++c) {
+    if (!node_active_[static_cast<size_t>(c)]) {
+      continue;
+    }
     if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(c)].parent_ < 0) {
       continue;
     }
@@ -128,11 +140,13 @@ void MindMapCanvasView::Reset() {
   pos_world_ = mind_map::demos::InitialSampleMapPositions();
   dragging_node_ = -1;
   selected_child_for_edge_style_ = -1;
+  node_active_.fill(true);
 }
 
 void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
   dragging_node_ = -1;
   selected_child_for_edge_style_ = -1;
+  node_active_.fill(true);
 
   const size_t node_count = std::min(doc.nodes_.size(), node_ids_.size());
   for (size_t i = 0; i < node_count; ++i) {
@@ -197,7 +211,8 @@ void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
   if (!ptr.canvas_hovered_) {
     return;
   }
-  const int hit = mind_map::demos::HitTestSampleMap(ptr.mouse_world_, pos_world_);
+  const int raw_hit = mind_map::demos::HitTestSampleMap(ptr.mouse_world_, pos_world_);
+  const int hit = (raw_hit >= 0 && node_active_[static_cast<size_t>(raw_hit)]) ? raw_hit : -1;
   if (hit >= 0) {
     dragging_node_ = hit;
     const ImVec2 c = pos_world_[static_cast<size_t>(hit)];
@@ -233,6 +248,9 @@ bool MindMapCanvasView::IsDraggingContent() const {
 
 void MindMapCanvasView::SetBranchStyleForAllEdges(const mind_map::ui::branch::BranchStyle style) {
   for (int c = 0; c < mind_map::demos::kSampleMindMapNodeCount; ++c) {
+    if (!node_active_[static_cast<size_t>(c)]) {
+      continue;
+    }
     if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(c)].parent_ >= 0) {
       branch_style_by_child_[static_cast<size_t>(c)] = style;
     }
@@ -295,13 +313,54 @@ void MindMapCanvasView::Render(const MindMapCanvasRenderContext& ctx) {
       mind_map::ui::branch::MakeBranchRenderContext(ctx.draw_list_, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
 
   for (int child = 0; child < mind_map::demos::kSampleMindMapNodeCount; ++child) {
+    if (!node_active_[static_cast<size_t>(child)]) {
+      continue;
+    }
     if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(child)].parent_ < 0) {
       continue;
     }
     DrawOneChildBranch(branch_ctx, child, branch_style_by_child_[static_cast<size_t>(child)], pos_world_);
   }
 
-  DrawSampleMindMapNodes(ctx, dragging_node_, selected_child_for_edge_style_, pos_world_);
+  DrawSampleMindMapNodes(ctx, dragging_node_, selected_child_for_edge_style_, pos_world_, node_active_);
+}
+
+void MindMapCanvasView::SetNodeActive(int idx, bool active) {
+  if (idx < 0 || idx >= mind_map::demos::kSampleMindMapNodeCount) {
+    return;
+  }
+  node_active_[static_cast<size_t>(idx)] = active;
+  if (!active && selected_child_for_edge_style_ == idx) {
+    selected_child_for_edge_style_ = -1;
+  }
+}
+
+bool MindMapCanvasView::IsNodeActive(int idx) const {
+  if (idx < 0 || idx >= mind_map::demos::kSampleMindMapNodeCount) {
+    return false;
+  }
+  return node_active_[static_cast<size_t>(idx)];
+}
+
+std::vector<int> MindMapCanvasView::CollectActiveSubtree(int idx) const {
+  std::vector<int> result;
+  if (idx < 0 || idx >= mind_map::demos::kSampleMindMapNodeCount ||
+      !node_active_[static_cast<size_t>(idx)]) {
+    return result;
+  }
+  std::vector<int> stack = {idx};
+  while (!stack.empty()) {
+    const int current = stack.back();
+    stack.pop_back();
+    result.push_back(current);
+    for (int c = 0; c < mind_map::demos::kSampleMindMapNodeCount; ++c) {
+      if (mind_map::demos::kSampleMindMapSpecs[static_cast<size_t>(c)].parent_ == current &&
+          node_active_[static_cast<size_t>(c)]) {
+        stack.push_back(c);
+      }
+    }
+  }
+  return result;
 }
 
 }  // namespace mind_map::ui

@@ -5,6 +5,7 @@
 #include "platform/PlatformBootstrap.h"
 #include "ui/MindMapUi.h"
 #include "ui/UiState.h"
+#include "ui/commands/CommandHistory.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -38,6 +39,7 @@ namespace {
 
 int RunApp(std::string_view startup_path) {
   mind_map::ui::UiState ui_state;
+  mind_map::ui::commands::CommandHistory history;
   mind_map::core::JsonNativeDocumentRepository repo;
   mind_map::app::DocumentSessionService session(repo);
 
@@ -94,7 +96,7 @@ int RunApp(std::string_view startup_path) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    mind_map::ui::RenderMainUi(ui_state, session);
+    mind_map::ui::RenderMainUi(ui_state, session, history);
 
     if (session.GetCurrentPath() != last_path) {
       last_path = session.GetCurrentPath();
