@@ -41,8 +41,8 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       state.show_status_bar_ = !state.show_status_bar_;
       return;
     case UiCommandId::DeleteNode: {
-      const int sel = state.canvas_.GetSelectedChildForBranchStyle();
-      if (sel > 0) {  // sel > 0: root (index 0) cannot be deleted
+      if (const int sel = state.canvas_.GetSelectedChildForBranchStyle(); sel > 0) {
+        // sel > 0: root (index 0) cannot be deleted
         history_.Push(std::make_unique<commands::DeleteNodeCommand>(state.canvas_, sel));
       }
       return;

@@ -44,7 +44,7 @@ inline constexpr std::array<ShortcutDef, static_cast<size_t>(ShortcutAction::Cou
 static_assert(std::size(kShortcuts) == static_cast<size_t>(ShortcutAction::Count),
               "kShortcuts must have one entry per ShortcutAction");
 
-[[nodiscard]] inline constexpr const ShortcutDef& FindShortcut(ShortcutAction action) {
+[[nodiscard]] constexpr const ShortcutDef& FindShortcut(ShortcutAction action) {
   return kShortcuts[static_cast<size_t>(action)];
 }
 

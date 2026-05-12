@@ -75,7 +75,7 @@ class MindMapCanvasView {
 
   // Node activation — used by DeleteNodeCommand to hide/restore nodes without
   // modifying the document model (deletion is view-layer only; not serialized).
-  // TODO(MindMapHelper): serialize node_active_ once the document format supports it.
+  // Pending persistence: node_active_ is view-only until the document format can store it.
   void SetNodeActive(int idx, bool active);
   [[nodiscard]] bool IsNodeActive(int idx) const;
   // Returns the indices of all currently active nodes in the subtree rooted at idx.
