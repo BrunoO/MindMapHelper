@@ -431,9 +431,10 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0F);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
-  const auto root_flags = static_cast<ImGuiWindowFlags>(ImGuiWindowFlags_NoTitleBar + ImGuiWindowFlags_NoResize +
-                                                        ImGuiWindowFlags_NoMove + ImGuiWindowFlags_NoCollapse +
-                                                        ImGuiWindowFlags_NoSavedSettings);
+  const ImGuiWindowFlags root_flags =
+      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+      ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+      ImGuiWindowFlags_NoSavedSettings;
   ImGui::Begin("MindMap Helper", nullptr, root_flags);
 
   if (const float content_height = state.show_status_bar_ ? -kStatusBarHeight : 0.0F;

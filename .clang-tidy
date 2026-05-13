@@ -57,6 +57,7 @@ Checks: >-
   -cppcoreguidelines-pro-type-vararg,
   -fuchsia-*,
   -hicpp-vararg,
+  -hicpp-signed-bitwise,
   -google-readability-namespace-comments,
   -hicpp-special-member-functions,
   -hicpp-uppercase-literal-suffix,
@@ -343,6 +344,7 @@ CheckOptions:
   #
   # Related checks:
   # - cppcoreguidelines-pro-type-vararg, hicpp-vararg: DISABLED (ImGui and C APIs use varargs; see Disabled Checks Rationale)
+  # - hicpp-signed-bitwise: DISABLED (ImGui flag API is typedef int with signed-int bitfield constants; | is correct and unavoidable)
   # - readability-magic-numbers: CONFIGURED with 0.0-1.0 allowed for UI constants
   # (see IgnoredFloatingPointValues above)
   #
