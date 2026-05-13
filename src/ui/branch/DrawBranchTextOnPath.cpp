@@ -44,6 +44,87 @@ constexpr int kCenterlineSamples = 8;
   return {next.x - prev.x, next.y - prev.y};
 }
 
+// UTF-8 byte-mask constants (RFC 3629)
+constexpr unsigned int kUtf8ContMask  = 0x3FU;  // data bits in a continuation byte
+constexpr unsigned int kUtf8Lead2Test = 0xE0U;  // test mask for 2-byte lead
+constexpr unsigned int kUtf8Lead2Val  = 0xC0U;  // expected value of 2-byte lead
+constexpr unsigned int kUtf8Lead3Test = 0xF0U;  // test mask for 3-byte lead
+constexpr unsigned int kUtf8Lead3Val  = 0xE0U;  // expected value of 3-byte lead
+constexpr unsigned int kUtf8Lead4Test = 0xF8U;  // test mask for 4-byte lead
+constexpr unsigned int kUtf8Lead4Val  = 0xF0U;  // expected value of 4-byte lead
+constexpr unsigned int kUtf8ContShift = 6U;     // bits per continuation byte
+constexpr unsigned int kUtf8Lead2Bits = 5U;     // data bits in a 2-byte lead
+constexpr unsigned int kUtf8Lead3Bits = 4U;     // data bits in a 3-byte lead
+constexpr unsigned int kUtf8Lead4Bits = 3U;     // data bits in a 4-byte lead
+constexpr int kQuadIdxCount           = 6;      // 2 triangles × 3 indices per quad
+constexpr int kQuadVtxCount           = 4;      // vertices per quad
+
+// Returns number of bytes consumed and sets *out to the Unicode codepoint.
+[[nodiscard]] int NextUtf8Codepoint(const char* s, unsigned int* out) {
+  const auto b = static_cast<unsigned int>(static_cast<unsigned char>(*s));
+  if (b < 0x80U) { *out = b; return 1; }
+  if ((b & kUtf8Lead2Test) == kUtf8Lead2Val) {
+    const auto b1 = static_cast<unsigned int>(static_cast<unsigned char>(s[1]));
+    *out = ((b & ((1U << kUtf8Lead2Bits) - 1U)) << kUtf8ContShift) | (b1 & kUtf8ContMask);
+    return 2;
+  }
+  if ((b & kUtf8Lead3Test) == kUtf8Lead3Val) {
+    const auto b1 = static_cast<unsigned int>(static_cast<unsigned char>(s[1]));
+    const auto b2 = static_cast<unsigned int>(static_cast<unsigned char>(s[2]));
+    *out = ((b & ((1U << kUtf8Lead3Bits) - 1U)) << (kUtf8ContShift * 2U))
+         | ((b1 & kUtf8ContMask) << kUtf8ContShift)
+         | (b2 & kUtf8ContMask);
+    return 3;
+  }
+  const auto b1 = static_cast<unsigned int>(static_cast<unsigned char>(s[1]));
+  const auto b2 = static_cast<unsigned int>(static_cast<unsigned char>(s[2]));
+  const auto b3 = static_cast<unsigned int>(static_cast<unsigned char>(s[3]));
+  *out = ((b & ((1U << kUtf8Lead4Bits) - 1U)) << (kUtf8ContShift * 3U))
+       | ((b1 & kUtf8ContMask) << (kUtf8ContShift * 2U))
+       | ((b2 & kUtf8ContMask) << kUtf8ContShift)
+       | (b3 & kUtf8ContMask);
+  return 4;
+}
+
+// Renders text centered on `center` and rotated by `angle_rad` (screen-space, y-down).
+void AddTextRotated(ImDrawList* draw_list, ImFont* font, float font_size,
+                    ImVec2 center, ImU32 col, float angle_rad,
+                    const char* text_begin, const char* text_end) {
+  if ((col & IM_COL32_A_MASK) == 0U) { return; }
+  const float scale  = font_size / font->FontSize;
+  const float cos_a  = std::cos(angle_rad);
+  const float sin_a  = std::sin(angle_rad);
+  const ImVec2 tsize = font->CalcTextSizeA(font_size, FLT_MAX, 0.0F, text_begin, text_end);
+  const float half_w = tsize.x * 0.5F;
+  const float half_h = tsize.y * 0.5F;
+  const auto rot = [cos_a, sin_a, center](float lx, float ly) -> ImVec2 {
+    return {center.x + lx * cos_a - ly * sin_a, center.y + lx * sin_a + ly * cos_a};
+  };
+  draw_list->PushTextureID(font->ContainerAtlas->TexID);
+  float cx = 0.0F;
+  const char* s = text_begin;
+  while (s < text_end) {
+    unsigned int c = 0U;
+    s += NextUtf8Codepoint(s, &c);
+    if (c == 0U) { break; }
+    if (c < 32U) { continue; }
+    const ImFontGlyph* g = font->FindGlyph(static_cast<ImWchar>(c));
+    if (g == nullptr) { continue; }
+    if (g->Visible) {
+      const float lx0 = (cx + g->X0) * scale - half_w;
+      const float ly0 = g->Y0 * scale - half_h;
+      const float lx1 = (cx + g->X1) * scale - half_w;
+      const float ly1 = g->Y1 * scale - half_h;
+      draw_list->PrimReserve(kQuadIdxCount, kQuadVtxCount);
+      draw_list->PrimQuadUV(
+          rot(lx0, ly0), rot(lx1, ly0), rot(lx1, ly1), rot(lx0, ly1),
+          {g->U0, g->V0}, {g->U1, g->V0}, {g->U1, g->V1}, {g->U0, g->V1}, col);
+    }
+    cx += g->AdvanceX;
+  }
+  draw_list->PopTextureID();
+}
+
 }  // namespace
 
 BranchTextPathPolyline BuildMindMapBranchTextPathWorld(const size_t child_index,
@@ -123,27 +204,16 @@ void DrawMindMapBranchTextOnPath(const BranchRenderContext& ctx, const size_t ch
     dx = 1.0F;
     dy = 0.0F;
   }
+  if (dx < -kNearZero) { dx = -dx; dy = -dy; }  // keep text readable left-to-right
+  const float angle = std::atan2(dy, dx);
   const ImVec2 text_pos =
       mind_map::canvas::WorldToScreen(anchor_world, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
-  float sx = dx * ctx.zoom_;
-  float sy = dy * ctx.zoom_;
-  if (const float slen = std::sqrt(sx * sx + sy * sy); slen > kNearZero) {
-    sx /= slen;
-    sy /= slen;
-  }
-  else {
-    sx = 1.0F;
-    sy = 0.0F;
-  }
-  const ImVec2 n_screen = {-sy, sx};
-  const ImVec2 text_pos_offset = {text_pos.x + n_screen.x * options.normal_offset_px_,
-                                  text_pos.y + n_screen.y * options.normal_offset_px_};
+  const ImVec2 n_screen = {-dy, dx};
+  const ImVec2 text_center = {text_pos.x + n_screen.x * options.normal_offset_px_,
+                               text_pos.y + n_screen.y * options.normal_offset_px_};
   const char* const text_begin = label.data();
   const char* const text_end = text_begin + static_cast<std::ptrdiff_t>(label.size());
-  const ImVec2 text_size = font->CalcTextSizeA(font_size, FLT_MAX, 0.0F, text_begin, text_end);
-  const ImVec2 adjusted = {text_pos_offset.x - text_size.x * 0.5F, text_pos_offset.y - text_size.y * 0.5F};
-
-  ctx.draw_list_->AddText(font, font_size, adjusted, options.color_, text_begin, text_end);
+  AddTextRotated(ctx.draw_list_, font, font_size, text_center, options.color_, angle, text_begin, text_end);
   (void)options.max_glyph_count_;
 }
 
