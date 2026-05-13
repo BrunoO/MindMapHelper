@@ -26,6 +26,8 @@ struct MindMapEdge {
 struct MindMapNodeLayout {
   std::string node_id_;
   Vec2 position_;
+  float size_w_ = 0.0F;  // half-width override; 0 = auto-size from label
+  float size_h_ = 0.0F;  // half-height override; 0 = auto-size from label
 };
 
 struct MindMapViewport {

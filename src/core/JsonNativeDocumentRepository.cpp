@@ -38,6 +38,8 @@ MindMapDocument FromJson(const nlohmann::json& j) {
     layout.node_id_ = l.at("node").get<std::string>();
     layout.position_.x_ = l.at("x").get<float>();
     layout.position_.y_ = l.at("y").get<float>();
+    layout.size_w_ = l.value("hw", 0.0F);
+    layout.size_h_ = l.value("hh", 0.0F);
     doc.layouts_.push_back(std::move(layout));
   }
 
@@ -75,11 +77,14 @@ nlohmann::json ToJson(const MindMapDocument& doc) {
 
   j["layout"] = nlohmann::json::array();
   for (const auto& layout : doc.layouts_) {
-    j["layout"].push_back({
+    nlohmann::json l_json = {
       {"node", layout.node_id_},
       {"x", layout.position_.x_},
       {"y", layout.position_.y_},
-    });
+    };
+    if (layout.size_w_ > 0.0F) { l_json["hw"] = layout.size_w_; }
+    if (layout.size_h_ > 0.0F) { l_json["hh"] = layout.size_h_; }
+    j["layout"].push_back(std::move(l_json));
   }
 
   j["viewport"] = {

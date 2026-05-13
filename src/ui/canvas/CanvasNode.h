@@ -16,8 +16,9 @@ struct CanvasNode {
   std::string edge_id_;
   branch::BranchStyle branch_style_ = branch::BranchStyle::Bezier;
   bool active_ = true;
-  std::string image_png_base64_;      // kept for serialization round-trip
-  ImTextureID texture_id_ = 0;  // GPU texture; 0 means no image
+  std::string image_png_base64_;       // kept for serialization round-trip
+  ImTextureID texture_id_ = 0;        // GPU texture; 0 means no image
+  ImVec2 half_extent_override_ = {0.0F, 0.0F};  // override half-extents; {0,0} = auto-size from label
 };
 
 }  // namespace mind_map::ui

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/canvas/CanvasNode.h"
+#include "ui/canvas/NodeExtent.h"
 #include "ui/canvas/NodeGeometry.h"
 
 #include "imgui.h"
@@ -39,8 +40,8 @@ inline void FillBranchEdgeData(
   out->parent_is_root_ = (par.parent_idx_ < 0);
   out->parent_label_ = par.label_.c_str();
   out->child_label_ = child.label_.c_str();
-  out->parent_half_ = mind_map::canvas::NodeHalfExtentForLabel(out->parent_label_);
-  out->child_half_ = mind_map::canvas::NodeHalfExtentForLabel(out->child_label_);
+  out->parent_half_ = mind_map::canvas::NodeHalfExtent(par);
+  out->child_half_ = mind_map::canvas::NodeHalfExtent(child);
   out->pw_ = par.pos_world_;
   out->cw_ = child.pos_world_;
   out->p0_attachment_ = mind_map::canvas::RoundedRectAttachmentPreferEdgeMid(

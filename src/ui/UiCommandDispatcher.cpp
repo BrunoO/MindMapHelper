@@ -68,7 +68,7 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       session.MarkDirty();
       return;
     case UiCommandId::PasteImage: {
-      const int sel = state.canvas_.GetSelectedChildForBranchStyle();
+      const int sel = state.canvas_.GetSelectedNode();
       if (sel < 0) { return; }
       const auto png = GetClipboardImagePng();
       if (!png) { return; }

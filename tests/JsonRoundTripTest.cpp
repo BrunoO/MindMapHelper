@@ -13,6 +13,8 @@ constexpr float kChildPosY  = -140.0F;
 constexpr float kPanX       = 40.0F;
 constexpr float kPanY       = 120.0F;
 constexpr float kZoom       = 1.5F;
+constexpr float kNodeHalfW  = 80.0F;
+constexpr float kNodeHalfH  = 35.0F;
 
 [[nodiscard]] const mind_map::core::MindMapNodeLayout* FindLayout(
     const mind_map::core::MindMapDocument& doc, std::string_view node_id) {
@@ -158,11 +160,46 @@ void TestRejectsMissingFile() {
   assert(!repo.Load("/tmp/mindmap_helper_definitely_does_not_exist_xyzzy.mmh").has_value());
 }
 
+void TestNodeSizeRoundTrip() {
+  const std::filesystem::path tmp =
+      std::filesystem::temp_directory_path() / "mindmap_helper_json_size_round_trip_test.mmh";
+
+  mind_map::core::MindMapDocument doc = MakeTestDocument();
+  // Set a size override on the child node layout.
+  for (auto& layout : doc.layouts_) {
+    if (layout.node_id_ == "node-2") {
+      layout.size_w_ = kNodeHalfW;
+      layout.size_h_ = kNodeHalfH;
+    }
+  }
+
+  const mind_map::core::JsonNativeDocumentRepository repo;
+  assert(repo.Save(tmp.string(), doc));
+
+  const auto loaded_opt = repo.Load(tmp.string());
+  assert(loaded_opt.has_value());
+  const mind_map::core::MindMapDocument& loaded = *loaded_opt;
+
+  const auto* root_layout  = FindLayout(loaded, "node-1");
+  const auto* child_layout = FindLayout(loaded, "node-2");
+  assert(root_layout  != nullptr);
+  assert(child_layout != nullptr);
+  // Root has no override — should default to 0.
+  assert(root_layout->size_w_ == 0.0F);
+  assert(root_layout->size_h_ == 0.0F);
+  // Child has explicit override.
+  assert(child_layout->size_w_ == kNodeHalfW);
+  assert(child_layout->size_h_ == kNodeHalfH);
+
+  static_cast<void>(std::filesystem::remove(tmp));
+}
+
 }  // namespace
 
 int main() {  // NOLINT(bugprone-exception-escape)
   TestRoundTrip();
   TestRoundTripLayouts();
+  TestNodeSizeRoundTrip();
   TestRejectsWrongFormat();
   TestRejectsWrongVersion();
   TestRejectsMalformedJson();

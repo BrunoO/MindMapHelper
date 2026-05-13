@@ -77,7 +77,7 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
     dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);
   }
   ImGui::Separator();
-  const bool can_paste = sel >= 0;
+  const bool can_paste = state.canvas_.GetSelectedNode() >= 0;
   if (ImGui::MenuItem("Paste Image", FormatLabel(FindShortcut(ShortcutAction::PasteImage)).c_str(),
                       /*selected=*/false, can_paste)) {
     dispatcher.Dispatch(UiCommandId::PasteImage, state, session);
@@ -292,6 +292,7 @@ void RenderCanvas(UiState& state, mind_map::app::DocumentSessionService& session
   pointer_state.mouse_screen_ = io.MousePos;
   pointer_state.mouse_world_ = mouse_world;
   pointer_state.canvas_hovered_ = canvas_hovered;
+  pointer_state.zoom_ = state.zoom_;
   HandleCanvasPointerInput(canvas_hovered, canvas_item_active, io, pointer_state, state.pan_px_,
                            state.canvas_, session);
 

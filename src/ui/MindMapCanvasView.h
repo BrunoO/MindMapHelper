@@ -25,6 +25,7 @@ struct MindMapPointerState {
   ImVec2 mouse_screen_;
   ImVec2 mouse_world_;
   bool canvas_hovered_ = false;
+  float zoom_ = 1.0F;
 };
 
 // Single canvas view: pan/zoom stay in MindMapUi; this owns layout, drag, and drawing.
@@ -62,6 +63,8 @@ class MindMapCanvasView {
   void SetBranchStyleForAllEdges(mind_map::ui::branch::BranchStyle style);
 
   [[nodiscard]] bool HasSelectedIncomingEdgeStyleTarget() const;
+  // Any node that is currently selected (including root); -1 when nothing selected.
+  [[nodiscard]] int GetSelectedNode() const;
   [[nodiscard]] int GetSelectedChildForBranchStyle() const;
   // nullptr when no non-root node is selected for incoming-edge editing.
   [[nodiscard]] const char* GetSelectedIncomingEdgeChildLabel() const;
@@ -99,7 +102,15 @@ class MindMapCanvasView {
   std::vector<ImVec2> initial_pos_world_;
   int dragging_node_ = -1;
   ImVec2 grab_offset_world_;
+  int selected_node_ = -1;               // any clicked node (including root); drives resize handles
   int selected_child_for_edge_style_ = -1;
+
+  // Resize state — active while a corner handle is being dragged.
+  int resizing_node_ = -1;
+  int resizing_corner_ = -1;    // 0=TL, 1=TR, 2=BR, 3=BL
+  ImVec2 resize_anchor_world_;  // opposite corner; fixed during the drag
+  ImVec2 resize_orig_half_;     // half-extents at drag start (for aspect-ratio lock)
+  bool resize_lock_aspect_ = false;  // true when the node has a texture
 };
 
 }  // namespace mind_map::ui
