@@ -1,0 +1,82 @@
+---
+description: Cast conventions — prefer right types over casts; static_cast only; reinterpret_cast at FFI; never C-style/const_cast
+globs: "**/*.cpp,**/*.h,**/*.hpp"
+alwaysApply: false
+paths:
+  - "**/*.cpp"
+  - "**/*.h"
+  - "**/*.hpp"
+---
+
+# C++ Cast Conventions
+
+Treat every cast as a code smell until proven necessary. Before writing `static_cast<...>`, ask:
+
+1. **Can I change the type at the declaration so the cast disappears?**
+2. **Is this a genuine boundary** (FFI / int↔float math / unsigned byte / `[[nodiscard]]` discard)?
+3. **Does this exact cast pattern repeat ≥3 times?** → extract a helper.
+
+Safety hierarchy: no cast → `static_cast` → `reinterpret_cast` (FFI only, NOLINT + rationale) → never `const_cast` → never C-style.
+
+## Patterns to refactor away
+
+### 1. Loop counter mismatched with container index type
+
+```cpp
+// ❌
+for (int i = 0; i < kCount; ++i) { array[static_cast<size_t>(i)] = ...; }
+
+// ✅
+for (std::size_t i = 0; i < kCount; ++i) { array[i] = ...; }
+```
+Also promote the bound: `constexpr std::size_t kCount = ...;`.
+
+### 2. `enum class` ↔ `int` round-trip for iteration + parallel switch
+
+```cpp
+// ❌
+for (int i = 0; i < static_cast<int>(MyEnum::Count); ++i) {
+  switch (static_cast<MyEnum>(i)) { case MyEnum::A: Dispatch(CmdA); break; ... }
+}
+
+// ✅ Carry the dispatch target as a field on the table entry
+for (const Def& def : kTable) { Dispatch(def.command_id_); }
+```
+
+### 3. `int` sentinel for "maybe an index" (e.g. `-1` for "no parent")
+
+```cpp
+// ❌
+struct Spec { int parent_; };
+if (s.parent_ >= 0) { id = ids[static_cast<size_t>(s.parent_)]; }
+
+// ✅
+struct Spec { std::optional<std::size_t> parent_idx_; };
+if (s.parent_idx_.has_value()) { id = ids[*s.parent_idx_]; }
+```
+Use `.has_value()` for the guard and `*opt` for the deref (project convention).
+
+### 4. `static_cast<double>(float)` for `printf`-style varargs
+
+```cpp
+// ❌
+ImGui::Text("Zoom %.2f", static_cast<double>(state.zoom_));
+
+// ✅ — vararg promotion is automatic; vararg checks are disabled in .clang-tidy
+ImGui::Text("Zoom %.2f", state.zoom_);
+```
+
+## Boundaries where casts stay (don't "fix" these)
+
+- **Third-party C / FFI APIs:** libzip, stb_image, OpenGL ↔ ImGui (`ImTextureID`), Objective-C `NSData`. Annotate `reinterpret_cast` with `// NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)` + one-line reason.
+- **Inherent int↔float math:** `static_cast<float>(i) / static_cast<float>(N)` for parametric curves; `static_cast<int>(std::floor(...))` for grid quantization.
+- **Unsigned byte reads:** use `mind_map::core::ToUnsignedByte(c)` from `core/ByteOps.h` instead of the `static_cast<uint32_t>(static_cast<uint8_t>(c))` double-cast. Add another `ByteOps` helper if a new repeated pattern emerges.
+- **Single-source-of-truth FFI scalars:** when one FFI int boundary is hit ≥2 times, hoist into a `constexpr int kFooCount = static_cast<int>(...)` so the cast is stated once.
+
+## Suppressions
+
+When a cast remains by necessity, place any `// NOLINT(...)` / `// NOSONAR(...)` on the **same line** with a short rationale (see `.cursor/rules/suppressions-same-line.mdc`).
+
+**Enforcement:** clang-tidy `cppcoreguidelines-pro-type-cstyle-cast`, `cppcoreguidelines-pro-type-const-cast`, `cppcoreguidelines-pro-type-reinterpret-cast`, `bugprone-narrowing-conversions`; Sonar cpp:S859, cpp:S3630, cpp:S3670.
+
+**Reference:** `docs/standards/2026-05-13_CXX17_CAST_CONVENTIONS.md` — full decision tree, before/after examples, audit commits.

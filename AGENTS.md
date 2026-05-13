@@ -70,7 +70,7 @@ See **`docs/standards/CXX17_NAMING_CONVENTIONS.md`**. Summary:
 ### Never
 
 - `malloc` / `free` / `new` / `delete` for routine ownership — prefer containers and smart pointers.
-- C-style casts — use `static_cast`, `const_cast`, `reinterpret_cast` with care.
+- C-style casts — use `static_cast`; `reinterpret_cast` only at FFI boundaries (with NOLINT + rationale); `const_cast` practically never. See `docs/standards/2026-05-13_CXX17_CAST_CONVENTIONS.md` for the decision tree and the four legitimate-cast boundaries.
 - Raw pointers to mutex-guarded internals across threads without a documented lifetime contract.
 
 ### Float literals
@@ -116,6 +116,7 @@ Dear ImGui is **immediate mode**: no widget objects, UI is a function of your da
 |---|---|
 | `naming-conventions-cpp.mdc` | PascalCase / snake_case / kPascalCase |
 | `const-correctness-cpp.mdc` | `const` on params / members / locals |
+| `cast-conventions-cpp.mdc` | Prefer right types over casts; FFI-only `reinterpret_cast`; no C-style |
 | `cxx17-init-statement.mdc` | `if (init; cond)` |
 | `cxx17-string-view-params.mdc` | `std::string_view` parameters |
 | `cxx17-style-tool-friendly.mdc` | Braced return, `scoped_lock`, `explicit` |
