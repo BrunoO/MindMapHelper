@@ -5,7 +5,7 @@
 imgui.ini
 
 # Local overrides and generated analysis output
-.claude/settings.local.json
+.claude/
 .scannerwork/
 clang-tidy-report.txt
 sonar-results/
