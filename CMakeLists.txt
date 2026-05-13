@@ -220,7 +220,6 @@ set(BM_CORE_SOURCES
   src/core/imx/ImxImportAdapter.cpp
   src/core/ImportService.cpp
   src/core/DocumentPathLoader.cpp
-  src/core/mindmap/SampleMindMapTopology.cpp
   src/core/mindmap/UuidGenerator.cpp
   src/core/JsonNativeDocumentRepository.cpp
 )

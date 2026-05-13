@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/ImGuiInputHelpers.h"
+#include "ui/UiCommandId.h"
 
 #include "imgui.h"
 
@@ -30,20 +31,21 @@ struct ShortcutDef {
   bool want_text_input_exempt_ = false;  // fires even when io.WantTextInput is true
   const char* key_label_ = nullptr;
   const char* description_ = nullptr;
+  UiCommandId command_id_ = UiCommandId::ResetLayout;  // command dispatched when triggered
   ImGuiKey alt_key_ = ImGuiKey_None;        // optional second key; same modifier rules apply
   const char* alt_key_label_ = nullptr;
 };
 
 // clang-format off
 inline constexpr std::array<ShortcutDef, static_cast<size_t>(ShortcutAction::Count)> kShortcuts = {{
-  /* ZoomIn         */ {ImGuiKey_Equal,  true,  false, false, "=",      "Zoom In"},
-  /* ZoomOut        */ {ImGuiKey_Minus,  true,  false, false, "-",      "Zoom Out"},
-  /* ResetView      */ {ImGuiKey_0,      true,  false, false, "0",      "Reset View"},
-  /* DeleteNode     */ {ImGuiKey_Delete, false, false, false, "Delete", "Delete selected node"},
-  /* InsertChildNode*/ {ImGuiKey_Tab,    false, false, false, "Tab",    "Insert child node", ImGuiKey_Insert, "Insert"},
-  /* Undo           */ {ImGuiKey_Z,      true,  false, true,  "Z",      "Undo"},
-  /* Redo           */ {ImGuiKey_Z,      true,  true,  true,  "Z",      "Redo"},
-  /* PasteImage     */ {ImGuiKey_V,      true,  false, false, "V",      "Paste image into selected node"},
+  /* ZoomIn         */ {ImGuiKey_Equal,  true,  false, false, "=",      "Zoom In",                          UiCommandId::ZoomIn},
+  /* ZoomOut        */ {ImGuiKey_Minus,  true,  false, false, "-",      "Zoom Out",                         UiCommandId::ZoomOut},
+  /* ResetView      */ {ImGuiKey_0,      true,  false, false, "0",      "Reset View",                       UiCommandId::ResetView},
+  /* DeleteNode     */ {ImGuiKey_Delete, false, false, false, "Delete", "Delete selected node",             UiCommandId::DeleteNode},
+  /* InsertChildNode*/ {ImGuiKey_Tab,    false, false, false, "Tab",    "Insert child node",                UiCommandId::InsertChildNode, ImGuiKey_Insert, "Insert"},
+  /* Undo           */ {ImGuiKey_Z,      true,  false, true,  "Z",      "Undo",                             UiCommandId::Undo},
+  /* Redo           */ {ImGuiKey_Z,      true,  true,  true,  "Z",      "Redo",                             UiCommandId::Redo},
+  /* PasteImage     */ {ImGuiKey_V,      true,  false, false, "V",      "Paste image into selected node",   UiCommandId::PasteImage},
 }};
 // clang-format on
 

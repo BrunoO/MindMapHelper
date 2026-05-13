@@ -34,7 +34,7 @@ mind_map::core::MindMapDocument BuildSampleDocument() {
   for (int i = 0; i < kSampleMindMapNodeCount; ++i) {
     const auto idx = static_cast<size_t>(i);
     node_ids[idx] = mind_map::core::mindmap::GenerateUuidV4();
-    if (kSampleMindMapSpecs[idx].parent_ >= 0) {
+    if (kSampleMindMapSpecs[idx].parent_idx_.has_value()) {
       edge_ids[idx] = mind_map::core::mindmap::GenerateUuidV4();
     }
   }
@@ -43,10 +43,11 @@ mind_map::core::MindMapDocument BuildSampleDocument() {
 
   for (int i = 0; i < kSampleMindMapNodeCount; ++i) {
     const auto idx = static_cast<size_t>(i);
+    const SampleMindMapNodeSpec& spec = kSampleMindMapSpecs[idx];
 
     mind_map::core::MindMapNode node;
     node.id_ = node_ids[idx];
-    node.label_ = kSampleMindMapSpecs[idx].label_;
+    node.label_ = spec.label_;
     doc.nodes_.push_back(std::move(node));
 
     mind_map::core::MindMapNodeLayout layout;
@@ -54,10 +55,10 @@ mind_map::core::MindMapDocument BuildSampleDocument() {
     layout.position_ = {positions[idx].x, positions[idx].y};
     doc.layouts_.push_back(std::move(layout));
 
-    if (kSampleMindMapSpecs[idx].parent_ >= 0) {
+    if (spec.parent_idx_.has_value()) {
       mind_map::core::MindMapEdge edge;
       edge.id_ = edge_ids[idx];
-      edge.parent_id_ = node_ids[static_cast<size_t>(kSampleMindMapSpecs[idx].parent_)];
+      edge.parent_id_ = node_ids[*spec.parent_idx_];
       edge.child_id_ = node_ids[idx];
       edge.style_ = std::string(kDefaultEdgeStyles[idx]);
       if (idx == 1U) { edge.label_ = "supports"; }

@@ -1,26 +1,12 @@
 #pragma once
 
+#include "ui/UiCommandId.h"
 #include "ui/UiState.h"
-
-#include <cstdint>
 
 namespace mind_map::app { class DocumentSessionService; }
 namespace mind_map::ui::commands { class CommandHistory; }
 
 namespace mind_map::ui {
-
-enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
-  ResetLayout,
-  ZoomIn,
-  ZoomOut,
-  ResetView,
-  ToggleStatusBar,
-  DeleteNode,
-  InsertChildNode,
-  Undo,
-  Redo,
-  PasteImage
-};
 
 class UiCommandDispatcher final {
  public:

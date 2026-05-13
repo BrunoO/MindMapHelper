@@ -32,27 +32,14 @@ constexpr float kFileDialogHeight = 400.0F;
 void HandleMindMapKeyboardShortcuts(const ImGuiIO& io, const UiCommandDispatcher& dispatcher,
                                     UiState& state,
                                     mind_map::app::DocumentSessionService& session) {
-  using SA = ShortcutAction;
-  for (int i = 0; i < static_cast<int>(SA::Count); ++i) {
-    const auto action = static_cast<SA>(i);
-    const ShortcutDef& def = FindShortcut(action);
+  for (const ShortcutDef& def : kShortcuts) {
     if (!def.want_text_input_exempt_ && io.WantTextInput) {
       continue;
     }
     if (!IsTriggered(def, io)) {
       continue;
     }
-    switch (action) {
-      case SA::ZoomIn:         dispatcher.Dispatch(UiCommandId::ZoomIn, state, session);         break;
-      case SA::ZoomOut:        dispatcher.Dispatch(UiCommandId::ZoomOut, state, session);        break;
-      case SA::ResetView:      dispatcher.Dispatch(UiCommandId::ResetView, state, session);      break;
-      case SA::DeleteNode:     dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);     break;
-      case SA::InsertChildNode:dispatcher.Dispatch(UiCommandId::InsertChildNode, state, session);break;
-      case SA::Undo:           dispatcher.Dispatch(UiCommandId::Undo, state, session);           break;
-      case SA::Redo:           dispatcher.Dispatch(UiCommandId::Redo, state, session);           break;
-      case SA::PasteImage:     dispatcher.Dispatch(UiCommandId::PasteImage, state, session);     break;
-      case SA::Count:          break;
-    }
+    dispatcher.Dispatch(def.command_id_, state, session);
   }
 }
 
