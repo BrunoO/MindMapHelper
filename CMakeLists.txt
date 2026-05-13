@@ -210,6 +210,7 @@ set(BM_UI_SOURCES
   src/ui/branch/DrawBranchesBezier.cpp
   src/ui/branch/DrawBranchesOrthogonal.cpp
   src/ui/branch/DrawBranchesOrganicTaper.cpp
+  src/ui/branch/DrawBranchTextOnPath.cpp
   src/ui/canvas/NodeTextureUtils.cpp
   src/ui/commands/PasteImageCommand.cpp
 )

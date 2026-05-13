@@ -240,7 +240,7 @@ void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, const CanvasTransfor
 }  // namespace
 
 void DrawMindMapBranchOrganicTaper(
-    const BranchRenderContext& ctx, const int child_index,
+    const BranchRenderContext& ctx, const size_t child_index,
     const std::vector<mind_map::ui::CanvasNode>& nodes) {
   assert(ctx.draw_list_ != nullptr);
   BranchEdgeData g{};

@@ -18,6 +18,8 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -52,10 +54,10 @@ constexpr ImU32 kColorResizeHandle = IM_COL32(255, 220, 120, 230);      // NOLIN
 constexpr ImU32 kColorResizeHandleBorder = IM_COL32(0, 0, 0, 180);      // NOLINT(hicpp-signed-bitwise)
 
 constexpr float kNodeBorderThickness = 1.5F;
-constexpr float kResizeHandleSizePx = 5.0F;   // visual half-size in screen pixels
-constexpr float kResizeHandleHitPx = 8.0F;    // hit-test half-size in screen pixels
-constexpr float kMinHalfExtent = 15.0F;       // minimum world-space half-extent after resize
-constexpr float kMinResizeScale = 0.05F;      // minimum scale factor for aspect-locked resize
+constexpr float kResizeHandleSizePx = 5.0F;
+constexpr float kResizeHandleHitPx = 8.0F;
+constexpr float kMinHalfExtent = 15.0F;
+constexpr float kMinResizeScale = 0.05F;
 
 // Corner index to sign: 0=TL(-1,-1), 1=TR(+1,-1), 2=BR(+1,+1), 3=BL(-1,+1)
 constexpr std::array<float, 4> kCornerSignX = {-1.0F, +1.0F, +1.0F, -1.0F};
@@ -63,12 +65,10 @@ constexpr std::array<float, 4> kCornerSignY = {-1.0F, -1.0F, +1.0F, +1.0F};
 
 constexpr std::string_view kMixedBranchStylesPreview = "Mixed (per child)";
 
-[[nodiscard]] int HitTestNodes(ImVec2 world_pos, const std::vector<CanvasNode>& nodes) {
-  for (int i = static_cast<int>(nodes.size()) - 1; i >= 0; --i) {
-    const CanvasNode& node = nodes[static_cast<size_t>(i)];
-    if (!node.active_) {
-      continue;
-    }
+[[nodiscard]] std::optional<size_t> HitTestNodes(ImVec2 world_pos, const std::vector<CanvasNode>& nodes) {
+  for (size_t i = nodes.size(); i-- > 0; ) {
+    const CanvasNode& node = nodes[i];
+    if (!node.active_) { continue; }
     const ImVec2 half = mind_map::canvas::NodeHalfExtent(node);
     const ImVec2 rmin = {node.pos_world_.x - half.x, node.pos_world_.y - half.y};
     const ImVec2 rmax = {node.pos_world_.x + half.x, node.pos_world_.y + half.y};
@@ -76,15 +76,15 @@ constexpr std::string_view kMixedBranchStylesPreview = "Mixed (per child)";
       return i;
     }
   }
-  return -1;
+  return std::nullopt;
 }
 
 void DrawResizeHandles(ImDrawList* draw_list, ImVec2 rmin, ImVec2 rmax) {
   const float hs = kResizeHandleSizePx;
-  for (int c_idx = 0; c_idx < 4; ++c_idx) {
+  for (size_t c_idx = 0; c_idx < 4; ++c_idx) {
     const ImVec2 corner = {
-      kCornerSignX[static_cast<size_t>(c_idx)] > 0.0F ? rmax.x : rmin.x,
-      kCornerSignY[static_cast<size_t>(c_idx)] > 0.0F ? rmax.y : rmin.y
+      kCornerSignX[c_idx] > 0.0F ? rmax.x : rmin.x,
+      kCornerSignY[c_idx] > 0.0F ? rmax.y : rmin.y
     };
     draw_list->AddRectFilled({corner.x - hs, corner.y - hs}, {corner.x + hs, corner.y + hs},
                              kColorResizeHandle);
@@ -93,16 +93,18 @@ void DrawResizeHandles(ImDrawList* draw_list, ImVec2 rmin, ImVec2 rmax) {
   }
 }
 
-void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_node, int selected_node,
-                      int selected_child_for_edge, const std::vector<CanvasNode>& nodes) {
+void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx,
+                      std::optional<size_t> dragging_node,
+                      std::optional<size_t> selected_node,
+                      std::optional<size_t> selected_child_for_edge,
+                      const std::vector<CanvasNode>& nodes) {
   assert(ctx.draw_list_ != nullptr);
-  const int hot_node = ctx.canvas_hovered_ ? HitTestNodes(ctx.mouse_world_, nodes) : -1;
+  const std::optional<size_t> hot_node = ctx.canvas_hovered_
+      ? HitTestNodes(ctx.mouse_world_, nodes) : std::nullopt;
 
-  for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
-    const CanvasNode& node = nodes[static_cast<size_t>(i)];
-    if (!node.active_) {
-      continue;
-    }
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    const CanvasNode& node = nodes[i];
+    if (!node.active_) { continue; }
     const char* const label = node.label_.c_str();
     const ImVec2 half = mind_map::canvas::NodeHalfExtent(node);
     const ImVec2 c = node.pos_world_;
@@ -111,8 +113,8 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_node, 
     const ImVec2 rmin = mind_map::canvas::WorldToScreen(rmin_w, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
     const ImVec2 rmax = mind_map::canvas::WorldToScreen(rmax_w, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
 
-    const bool incoming_edge_selected = (i == selected_child_for_edge) && (node.parent_idx_ >= 0);
-    const bool hot = (i == dragging_node) || (i == hot_node);
+    const bool incoming_edge_selected = (selected_child_for_edge == i) && node.parent_idx_.has_value();
+    const bool hot = (dragging_node == i) || (hot_node == i);
     const ImU32 hot_border = hot ? kColorNodeBorderHot : kColorNodeBorder;
     const ImU32 border = incoming_edge_selected ? kColorNodeBorderSelected : hot_border;
     ctx.draw_list_->AddRectFilled(rmin, rmax, kColorNodeFill, mind_map::canvas::kNodeCornerRadiusWorld);
@@ -144,13 +146,13 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx, int dragging_node, 
     ctx.draw_list_->AddCircleFilled(left, kHandleRadius, IM_COL32(90, 200, 255, 200));   // NOLINT(hicpp-signed-bitwise)
     ctx.draw_list_->AddCircleFilled(right, kHandleRadius, IM_COL32(255, 190, 90, 200));  // NOLINT(hicpp-signed-bitwise)
 
-    if (i == selected_node) {
+    if (selected_node == i) {
       DrawResizeHandles(ctx.draw_list_, rmin, rmax);
     }
   }
 }
 
-void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_ctx, int child_index,
+void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_ctx, size_t child_index,
                          mind_map::ui::branch::BranchStyle style,
                          const std::vector<CanvasNode>& nodes) {
   using BranchStyle = mind_map::ui::branch::BranchStyle;
@@ -185,7 +187,7 @@ MindMapCanvasView::~MindMapCanvasView() {
 
 mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() const {
   for (const auto& node : nodes_) {
-    if (node.active_ && node.parent_idx_ >= 0) {
+    if (node.active_ && node.parent_idx_) {
       return node.branch_style_;
     }
   }
@@ -195,7 +197,7 @@ mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() co
 bool MindMapCanvasView::BranchStylesAreUniform_() const {
   const mind_map::ui::branch::BranchStyle ref = StyleOfFirstChildEdge_();
   return std::all_of(nodes_.begin(), nodes_.end(), [ref](const CanvasNode& node) {  // NOLINT(llvm-use-ranges)
-    return !node.active_ || node.parent_idx_ < 0 || node.branch_style_ == ref;
+    return !node.active_ || !node.parent_idx_ || node.branch_style_ == ref;
   });
 }
 
@@ -205,17 +207,17 @@ void MindMapCanvasView::Reset() {
     nodes_[i].active_ = true;
     nodes_[i].half_extent_override_ = {0.0F, 0.0F};
   }
-  dragging_node_ = -1;
-  resizing_node_ = -1;
-  selected_node_ = -1;
-  selected_child_for_edge_style_ = -1;
+  dragging_node_ = std::nullopt;
+  resizing_node_ = std::nullopt;
+  selected_node_ = std::nullopt;
+  selected_child_for_edge_style_ = std::nullopt;
 }
 
 void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
-  dragging_node_ = -1;
-  resizing_node_ = -1;
-  selected_node_ = -1;
-  selected_child_for_edge_style_ = -1;
+  dragging_node_ = std::nullopt;
+  resizing_node_ = std::nullopt;
+  selected_node_ = std::nullopt;
+  selected_child_for_edge_style_ = std::nullopt;
 
   for (auto& node : nodes_) {
     ReleaseTexture(node.texture_id_);
@@ -247,19 +249,14 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
   }
 
   for (const auto& edge : doc.edges_) {
-    int child_idx = -1;
-    int parent_idx = -1;
-    for (int i = 0; i < static_cast<int>(nodes_.size()); ++i) {
-      const auto idx = static_cast<size_t>(i);
-      if (nodes_[idx].id_ == edge.child_id_) {
-        child_idx = i;
-      }
-      if (nodes_[idx].id_ == edge.parent_id_) {
-        parent_idx = i;
-      }
+    std::optional<size_t> child_idx;
+    std::optional<size_t> parent_idx;
+    for (size_t i = 0; i < nodes_.size(); ++i) {
+      if (nodes_[i].id_ == edge.child_id_)  { child_idx  = i; }
+      if (nodes_[i].id_ == edge.parent_id_) { parent_idx = i; }
     }
-    if (child_idx >= 0 && parent_idx >= 0) {
-      auto& child_node = nodes_[static_cast<size_t>(child_idx)];
+    if (child_idx && parent_idx) {
+      auto& child_node = nodes_[*child_idx];
       child_node.parent_idx_ = parent_idx;
       child_node.edge_id_ = edge.id_;
       child_node.branch_style_ = BranchStyleFromString(edge.style_);
@@ -290,10 +287,10 @@ mind_map::core::MindMapDocument MindMapCanvasView::ToDocument(const mind_map::co
     layout.size_h_ = node.half_extent_override_.y;
     doc.layouts_.push_back(std::move(layout));
 
-    if (node.parent_idx_ >= 0) {
+    if (node.parent_idx_) {
       mind_map::core::MindMapEdge edge;
       edge.id_ = node.edge_id_;
-      edge.parent_id_ = nodes_[static_cast<size_t>(node.parent_idx_)].id_;
+      edge.parent_id_ = nodes_[*node.parent_idx_].id_;
       edge.child_id_ = node.id_;
       edge.style_ = std::string(BranchStyleToString(node.branch_style_));
       doc.edges_.push_back(std::move(edge));
@@ -304,20 +301,18 @@ mind_map::core::MindMapDocument MindMapCanvasView::ToDocument(const mind_map::co
 }
 
 void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
-  if (!ptr.canvas_hovered_) {
-    return;
-  }
+  if (!ptr.canvas_hovered_) { return; }
 
   // Check corner resize handles first (any node may be selected, including root).
-  if (selected_node_ >= 0) {
-    const int sel = selected_node_;
-    const auto& sel_node = nodes_[static_cast<size_t>(sel)];
+  if (selected_node_) {
+    const size_t sel = *selected_node_;
+    const auto& sel_node = nodes_[sel];
     const ImVec2 half = mind_map::canvas::NodeHalfExtent(sel_node);
     const float hs = kResizeHandleHitPx / (std::max)(ptr.zoom_, 0.01F);
-    for (int c_idx = 0; c_idx < 4; ++c_idx) {
+    for (size_t c_idx = 0; c_idx < 4; ++c_idx) {
       const ImVec2 corner_w = {
-        sel_node.pos_world_.x + kCornerSignX[static_cast<size_t>(c_idx)] * half.x,
-        sel_node.pos_world_.y + kCornerSignY[static_cast<size_t>(c_idx)] * half.y
+        sel_node.pos_world_.x + kCornerSignX[c_idx] * half.x,
+        sel_node.pos_world_.y + kCornerSignY[c_idx] * half.y
       };
       if (std::abs(ptr.mouse_world_.x - corner_w.x) <= hs &&
           std::abs(ptr.mouse_world_.y - corner_w.y) <= hs) {
@@ -326,44 +321,40 @@ void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
         resize_orig_half_ = half;
         resize_lock_aspect_ = (sel_node.texture_id_ != 0);
         resize_anchor_world_ = {
-          sel_node.pos_world_.x - kCornerSignX[static_cast<size_t>(c_idx)] * half.x,
-          sel_node.pos_world_.y - kCornerSignY[static_cast<size_t>(c_idx)] * half.y
+          sel_node.pos_world_.x - kCornerSignX[c_idx] * half.x,
+          sel_node.pos_world_.y - kCornerSignY[c_idx] * half.y
         };
         return;
       }
     }
   }
 
-  const int hit = HitTestNodes(ptr.mouse_world_, nodes_);
-  if (hit >= 0) {
+  if (const auto hit = HitTestNodes(ptr.mouse_world_, nodes_)) {
     dragging_node_ = hit;
     selected_node_ = hit;
-    const ImVec2 c = nodes_[static_cast<size_t>(hit)].pos_world_;
+    const ImVec2 c = nodes_[*hit].pos_world_;
     grab_offset_world_ = {ptr.mouse_world_.x - c.x, ptr.mouse_world_.y - c.y};
-    if (nodes_[static_cast<size_t>(hit)].parent_idx_ >= 0) {
+    if (nodes_[*hit].parent_idx_) {
       selected_child_for_edge_style_ = hit;
+    } else {
+      selected_child_for_edge_style_ = std::nullopt;
     }
-    else {
-      selected_child_for_edge_style_ = -1;
-    }
-  }
-  else {
-    dragging_node_ = -1;
-    selected_node_ = -1;
-    selected_child_for_edge_style_ = -1;
+  } else {
+    dragging_node_ = std::nullopt;
+    selected_node_ = std::nullopt;
+    selected_child_for_edge_style_ = std::nullopt;
   }
 }
 
 void MindMapCanvasView::OnPrimaryDrag(const MindMapPointerState& ptr) {  // NOLINT(readability-make-member-function-const)
-  if (resizing_node_ >= 0) {
-    auto& node = nodes_[static_cast<size_t>(resizing_node_)];
-    const float csx = kCornerSignX[static_cast<size_t>(resizing_corner_)];
-    const float csy = kCornerSignY[static_cast<size_t>(resizing_corner_)];
+  if (resizing_node_ && resizing_corner_) {
+    auto& node = nodes_[*resizing_node_];
+    const float csx = kCornerSignX[*resizing_corner_];
+    const float csy = kCornerSignY[*resizing_corner_];
     const ImVec2 mouse = ptr.mouse_world_;
     const ImVec2& anchor = resize_anchor_world_;
 
     if (resize_lock_aspect_) {
-      // Project mouse onto the resize diagonal to preserve aspect ratio.
       const float ohx = resize_orig_half_.x;
       const float ohy = resize_orig_half_.y;
       const float denom = 2.0F * (ohx * ohx + ohy * ohy);
@@ -384,25 +375,23 @@ void MindMapCanvasView::OnPrimaryDrag(const MindMapPointerState& ptr) {  // NOLI
     return;
   }
 
-  if (dragging_node_ < 0) {
-    return;
-  }
-  nodes_[static_cast<size_t>(dragging_node_)].pos_world_ = {
+  if (!dragging_node_) { return; }
+  nodes_[*dragging_node_].pos_world_ = {
       ptr.mouse_world_.x - grab_offset_world_.x, ptr.mouse_world_.y - grab_offset_world_.y};
 }
 
 void MindMapCanvasView::OnPrimaryUp() {
-  dragging_node_ = -1;
-  resizing_node_ = -1;
+  dragging_node_ = std::nullopt;
+  resizing_node_ = std::nullopt;
 }
 
 bool MindMapCanvasView::IsDraggingContent() const {
-  return dragging_node_ >= 0 || resizing_node_ >= 0;
+  return dragging_node_.has_value() || resizing_node_.has_value();
 }
 
 void MindMapCanvasView::SetBranchStyleForAllEdges(const mind_map::ui::branch::BranchStyle style) {
   for (auto& node : nodes_) {
-    if (node.active_ && node.parent_idx_ >= 0) {
+    if (node.active_ && node.parent_idx_) {
       node.branch_style_ = style;
     }
   }
@@ -424,40 +413,37 @@ mind_map::ui::branch::BranchStyle MindMapCanvasView::RepresentativeChildEdgeStyl
 }
 
 bool MindMapCanvasView::HasSelectedIncomingEdgeStyleTarget() const {
-  if (selected_child_for_edge_style_ < 0 ||
-      selected_child_for_edge_style_ >= static_cast<int>(nodes_.size())) {
-    return false;
-  }
-  return nodes_[static_cast<size_t>(selected_child_for_edge_style_)].parent_idx_ >= 0;
+  if (!selected_child_for_edge_style_) { return false; }
+  if (*selected_child_for_edge_style_ >= nodes_.size()) { return false; }
+  return nodes_[*selected_child_for_edge_style_].parent_idx_.has_value();
 }
 
-int MindMapCanvasView::GetSelectedNode() const {
+std::optional<size_t> MindMapCanvasView::GetSelectedNode() const {
   return selected_node_;
 }
 
-int MindMapCanvasView::GetSelectedChildForBranchStyle() const {
+std::optional<size_t> MindMapCanvasView::GetSelectedChildForBranchStyle() const {
   return selected_child_for_edge_style_;
 }
 
 const char* MindMapCanvasView::GetSelectedIncomingEdgeChildLabel() const {
-  if (!HasSelectedIncomingEdgeStyleTarget()) {
-    return nullptr;
+  if (const auto idx = selected_child_for_edge_style_; idx && HasSelectedIncomingEdgeStyleTarget()) {
+    return nodes_[*idx].label_.c_str();
   }
-  return nodes_[static_cast<size_t>(selected_child_for_edge_style_)].label_.c_str();
+  return nullptr;
 }
 
 mind_map::ui::branch::BranchStyle MindMapCanvasView::GetBranchStyleForSelectedChildEdge() const {
-  if (!HasSelectedIncomingEdgeStyleTarget()) {
-    return mind_map::ui::branch::BranchStyle::Bezier;
+  if (const auto idx = selected_child_for_edge_style_; idx && HasSelectedIncomingEdgeStyleTarget()) {
+    return nodes_[*idx].branch_style_;
   }
-  return nodes_[static_cast<size_t>(selected_child_for_edge_style_)].branch_style_;
+  return mind_map::ui::branch::BranchStyle::Bezier;
 }
 
 void MindMapCanvasView::SetBranchStyleForSelectedChildEdge(mind_map::ui::branch::BranchStyle style) {  // NOLINT(readability-make-member-function-const)
-  if (!HasSelectedIncomingEdgeStyleTarget()) {
-    return;
+  if (const auto idx = selected_child_for_edge_style_; idx && HasSelectedIncomingEdgeStyleTarget()) {
+    nodes_[*idx].branch_style_ = style;
   }
-  nodes_[static_cast<size_t>(selected_child_for_edge_style_)].branch_style_ = style;
 }
 
 void MindMapCanvasView::Render(const MindMapCanvasRenderContext& ctx) {
@@ -467,49 +453,39 @@ void MindMapCanvasView::Render(const MindMapCanvasRenderContext& ctx) {
   const mind_map::ui::branch::BranchRenderContext branch_ctx =
       mind_map::ui::branch::MakeBranchRenderContext(ctx.draw_list_, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
 
-  for (int child = 0; child < static_cast<int>(nodes_.size()); ++child) {
-    const CanvasNode& node = nodes_[static_cast<size_t>(child)];
-    if (!node.active_ || node.parent_idx_ < 0) {
-      continue;
-    }
+  for (size_t child = 0; child < nodes_.size(); ++child) {
+    const CanvasNode& node = nodes_[child];
+    if (!node.active_ || !node.parent_idx_) { continue; }
     DrawOneChildBranch(branch_ctx, child, node.branch_style_, nodes_);
   }
 
   DrawMindMapNodes(ctx, dragging_node_, selected_node_, selected_child_for_edge_style_, nodes_);
 }
 
-void MindMapCanvasView::SetNodeActive(int idx, bool active) {
-  if (idx < 0 || idx >= static_cast<int>(nodes_.size())) {
-    return;
-  }
-  nodes_[static_cast<size_t>(idx)].active_ = active;
+void MindMapCanvasView::SetNodeActive(size_t idx, bool active) {
+  if (idx >= nodes_.size()) { return; }
+  nodes_[idx].active_ = active;
   if (!active) {
-    if (selected_node_ == idx)               { selected_node_ = -1; }
-    if (selected_child_for_edge_style_ == idx) { selected_child_for_edge_style_ = -1; }
+    if (selected_node_ == idx)                 { selected_node_ = std::nullopt; }
+    if (selected_child_for_edge_style_ == idx) { selected_child_for_edge_style_ = std::nullopt; }
   }
 }
 
-bool MindMapCanvasView::IsNodeActive(int idx) const {
-  if (idx < 0 || idx >= static_cast<int>(nodes_.size())) {
-    return false;
-  }
-  return nodes_[static_cast<size_t>(idx)].active_;
+bool MindMapCanvasView::IsNodeActive(size_t idx) const {
+  if (idx >= nodes_.size()) { return false; }
+  return nodes_[idx].active_;
 }
 
-std::vector<int> MindMapCanvasView::CollectActiveSubtree(int idx) const {
-  std::vector<int> result;
-  if (idx < 0 || idx >= static_cast<int>(nodes_.size()) ||
-      !nodes_[static_cast<size_t>(idx)].active_) {
-    return result;
-  }
-  std::vector<int> stack = {idx};
+std::vector<size_t> MindMapCanvasView::CollectActiveSubtree(size_t idx) const {
+  std::vector<size_t> result;
+  if (idx >= nodes_.size() || !nodes_[idx].active_) { return result; }
+  std::vector<size_t> stack = {idx};
   while (!stack.empty()) {
-    const int current = stack.back();
+    const size_t current = stack.back();
     stack.pop_back();
     result.push_back(current);
-    for (int c = 0; c < static_cast<int>(nodes_.size()); ++c) {
-      if (nodes_[static_cast<size_t>(c)].parent_idx_ == current &&
-          nodes_[static_cast<size_t>(c)].active_) {
+    for (size_t c = 0; c < nodes_.size(); ++c) {
+      if (nodes_[c].parent_idx_ == current && nodes_[c].active_) {
         stack.push_back(c);
       }
     }
@@ -517,11 +493,9 @@ std::vector<int> MindMapCanvasView::CollectActiveSubtree(int idx) const {
   return result;
 }
 
-void MindMapCanvasView::SetNodeImage(int idx, std::string_view png_base64) {
-  if (idx < 0 || idx >= static_cast<int>(nodes_.size())) {
-    return;
-  }
-  auto& node = nodes_[static_cast<size_t>(idx)];
+void MindMapCanvasView::SetNodeImage(size_t idx, std::string_view png_base64) {
+  if (idx >= nodes_.size()) { return; }
+  auto& node = nodes_[idx];
   ReleaseTexture(node.texture_id_);
   node.texture_id_ = 0;
   node.image_png_base64_ = png_base64;
@@ -530,19 +504,17 @@ void MindMapCanvasView::SetNodeImage(int idx, std::string_view png_base64) {
   }
 }
 
-const std::string& MindMapCanvasView::GetNodeImageBase64(int idx) const {
+const std::string& MindMapCanvasView::GetNodeImageBase64(size_t idx) const {
   static const std::string kEmpty;
-  if (idx < 0 || idx >= static_cast<int>(nodes_.size())) {
-    return kEmpty;
-  }
-  return nodes_[static_cast<size_t>(idx)].image_png_base64_;
+  if (idx >= nodes_.size()) { return kEmpty; }
+  return nodes_[idx].image_png_base64_;
 }
 
-int MindMapCanvasView::InsertChildNode(int parent_idx) {
-  assert(parent_idx >= 0 && parent_idx < static_cast<int>(nodes_.size()));
-  const CanvasNode& parent = nodes_[static_cast<size_t>(parent_idx)];
+size_t MindMapCanvasView::InsertChildNode(size_t parent_idx) {
+  assert(parent_idx < nodes_.size());
+  const CanvasNode& parent = nodes_[parent_idx];
 
-  int sibling_count = 0;
+  size_t sibling_count = 0;
   for (const auto& node : nodes_) {
     if (node.active_ && node.parent_idx_ == parent_idx) {
       ++sibling_count;
@@ -553,16 +525,17 @@ int MindMapCanvasView::InsertChildNode(int parent_idx) {
   constexpr float kSiblingStepY = 120.0F;
 
   CanvasNode child;
-  child.id_ = mind_map::core::mindmap::GenerateUuidV4();
-  child.edge_id_ = mind_map::core::mindmap::GenerateUuidV4();
-  child.label_ = "New node";
-  child.parent_idx_ = parent_idx;
-  child.branch_style_ = parent.parent_idx_ < 0 ? RepresentativeChildEdgeStyle() : parent.branch_style_;
-  child.pos_world_ = {parent.pos_world_.x + kChildOffsetX,
-                      parent.pos_world_.y + static_cast<float>(sibling_count) * kSiblingStepY};
-  child.active_ = true;
+  child.id_          = mind_map::core::mindmap::GenerateUuidV4();
+  child.edge_id_     = mind_map::core::mindmap::GenerateUuidV4();
+  child.label_       = "New node";
+  child.parent_idx_  = parent_idx;
+  child.branch_style_ = !parent.parent_idx_
+      ? RepresentativeChildEdgeStyle() : parent.branch_style_;
+  child.pos_world_   = {parent.pos_world_.x + kChildOffsetX,
+                        parent.pos_world_.y + static_cast<float>(sibling_count) * kSiblingStepY};
+  child.active_      = true;
 
-  const auto new_idx = static_cast<int>(nodes_.size());
+  const size_t new_idx = nodes_.size();
   initial_pos_world_.push_back(child.pos_world_);
   nodes_.push_back(std::move(child));
   selected_node_ = new_idx;

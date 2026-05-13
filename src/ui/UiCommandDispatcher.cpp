@@ -45,16 +45,16 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       state.show_status_bar_ = !state.show_status_bar_;
       return;
     case UiCommandId::DeleteNode: {
-      if (const int sel = state.canvas_.GetSelectedChildForBranchStyle(); sel > 0) {
-        // sel > 0: root (index 0) cannot be deleted
-        history_.Push(std::make_unique<commands::DeleteNodeCommand>(state.canvas_, sel));
+      const auto sel = state.canvas_.GetSelectedChildForBranchStyle();
+      if (sel && *sel > 0U) {  // root (index 0) cannot be deleted
+        history_.Push(std::make_unique<commands::DeleteNodeCommand>(state.canvas_, *sel));
         session.MarkDirty();
       }
       return;
     }
     case UiCommandId::InsertChildNode: {
-      const int sel = state.canvas_.GetSelectedChildForBranchStyle();
-      const int parent = (sel > 0) ? sel : 0;  // default to root when nothing selected
+      const auto sel = state.canvas_.GetSelectedChildForBranchStyle();
+      const size_t parent = (sel && *sel > 0U) ? *sel : 0U;  // default to root when nothing selected
       history_.Push(std::make_unique<commands::InsertChildNodeCommand>(state.canvas_, parent));
       session.MarkDirty();
       return;
@@ -68,12 +68,12 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       session.MarkDirty();
       return;
     case UiCommandId::PasteImage: {
-      const int sel = state.canvas_.GetSelectedNode();
-      if (sel < 0) { return; }
+      const auto sel = state.canvas_.GetSelectedNode();
+      if (!sel) { return; }
       const auto png = GetClipboardImagePng();
       if (!png) { return; }
       history_.Push(std::make_unique<commands::PasteImageCommand>(
-          state.canvas_, sel, mind_map::core::Base64Encode(*png)));
+          state.canvas_, *sel, mind_map::core::Base64Encode(*png)));
       session.MarkDirty();
       return;
     }

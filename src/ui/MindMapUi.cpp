@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <optional>
 #include <string>
 
 namespace mind_map::ui {
@@ -70,14 +71,14 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
   if (ImGui::MenuItem("Insert Child Node", FormatLabel(FindShortcut(ShortcutAction::InsertChildNode)).c_str())) {
     dispatcher.Dispatch(UiCommandId::InsertChildNode, state, session);
   }
-  const int sel = state.canvas_.GetSelectedChildForBranchStyle();
-  if (const bool can_delete = sel > 0;  // root (index 0) cannot be deleted
+  const std::optional<size_t> sel = state.canvas_.GetSelectedChildForBranchStyle();
+  if (const bool can_delete = sel.has_value() && *sel > 0U;  // root (index 0) cannot be deleted
       ImGui::MenuItem("Delete Node", FormatLabel(FindShortcut(ShortcutAction::DeleteNode)).c_str(),
                       /*selected=*/false, can_delete)) {
     dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);
   }
   ImGui::Separator();
-  const bool can_paste = state.canvas_.GetSelectedNode() >= 0;
+  const bool can_paste = state.canvas_.GetSelectedNode().has_value();
   if (ImGui::MenuItem("Paste Image", FormatLabel(FindShortcut(ShortcutAction::PasteImage)).c_str(),
                       /*selected=*/false, can_paste)) {
     dispatcher.Dispatch(UiCommandId::PasteImage, state, session);

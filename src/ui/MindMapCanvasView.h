@@ -6,6 +6,8 @@
 
 #include "imgui.h"
 
+#include <cstddef>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -30,8 +32,9 @@ struct MindMapPointerState {
 
 // Single canvas view: pan/zoom stay in MindMapUi; this owns layout, drag, and drawing.
 //
-// Node model: each CanvasNode in nodes_ carries id, label, world position, parent index (-1 for
-// root), edge id, branch style, and active flag. LoadFrom rebuilds nodes_ from any MindMapDocument.
+// Node model: each CanvasNode in nodes_ carries id, label, world position, optional parent index
+// (nullopt for root), edge id, branch style, and active flag. LoadFrom rebuilds nodes_ from any
+// MindMapDocument.
 //
 // Per-edge branch styles: nodes_[child].branch_style_ owns the style of the incoming edge.
 // Reset() restores world positions from the initial_pos_world_ snapshot taken at LoadFrom time.
@@ -63,9 +66,9 @@ class MindMapCanvasView {
   void SetBranchStyleForAllEdges(mind_map::ui::branch::BranchStyle style);
 
   [[nodiscard]] bool HasSelectedIncomingEdgeStyleTarget() const;
-  // Any node that is currently selected (including root); -1 when nothing selected.
-  [[nodiscard]] int GetSelectedNode() const;
-  [[nodiscard]] int GetSelectedChildForBranchStyle() const;
+  // Any node currently selected (including root); nullopt when nothing selected.
+  [[nodiscard]] std::optional<size_t> GetSelectedNode() const;
+  [[nodiscard]] std::optional<size_t> GetSelectedChildForBranchStyle() const;
   // nullptr when no non-root node is selected for incoming-edge editing.
   [[nodiscard]] const char* GetSelectedIncomingEdgeChildLabel() const;
   [[nodiscard]] mind_map::ui::branch::BranchStyle GetBranchStyleForSelectedChildEdge() const;
@@ -79,20 +82,19 @@ class MindMapCanvasView {
 
   // Node activation — used by DeleteNodeCommand to hide/restore nodes without
   // modifying the document model (deletion is view-layer only; not serialized).
-  // Pending persistence: node active_ is view-only until the document format can store it.
-  void SetNodeActive(int idx, bool active);
-  [[nodiscard]] bool IsNodeActive(int idx) const;
+  void SetNodeActive(size_t idx, bool active);
+  [[nodiscard]] bool IsNodeActive(size_t idx) const;
   // Returns the indices of all currently active nodes in the subtree rooted at idx.
-  [[nodiscard]] std::vector<int> CollectActiveSubtree(int idx) const;
+  [[nodiscard]] std::vector<size_t> CollectActiveSubtree(size_t idx) const;
 
   // Appends a new child node under parent_idx, selects it, and returns its index.
   // The node is appended to nodes_ and initial_pos_world_; undo toggles active_ only.
-  int InsertChildNode(int parent_idx);
+  size_t InsertChildNode(size_t parent_idx);
 
   // Sets (or clears when png_base64 is empty) the image on the node at idx.
   // Releases the previous GL texture and uploads a new one if png_base64 is non-empty.
-  void SetNodeImage(int idx, std::string_view png_base64);
-  [[nodiscard]] const std::string& GetNodeImageBase64(int idx) const;
+  void SetNodeImage(size_t idx, std::string_view png_base64);
+  [[nodiscard]] const std::string& GetNodeImageBase64(size_t idx) const;
 
  private:
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
@@ -100,17 +102,17 @@ class MindMapCanvasView {
 
   std::vector<CanvasNode> nodes_;
   std::vector<ImVec2> initial_pos_world_;
-  int dragging_node_ = -1;
+  std::optional<size_t> dragging_node_;
   ImVec2 grab_offset_world_;
-  int selected_node_ = -1;               // any clicked node (including root); drives resize handles
-  int selected_child_for_edge_style_ = -1;
+  std::optional<size_t> selected_node_;
+  std::optional<size_t> selected_child_for_edge_style_;
 
   // Resize state — active while a corner handle is being dragged.
-  int resizing_node_ = -1;
-  int resizing_corner_ = -1;    // 0=TL, 1=TR, 2=BR, 3=BL
-  ImVec2 resize_anchor_world_;  // opposite corner; fixed during the drag
-  ImVec2 resize_orig_half_;     // half-extents at drag start (for aspect-ratio lock)
-  bool resize_lock_aspect_ = false;  // true when the node has a texture
+  std::optional<size_t> resizing_node_;
+  std::optional<size_t> resizing_corner_;  // 0=TL, 1=TR, 2=BR, 3=BL
+  ImVec2 resize_anchor_world_;             // opposite corner; fixed during the drag
+  ImVec2 resize_orig_half_;               // half-extents at drag start (for aspect-ratio lock)
+  bool resize_lock_aspect_ = false;       // true when the node has a texture
 };
 
 }  // namespace mind_map::ui

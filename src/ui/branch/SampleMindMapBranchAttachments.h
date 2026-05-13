@@ -25,19 +25,20 @@ struct BranchEdgeData {
   ImVec2 p3_attachment_;
 };
 
-// Preconditions: child_index is valid; nodes[child_index].parent_idx_ >= 0.
+// Preconditions: child_index is valid; nodes[child_index].parent_idx_.has_value().
 inline void FillBranchEdgeData(
-    int child_index,
+    size_t child_index,
     const std::vector<mind_map::ui::CanvasNode>& nodes,
     BranchEdgeData* out) {
   assert(out != nullptr);
-  assert(child_index >= 0 && child_index < static_cast<int>(nodes.size()));
-  const mind_map::ui::CanvasNode& child = nodes[static_cast<size_t>(child_index)];
-  const int parent = child.parent_idx_;
-  assert(parent >= 0 && parent < static_cast<int>(nodes.size()));
-  const mind_map::ui::CanvasNode& par = nodes[static_cast<size_t>(parent)];
+  assert(child_index < nodes.size());
+  const mind_map::ui::CanvasNode& child = nodes[child_index];
+  assert(child.parent_idx_.has_value());
+  const size_t parent = *child.parent_idx_;
+  assert(parent < nodes.size());
+  const mind_map::ui::CanvasNode& par = nodes[parent];
 
-  out->parent_is_root_ = (par.parent_idx_ < 0);
+  out->parent_is_root_ = !par.parent_idx_.has_value();
   out->parent_label_ = par.label_.c_str();
   out->child_label_ = child.label_.c_str();
   out->parent_half_ = mind_map::canvas::NodeHalfExtent(par);

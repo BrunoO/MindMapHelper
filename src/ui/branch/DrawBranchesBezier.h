@@ -7,9 +7,9 @@
 
 namespace mind_map::ui::branch {
 
-// child_index must satisfy nodes[child_index].parent_idx_ >= 0.
+// child_index must satisfy nodes[child_index].parent_idx_.has_value().
 void DrawMindMapBranchBezier(
-    const BranchRenderContext& ctx, int child_index,
+    const BranchRenderContext& ctx, size_t child_index,
     const std::vector<mind_map::ui::CanvasNode>& nodes);
 
 }  // namespace mind_map::ui::branch

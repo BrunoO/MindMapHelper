@@ -2,7 +2,7 @@
 
 namespace mind_map::ui::commands {
 
-PasteImageCommand::PasteImageCommand(mind_map::ui::MindMapCanvasView& canvas, int node_idx,
+PasteImageCommand::PasteImageCommand(mind_map::ui::MindMapCanvasView& canvas, size_t node_idx,
                                      std::string new_png_base64)
     : canvas_(canvas), node_idx_(node_idx), new_png_base64_(std::move(new_png_base64)) {}
 

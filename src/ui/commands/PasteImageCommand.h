@@ -9,7 +9,7 @@ namespace mind_map::ui::commands {
 
 class PasteImageCommand final : public ICommand {
  public:
-  PasteImageCommand(mind_map::ui::MindMapCanvasView& canvas, int node_idx,
+  PasteImageCommand(mind_map::ui::MindMapCanvasView& canvas, size_t node_idx,
                     std::string new_png_base64);
 
   void Execute() override;
@@ -17,7 +17,7 @@ class PasteImageCommand final : public ICommand {
 
  private:
   mind_map::ui::MindMapCanvasView& canvas_;  // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-  int node_idx_;
+  size_t node_idx_;
   std::string new_png_base64_;
   std::string old_png_base64_;  // captured on first Execute for Undo
   bool executed_ = false;

@@ -15,7 +15,7 @@ constexpr ImU32 kColorEdge = IM_COL32(140, 170, 210, 255);  // NOLINT(hicpp-sign
 }  // namespace
 
 void DrawMindMapBranchBezier(
-    const BranchRenderContext& ctx, const int child_index,
+    const BranchRenderContext& ctx, const size_t child_index,
     const std::vector<mind_map::ui::CanvasNode>& nodes) {
   assert(ctx.draw_list_ != nullptr);
   BranchEdgeData g{};
