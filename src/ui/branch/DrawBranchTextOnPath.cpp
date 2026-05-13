@@ -1,5 +1,6 @@
 #include "ui/branch/DrawBranchTextOnPath.h"
 
+#include "core/ByteOps.h"
 #include "ui/branch/DrawBranchesOrganicTaper.h"
 #include "ui/branch/SampleMindMapBranchAttachments.h"
 #include "ui/canvas/CanvasMath.h"
@@ -61,24 +62,24 @@ constexpr int kQuadVtxCount           = 4;      // vertices per quad
 
 // Returns number of bytes consumed and sets *out to the Unicode codepoint.
 [[nodiscard]] int NextUtf8Codepoint(const char* s, unsigned int* out) {
-  const auto b = static_cast<unsigned int>(static_cast<unsigned char>(*s));
+  const unsigned int b = mind_map::core::ToUnsignedByte(*s);
   if (b < 0x80U) { *out = b; return 1; }
   if ((b & kUtf8Lead2Test) == kUtf8Lead2Val) {
-    const auto b1 = static_cast<unsigned int>(static_cast<unsigned char>(s[1]));
+    const unsigned int b1 = mind_map::core::ToUnsignedByte(s[1]);
     *out = ((b & ((1U << kUtf8Lead2Bits) - 1U)) << kUtf8ContShift) | (b1 & kUtf8ContMask);
     return 2;
   }
   if ((b & kUtf8Lead3Test) == kUtf8Lead3Val) {
-    const auto b1 = static_cast<unsigned int>(static_cast<unsigned char>(s[1]));
-    const auto b2 = static_cast<unsigned int>(static_cast<unsigned char>(s[2]));
+    const unsigned int b1 = mind_map::core::ToUnsignedByte(s[1]);
+    const unsigned int b2 = mind_map::core::ToUnsignedByte(s[2]);
     *out = ((b & ((1U << kUtf8Lead3Bits) - 1U)) << (kUtf8ContShift * 2U))
          | ((b1 & kUtf8ContMask) << kUtf8ContShift)
          | (b2 & kUtf8ContMask);
     return 3;
   }
-  const auto b1 = static_cast<unsigned int>(static_cast<unsigned char>(s[1]));
-  const auto b2 = static_cast<unsigned int>(static_cast<unsigned char>(s[2]));
-  const auto b3 = static_cast<unsigned int>(static_cast<unsigned char>(s[3]));
+  const unsigned int b1 = mind_map::core::ToUnsignedByte(s[1]);
+  const unsigned int b2 = mind_map::core::ToUnsignedByte(s[2]);
+  const unsigned int b3 = mind_map::core::ToUnsignedByte(s[3]);
   *out = ((b & ((1U << kUtf8Lead4Bits) - 1U)) << (kUtf8ContShift * 3U))
        | ((b1 & kUtf8ContMask) << (kUtf8ContShift * 2U))
        | ((b2 & kUtf8ContMask) << kUtf8ContShift)

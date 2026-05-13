@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/ByteOps.h"
+
 #include <array>
 #include <cstdint>
 #include <string>
@@ -27,9 +29,9 @@ constexpr uint8_t  kInvalidEntry   = 0xFFU;   // decode-table sentinel for inval
   std::string out;
   out.reserve(((raw.size() + 2U) / 3U) * 4U);
   for (size_t i = 0; i < raw.size(); i += 3U) {
-    const auto b0 = static_cast<uint32_t>(static_cast<uint8_t>(raw[i]));
-    const auto b1 = (i + 1U < raw.size()) ? static_cast<uint32_t>(static_cast<uint8_t>(raw[i + 1U])) : 0U;
-    const auto b2 = (i + 2U < raw.size()) ? static_cast<uint32_t>(static_cast<uint8_t>(raw[i + 2U])) : 0U;
+    const std::uint32_t b0 = ToUnsignedByte(raw[i]);
+    const std::uint32_t b1 = (i + 1U < raw.size()) ? ToUnsignedByte(raw[i + 1U]) : 0U;
+    const std::uint32_t b2 = (i + 2U < raw.size()) ? ToUnsignedByte(raw[i + 2U]) : 0U;
     const uint32_t triple = (b0 << 16U) | (b1 << 8U) | b2;
     out += kAlphabet[(triple >> kShift0) & kB64Mask];
     out += kAlphabet[(triple >> kShift1) & kB64Mask];
@@ -45,7 +47,7 @@ constexpr uint8_t  kInvalidEntry   = 0xFFU;   // decode-table sentinel for inval
     std::array<uint8_t, 256> t{};
     t.fill(kInvalidEntry);
     for (uint8_t i = 0; i < 64U; ++i) {
-      t[static_cast<uint8_t>(kAlphabet[i])] = i;
+      t[ToUnsignedByte(kAlphabet[i])] = i;
     }
     return t;
   }();
@@ -58,7 +60,7 @@ constexpr uint8_t  kInvalidEntry   = 0xFFU;   // decode-table sentinel for inval
     if (c == '=') {
       break;
     }
-    const uint8_t val = kDecTable[static_cast<uint8_t>(c)];
+    const uint8_t val = kDecTable[ToUnsignedByte(c)];
     if (val == kInvalidEntry) {
       continue;  // skip whitespace or invalid chars
     }

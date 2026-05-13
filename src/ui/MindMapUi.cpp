@@ -309,13 +309,12 @@ void RenderStatusBar(const UiState& state) {
         "Status  Branches: %s  |  Edge to \"%s\": %s  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)",
         state.canvas_.GetBranchStyleComboPreviewLabel(), edge_child_label,
         mind_map::ui::branch::GetBranchStyleDisplayName(state.canvas_.GetBranchStyleForSelectedChildEdge()),
-        static_cast<double>(state.zoom_), static_cast<double>(state.pan_px_.x),
-        static_cast<double>(state.pan_px_.y));
+        state.zoom_, state.pan_px_.x, state.pan_px_.y);
   }
   else {
     ImGui::Text("Status  Branches: %s  |  Selected edge: none  |  Zoom: %.2f  |  Pan: (%.1f, %.1f)",
-                state.canvas_.GetBranchStyleComboPreviewLabel(), static_cast<double>(state.zoom_),
-                static_cast<double>(state.pan_px_.x), static_cast<double>(state.pan_px_.y));
+                state.canvas_.GetBranchStyleComboPreviewLabel(), state.zoom_,
+                state.pan_px_.x, state.pan_px_.y);
   }
 }
 
@@ -434,7 +433,7 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
     ImGui::TextUnformatted(
         "Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms. Click a non-root node to edit its incoming "
         "edge style; root or empty canvas clears selection. \"Set all branches\" applies one style to every edge.");
-    ImGui::Text("Zoom %.2f", static_cast<double>(state.zoom_));
+    ImGui::Text("Zoom %.2f", state.zoom_);
     RenderCanvas(state, session);
   }
   ImGui::EndChild();
