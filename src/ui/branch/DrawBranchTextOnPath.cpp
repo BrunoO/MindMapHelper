@@ -26,16 +26,22 @@ constexpr int kCenterlineSamples = 8;
   return {a * p0.x + b * p1.x + c * p2.x + d * p3.x, a * p0.y + b * p1.y + c * p2.y + d * p3.y};
 }
 
-[[nodiscard]] ImVec2 MidpointOrFallback(const BranchTextPathPolyline& poly) {
-  if (poly.points_world_.empty()) {
-    return {0.0F, 0.0F};
-  }
-  if (poly.points_world_.size() == 1U) {
-    return poly.points_world_.front();
-  }
-  const ImVec2& a = poly.points_world_.front();
-  const ImVec2& b = poly.points_world_.back();
-  return {(a.x + b.x) * 0.5F, (a.y + b.y) * 0.5F};
+[[nodiscard]] size_t AnchorIndex(const BranchTextPathPolyline& poly,
+                                  const BranchTextAlongPathAnchor anchor) {
+  const size_t n = poly.points_world_.size();
+  if (n == 0U) { return 0U; }
+  if (anchor == BranchTextAlongPathAnchor::Start) { return 0U; }
+  if (anchor == BranchTextAlongPathAnchor::End)   { return n - 1U; }
+  return n / 2U;
+}
+
+// Central difference at idx; forward/backward difference at the ends.
+[[nodiscard]] ImVec2 LocalTangent(const BranchTextPathPolyline& poly, const size_t idx) {
+  const size_t n = poly.points_world_.size();
+  if (n < 2U) { return {1.0F, 0.0F}; }
+  const ImVec2& prev = poly.points_world_[idx > 0U ? idx - 1U : 0U];
+  const ImVec2& next = poly.points_world_[idx + 1U < n ? idx + 1U : n - 1U];
+  return {next.x - prev.x, next.y - prev.y};
 }
 
 }  // namespace
@@ -104,18 +110,11 @@ void DrawMindMapBranchTextOnPath(const BranchRenderContext& ctx, const size_t ch
     font_size = ImGui::GetFontSize();
   }
 
-  ImVec2 anchor_world = MidpointOrFallback(poly);
-  if (options.anchor_along_path_ == BranchTextAlongPathAnchor::Start) {
-    anchor_world = poly.points_world_.front();
-  }
-  else if (options.anchor_along_path_ == BranchTextAlongPathAnchor::End) {
-    anchor_world = poly.points_world_.back();
-  }
-
-  const ImVec2 p0w = poly.points_world_.front();
-  const ImVec2 p1w = poly.points_world_.size() > 1U ? poly.points_world_.back() : poly.points_world_.front();
-  float dx = p1w.x - p0w.x;
-  float dy = p1w.y - p0w.y;
+  const size_t anchor_idx = AnchorIndex(poly, options.anchor_along_path_);
+  const ImVec2 anchor_world = poly.points_world_[anchor_idx];
+  const ImVec2 raw_tangent = LocalTangent(poly, anchor_idx);
+  float dx = raw_tangent.x;
+  float dy = raw_tangent.y;
   if (const float len = std::sqrt(dx * dx + dy * dy); len > kNearZero) {
     dx /= len;
     dy /= len;
