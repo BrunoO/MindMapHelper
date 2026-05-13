@@ -35,8 +35,7 @@ BranchTextPathPolyline BuildMindMapBranchTextPathWorld(const size_t child_index,
   if (child_index >= nodes.size()) {
     return out;
   }
-  const mind_map::ui::CanvasNode& child = nodes[child_index];
-  if (!child.parent_idx_.has_value()) {
+  if (const mind_map::ui::CanvasNode& child = nodes[child_index]; !child.parent_idx_.has_value()) {
     return out;
   }
 
