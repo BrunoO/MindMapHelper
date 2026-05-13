@@ -279,4 +279,57 @@ void DrawMindMapBranchOrganicTaper(
   }
 }
 
+std::vector<ImVec2> SampleOrganicTaperCenterlineWorld(
+    const size_t child_index, const std::vector<mind_map::ui::CanvasNode>& nodes, const int n_samples) {
+  if (child_index >= nodes.size() || !nodes[child_index].parent_idx_.has_value()) {
+    return {};
+  }
+  BranchEdgeData g{};
+  FillBranchEdgeData(child_index, nodes, &g);
+  const ImVec2 p0_border = g.p0_attachment_;
+  const ImVec2 p3_border = g.p3_attachment_;
+
+  const float b0 = std::clamp(kTaperP0BlendCenterToBorder, 0.0F, 1.0F);
+  const float b3 = std::clamp(kTaperP3BlendCenterToBorder, 0.0F, 1.0F);
+  const ImVec2 p0w = {g.pw_.x + (p0_border.x - g.pw_.x) * b0, g.pw_.y + (p0_border.y - g.pw_.y) * b0};
+  const ImVec2 p3w = {g.cw_.x + (p3_border.x - g.cw_.x) * b3, g.cw_.y + (p3_border.y - g.cw_.y) * b3};
+
+  const ImVec2 out0 = mind_map::canvas::EdgeOutwardAxis(g.pw_, g.parent_half_, p0_border);
+  const ImVec2 out3 = mind_map::canvas::EdgeOutwardAxis(g.cw_, g.child_half_, p3_border);
+  std::array<ImVec2, 4> seg0{};
+  std::array<ImVec2, 4> seg1{};
+  const HobbyMidWaypointParams hobby_params = {
+      kHobbyMidWaypointTension, kHobbyMidJointVelocityScale, kHobbyMidChordPerpOffsetFraction};
+  const bool two_cubics =
+      BuildHobbyMidWaypointTwoCubics(p0w, p3w, out0, out3, hobby_params, seg0.data(), seg1.data());
+
+  ImVec2 c1{};
+  ImVec2 c2{};
+  if (!two_cubics) {
+    const mind_map::canvas::BezierArmInputs arm_inputs = {
+        g.pw_, g.parent_half_, g.cw_, g.child_half_, p0w, p3w, 96.0F, 0.55F, &p0_border, &p3_border};
+    const mind_map::canvas::BezierArms arms = mind_map::canvas::ComputeBezierArmsWorld(arm_inputs);
+    c1 = arms.p1_;
+    c2 = arms.p2_;
+  }
+
+  std::vector<ImVec2> pts;
+  pts.reserve(static_cast<size_t>(n_samples) + 1U);
+  for (int i = 0; i <= n_samples; ++i) {
+    const float u = static_cast<float>(i) / static_cast<float>(n_samples);
+    ImVec2 pw{};
+    if (two_cubics) {
+      if (u <= 0.5F) {
+        pw = CubicBezierPoint(seg0[0], seg0[1], seg0[2], seg0[3], u * 2.0F);
+      } else {
+        pw = CubicBezierPoint(seg1[0], seg1[1], seg1[2], seg1[3], (u - 0.5F) * 2.0F);
+      }
+    } else {
+      pw = CubicBezierPoint(p0w, c1, c2, p3w, u);
+    }
+    pts.push_back(pw);
+  }
+  return pts;
+}
+
 }  // namespace mind_map::ui::branch

@@ -1,7 +1,9 @@
 #include "ui/branch/DrawBranchTextOnPath.h"
 
+#include "ui/branch/DrawBranchesOrganicTaper.h"
 #include "ui/branch/SampleMindMapBranchAttachments.h"
 #include "ui/canvas/CanvasMath.h"
+#include "ui/canvas/NodeGeometry.h"
 
 #include <cassert>
 #include <cmath>
@@ -12,6 +14,17 @@ namespace mind_map::ui::branch {
 namespace {
 
 constexpr float kNearZero = 1.0e-6F;
+constexpr float kMinZoomForEdgeLabels = 0.5F;
+constexpr int kCenterlineSamples = 8;
+
+[[nodiscard]] ImVec2 SampleCubicBezier(ImVec2 p0, ImVec2 p1, ImVec2 p2, ImVec2 p3, float t) {
+  const float u = 1.0F - t;
+  const float a = u * u * u;
+  const float b = 3.0F * u * u * t;
+  const float c = 3.0F * u * t * t;
+  const float d = t * t * t;
+  return {a * p0.x + b * p1.x + c * p2.x + d * p3.x, a * p0.y + b * p1.y + c * p2.y + d * p3.y};
+}
 
 [[nodiscard]] ImVec2 MidpointOrFallback(const BranchTextPathPolyline& poly) {
   if (poly.points_world_.empty()) {
@@ -30,43 +43,57 @@ constexpr float kNearZero = 1.0e-6F;
 BranchTextPathPolyline BuildMindMapBranchTextPathWorld(const size_t child_index,
                                                        const std::vector<mind_map::ui::CanvasNode>& nodes,
                                                        const BranchStyle style) {
-  (void)style;  // TODO(BrunoO): sample Bezier / orthogonal / organic centerlines per BranchStyle
   BranchTextPathPolyline out{};
-  if (child_index >= nodes.size()) {
-    return out;
-  }
-  if (const mind_map::ui::CanvasNode& child = nodes[child_index]; !child.parent_idx_.has_value()) {
-    return out;
-  }
+  if (child_index >= nodes.size()) { return out; }
+  if (!nodes[child_index].parent_idx_.has_value()) { return out; }
 
-  BranchEdgeData g{};
-  FillBranchEdgeData(child_index, nodes, &g);
-  out.points_world_.reserve(2);
-  out.points_world_.push_back(g.p0_attachment_);
-  out.points_world_.push_back(g.p3_attachment_);
-  return out;
+  using mind_map::ui::branch::BranchStyle;
+  switch (style) {  // NOSONAR(cpp:S6177)
+    case BranchStyle::Bezier: {
+      BranchEdgeData g{};
+      FillBranchEdgeData(child_index, nodes, &g);
+      const mind_map::canvas::BezierArmInputs arm_inputs = {
+          g.pw_, g.parent_half_, g.cw_, g.child_half_,
+          g.p0_attachment_, g.p3_attachment_, 96.0F, 0.55F, nullptr, nullptr};
+      const mind_map::canvas::BezierArms arms = mind_map::canvas::ComputeBezierArmsWorld(arm_inputs);
+      out.points_world_.reserve(static_cast<size_t>(kCenterlineSamples) + 1U);
+      for (int i = 0; i <= kCenterlineSamples; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(kCenterlineSamples);
+        out.points_world_.push_back(
+            SampleCubicBezier(g.p0_attachment_, arms.p1_, arms.p2_, g.p3_attachment_, t));
+      }
+      return out;
+    }
+    case BranchStyle::Orthogonal: {
+      BranchEdgeData g{};
+      FillBranchEdgeData(child_index, nodes, &g);
+      const ImVec2 p0w = g.p0_attachment_;
+      const ImVec2 p3w = g.p3_attachment_;
+      const float mid_x = (p0w.x + p3w.x) * 0.5F;
+      out.points_world_ = {p0w, {mid_x, p0w.y}, {mid_x, p3w.y}, p3w};
+      return out;
+    }
+    case BranchStyle::OrganicTaper:
+      out.points_world_ = SampleOrganicTaperCenterlineWorld(child_index, nodes, kCenterlineSamples);
+      return out;
+    default:
+      return out;
+  }
 }
 
 void DrawMindMapBranchTextOnPath(const BranchRenderContext& ctx, const size_t child_index,
                                  const std::vector<mind_map::ui::CanvasNode>& nodes, const std::string_view label,
                                  const BranchTextRenderOptions& options) {
   assert(ctx.draw_list_ != nullptr);
-  if (label.empty()) {
-    return;
-  }
-  if (child_index >= nodes.size()) {
-    return;
-  }
+  if (label.empty()) { return; }
+  if (ctx.zoom_ < kMinZoomForEdgeLabels) { return; }
+  if (child_index >= nodes.size()) { return; }
   const mind_map::ui::CanvasNode& child = nodes[child_index];
-  if (!child.parent_idx_.has_value()) {
-    return;
-  }
+  if (!child.parent_idx_.has_value()) { return; }
 
   const BranchTextPathPolyline poly =
       BuildMindMapBranchTextPathWorld(child_index, nodes, child.branch_style_);
-  if (poly.points_world_.empty()) {
-    return;
-  }
+  if (poly.points_world_.empty()) { return; }
 
   ImFont* font = options.font_;
   if (font == nullptr) {

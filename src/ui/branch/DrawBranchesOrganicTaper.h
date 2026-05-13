@@ -3,6 +3,9 @@
 #include "ui/branch/BranchRenderContext.h"
 #include "ui/canvas/CanvasNode.h"
 
+#include "imgui.h"
+
+#include <cstddef>
 #include <vector>
 
 namespace mind_map::ui::branch {
@@ -11,5 +14,9 @@ namespace mind_map::ui::branch {
 void DrawMindMapBranchOrganicTaper(
     const BranchRenderContext& ctx, size_t child_index,
     const std::vector<mind_map::ui::CanvasNode>& nodes);
+
+// Returns n_samples+1 world-space points sampled uniformly along the organic centerline.
+[[nodiscard]] std::vector<ImVec2> SampleOrganicTaperCenterlineWorld(
+    size_t child_index, const std::vector<mind_map::ui::CanvasNode>& nodes, int n_samples);
 
 }  // namespace mind_map::ui::branch
