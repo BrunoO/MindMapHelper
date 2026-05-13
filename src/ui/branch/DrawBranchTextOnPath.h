@@ -25,7 +25,6 @@ struct BranchTextRenderOptions {
   ImU32 color_ = IM_COL32(235, 235, 245, 255);
   float normal_offset_px_ = 0.0F;
   BranchTextAlongPathAnchor anchor_along_path_ = BranchTextAlongPathAnchor::Mid;
-  int max_glyph_count_ = 256;  // safety cap for per-glyph layout (TODO)
 };
 
 // World-space polyline approximating the branch centerline for label placement.

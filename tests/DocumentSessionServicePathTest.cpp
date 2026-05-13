@@ -25,7 +25,7 @@ namespace {
 
 [[nodiscard]] std::filesystem::path WriteMinimalImxFile() {
   const std::filesystem::path zip_path =
-      std::filesystem::temp_directory_path() / "mindmap_helper_document_session_path_test.imx";
+      std::filesystem::temp_directory_path() / "mindmap_helper_document_session_path_test.imx";  // NOSONAR(cpp:S5443)
 
   int zip_error = 0;
   zip_t* const archive =
@@ -68,7 +68,7 @@ void TestOpenFromPathNativeSetsPathAndClean() {
   const mind_map::core::ImportService imports;
 
   const std::filesystem::path tmp =
-      std::filesystem::temp_directory_path() / "mindmap_helper_document_session_path.mmh";
+      std::filesystem::temp_directory_path() / "mindmap_helper_document_session_path.mmh";  // NOSONAR(cpp:S5443)
   assert(repo.Save(tmp.string(), MinimalNativeDoc()));
 
   mind_map::core::MindMapDocument doc;

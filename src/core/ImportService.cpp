@@ -14,18 +14,17 @@ ImportService::ImportService() {
   adapters_.emplace_back(".imx", &imx_adapter_);
 }
 
-const IImportAdapter* ImportService::FindAdapterForExtension_(const std::string& lowercase_extension) const {
-  for (const auto& entry : adapters_) {
-    if (entry.first == lowercase_extension) {
-      return entry.second;
+const IImportAdapter* ImportService::FindAdapterForExtension_(std::string_view lowercase_extension) const {
+  for (const auto& [key, adapter] : adapters_) {
+    if (key == lowercase_extension) {
+      return adapter;
     }
   }
   return nullptr;
 }
 
 bool ImportService::HandlesImportExtension(const std::string_view lowercase_extension) const {
-  const std::string ext{lowercase_extension};
-  return FindAdapterForExtension_(ext) != nullptr;
+  return FindAdapterForExtension_(lowercase_extension) != nullptr;
 }
 
 std::optional<MindMapDocument> ImportService::ImportFile(const std::string_view path) const {

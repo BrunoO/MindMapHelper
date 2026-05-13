@@ -23,7 +23,7 @@ class ImportService {
   [[nodiscard]] bool HandlesImportExtension(std::string_view lowercase_extension) const;
 
  private:
-  [[nodiscard]] const IImportAdapter* FindAdapterForExtension_(const std::string& lowercase_extension) const;
+  [[nodiscard]] const IImportAdapter* FindAdapterForExtension_(std::string_view lowercase_extension) const;
 
   ImxImportAdapter imx_adapter_;
   std::vector<std::pair<std::string, const IImportAdapter*>> adapters_;

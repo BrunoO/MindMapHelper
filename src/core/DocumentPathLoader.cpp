@@ -9,7 +9,7 @@
 
 namespace mind_map::core {
 
-DocumentPathLoadResult LoadMindMapFromPath(std::string_view path, IDocumentRepository& repo,
+DocumentPathLoadResult LoadMindMapFromPath(std::string_view path, const IDocumentRepository& repo,
                                            const ImportService& imports) {
   const std::string ext = LowercaseExtensionOf(path);
   if (ext == kNativeMindMapFileExtension) {

@@ -51,8 +51,6 @@ constexpr unsigned int kUtf8Lead2Test = 0xE0U;  // test mask for 2-byte lead
 constexpr unsigned int kUtf8Lead2Val  = 0xC0U;  // expected value of 2-byte lead
 constexpr unsigned int kUtf8Lead3Test = 0xF0U;  // test mask for 3-byte lead
 constexpr unsigned int kUtf8Lead3Val  = 0xE0U;  // expected value of 3-byte lead
-constexpr unsigned int kUtf8Lead4Test = 0xF8U;  // test mask for 4-byte lead
-constexpr unsigned int kUtf8Lead4Val  = 0xF0U;  // expected value of 4-byte lead
 constexpr unsigned int kUtf8ContShift = 6U;     // bits per continuation byte
 constexpr unsigned int kUtf8Lead2Bits = 5U;     // data bits in a 2-byte lead
 constexpr unsigned int kUtf8Lead3Bits = 4U;     // data bits in a 3-byte lead
@@ -89,9 +87,10 @@ constexpr int kQuadVtxCount           = 4;      // vertices per quad
 
 // Renders text centered on `center` and rotated by `angle_rad` (screen-space, y-down).
 void AddTextRotated(ImDrawList* draw_list, ImFont* font, float font_size,
-                    ImVec2 center, ImU32 col, float angle_rad,
-                    const char* text_begin, const char* text_end) {
+                    ImVec2 center, ImU32 col, float angle_rad, std::string_view text) {
   if ((col & IM_COL32_A_MASK) == 0U) { return; }
+  const char* text_begin = text.data();
+  const char* text_end   = text.data() + text.size();
   const float scale  = font_size / font->FontSize;
   const float cos_a  = std::cos(angle_rad);
   const float sin_a  = std::sin(angle_rad);
@@ -212,10 +211,7 @@ void DrawMindMapBranchTextOnPath(const BranchRenderContext& ctx, const size_t ch
   const ImVec2 n_screen = {-dy, dx};
   const ImVec2 text_center = {text_pos.x + n_screen.x * options.normal_offset_px_,
                                text_pos.y + n_screen.y * options.normal_offset_px_};
-  const char* const text_begin = label.data();
-  const char* const text_end = text_begin + static_cast<std::ptrdiff_t>(label.size());
-  AddTextRotated(ctx.draw_list_, font, font_size, text_center, options.color_, angle, text_begin, text_end);
-  (void)options.max_glyph_count_;
+  AddTextRotated(ctx.draw_list_, font, font_size, text_center, options.color_, angle, label);
 }
 
 }  // namespace mind_map::ui::branch

@@ -48,7 +48,7 @@ namespace {
 
 [[nodiscard]] std::filesystem::path WriteMinimalImxFile() {
   const std::filesystem::path zip_path =
-      std::filesystem::temp_directory_path() / "mindmap_helper_document_path_loader_test.imx";
+      std::filesystem::temp_directory_path() / "mindmap_helper_document_path_loader_test.imx";  // NOSONAR(cpp:S5443)
 
   int zip_error = 0;
   zip_t* const archive =
@@ -79,8 +79,8 @@ void TestLowercaseExtensionOf() {
 void TestNativeMmh() {
   using mind_map::core::DocumentPathLoadOutcome;
   const std::filesystem::path tmp =
-      std::filesystem::temp_directory_path() / "mindmap_helper_document_path_loader_native.mmh";
-  mind_map::core::JsonNativeDocumentRepository repo;
+      std::filesystem::temp_directory_path() / "mindmap_helper_document_path_loader_native.mmh";  // NOSONAR(cpp:S5443)
+  const mind_map::core::JsonNativeDocumentRepository repo;
   const mind_map::core::ImportService imports;
   assert(repo.Save(tmp.string(), MinimalNativeDoc()));
 
@@ -93,7 +93,7 @@ void TestNativeMmh() {
 
 void TestImxPath() {
   using mind_map::core::DocumentPathLoadOutcome;
-  mind_map::core::JsonNativeDocumentRepository repo;
+  const mind_map::core::JsonNativeDocumentRepository repo;
   const mind_map::core::ImportService imports;
   const std::filesystem::path imx_path = WriteMinimalImxFile();
 
@@ -106,9 +106,11 @@ void TestImxPath() {
 
 void TestUnsupportedExtension() {
   using mind_map::core::DocumentPathLoadOutcome;
-  mind_map::core::JsonNativeDocumentRepository repo;
+  const mind_map::core::JsonNativeDocumentRepository repo;
   const mind_map::core::ImportService imports;
-  const auto r = mind_map::core::LoadMindMapFromPath("/tmp/mindmap_helper_dpl_unknown.bin", repo, imports);
+  const std::filesystem::path unknown_path =
+      std::filesystem::temp_directory_path() / "mindmap_helper_dpl_unknown.bin";  // NOSONAR(cpp:S5443)
+  const auto r = mind_map::core::LoadMindMapFromPath(unknown_path.string(), repo, imports);
   assert(r.outcome_ == DocumentPathLoadOutcome::Failed);
 }
 

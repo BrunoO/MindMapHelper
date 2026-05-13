@@ -19,7 +19,7 @@ struct DocumentPathLoadResult {
 
 // Extension-first dispatch: `.mmh` → native repository; registered import extensions (e.g. `.imx`)
 // → ImportService. Other extensions fail without probing file contents.
-[[nodiscard]] DocumentPathLoadResult LoadMindMapFromPath(std::string_view path, IDocumentRepository& repo,
+[[nodiscard]] DocumentPathLoadResult LoadMindMapFromPath(std::string_view path, const IDocumentRepository& repo,
                                                          const ImportService& imports);
 
 }  // namespace mind_map::core
