@@ -77,8 +77,8 @@ void TestLoadFromMinimalZipFile() {
   static_cast<void>(std::filesystem::remove(zip_path));
 }
 
-// Real IMX files store node labels on the branch edge element, not on the branchNode target.
-void TestBranchEdgeTextUsedAsNodeLabel() {
+// Branch edge text goes to incoming_branch_text_; node body text goes to text_.
+void TestBranchEdgeTextStoredSeparately() {
   using mind_map::core::LoadImxMindMapModelFromXml;
   const std::string data_xml = R"xml(<?xml version="1.0" encoding="UTF-8"?>
 <mmGraphModel>
@@ -100,8 +100,11 @@ void TestBranchEdgeTextUsedAsNodeLabel() {
   assert(model->root_id_ == "root-1");
   assert(model->nodes_.size() == 3U);
   assert(model->nodes_[0].text_ == "Central Idea");
-  assert(model->nodes_[1].text_ == "Branch A");
-  assert(model->nodes_[2].text_ == "Branch B");
+  assert(model->nodes_[0].incoming_branch_text_.empty());
+  assert(model->nodes_[1].text_.empty());
+  assert(model->nodes_[1].incoming_branch_text_ == "Branch A");
+  assert(model->nodes_[2].text_.empty());
+  assert(model->nodes_[2].incoming_branch_text_ == "Branch B");
   assert(model->nodes_[0].children_.size() == 1U);
   assert(model->nodes_[0].children_[0] == "node-1");
   assert(model->nodes_[1].children_.size() == 1U);
@@ -162,7 +165,7 @@ void TestHtmlLabelExtraction() {
 int main() {  // NOLINT(bugprone-exception-escape)
   TestLoadFromXmlStrings();
   TestLoadFromMinimalZipFile();
-  TestBranchEdgeTextUsedAsNodeLabel();
+  TestBranchEdgeTextStoredSeparately();
   TestMapMetaChildElements();
   TestHtmlLabelExtraction();
   return 0;

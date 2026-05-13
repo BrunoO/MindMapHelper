@@ -44,6 +44,7 @@ constexpr float kNodeHalfH  = 35.0F;
   edge.parent_id_ = "node-1";
   edge.child_id_  = "node-2";
   edge.style_     = "bezier";
+  edge.label_     = "test edge label";
   doc.edges_.push_back(std::move(edge));
 
   mind_map::core::MindMapNodeLayout root_layout;
@@ -89,6 +90,7 @@ void TestRoundTrip() {
   assert(loaded.edges_[0].parent_id_ == "node-1");
   assert(loaded.edges_[0].child_id_  == "node-2");
   assert(loaded.edges_[0].style_     == "bezier");
+  assert(loaded.edges_[0].label_     == "test edge label");
 
   assert(loaded.layouts_.size() == 2U);
 

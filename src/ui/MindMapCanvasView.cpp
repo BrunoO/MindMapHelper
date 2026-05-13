@@ -3,6 +3,7 @@
 #include "core/Base64.h"
 #include "core/mindmap/UuidGenerator.h"
 #include "ui/branch/BranchRenderContext.h"
+#include "ui/branch/DrawBranchTextOnPath.h"
 #include "ui/branch/DrawBranchesBezier.h"
 #include "ui/branch/DrawBranchesOrganicTaper.h"
 #include "ui/branch/DrawBranchesOrthogonal.h"
@@ -206,6 +207,7 @@ void MindMapCanvasView::Reset() {
     nodes_[i].pos_world_ = initial_pos_world_[i];
     nodes_[i].active_ = true;
     nodes_[i].half_extent_override_ = {0.0F, 0.0F};
+    nodes_[i].branch_edge_label_ = {};
   }
   dragging_node_ = std::nullopt;
   resizing_node_ = std::nullopt;
@@ -260,6 +262,7 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
       child_node.parent_idx_ = parent_idx;
       child_node.edge_id_ = edge.id_;
       child_node.branch_style_ = BranchStyleFromString(edge.style_);
+      child_node.branch_edge_label_ = edge.label_;
     }
   }
 
@@ -293,6 +296,7 @@ mind_map::core::MindMapDocument MindMapCanvasView::ToDocument(const mind_map::co
       edge.parent_id_ = nodes_[*node.parent_idx_].id_;
       edge.child_id_ = node.id_;
       edge.style_ = std::string(BranchStyleToString(node.branch_style_));
+      edge.label_ = node.branch_edge_label_;
       doc.edges_.push_back(std::move(edge));
     }
   }
@@ -457,6 +461,9 @@ void MindMapCanvasView::Render(const MindMapCanvasRenderContext& ctx) {
     const CanvasNode& node = nodes_[child];
     if (!node.active_ || !node.parent_idx_.has_value()) { continue; }
     DrawOneChildBranch(branch_ctx, child, node.branch_style_, nodes_);
+    if (!node.branch_edge_label_.empty()) {
+      mind_map::ui::branch::DrawMindMapBranchTextOnPath(branch_ctx, child, nodes_, node.branch_edge_label_, {});
+    }
   }
 
   DrawMindMapNodes(ctx, dragging_node_, selected_node_, selected_child_for_edge_style_, nodes_);

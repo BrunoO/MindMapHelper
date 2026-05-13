@@ -257,6 +257,17 @@ struct ImxBranchEdge {
   return children;
 }
 
+void FillNodeText(ImxNode& node, const std::string& id,
+                  const std::unordered_map<std::string, std::string>& element_text,
+                  const std::unordered_map<std::string, std::string>& branch_text_by_target) {
+  if (const auto et = element_text.find(id); et != element_text.end()) {
+    node.text_ = et->second;
+  }
+  if (const auto bt = branch_text_by_target.find(id); bt != branch_text_by_target.end()) {
+    node.incoming_branch_text_ = bt->second;
+  }
+}
+
 void ApplyImageAssetId(ImxNode& node,
                        const std::unordered_map<std::string, std::string>& id_to_image_asset) {
   if (const auto it = id_to_image_asset.find(node.id_); it != id_to_image_asset.end()) {
@@ -286,11 +297,12 @@ void ApplyImageAssetId(ImxNode& node,
   const std::vector<ImxBranchEdge> edges = CollectBranches(doc);
   const std::unordered_map<std::string, std::vector<std::string>> children_by_parent = BuildChildrenMap(edges);
 
-  // In real IMX files the node label lives on the incoming branch edge, not on the
-  // branchNode target element. Build a target→text map from branch edge texts.
+  // Build a target→text map from branch edge texts (for incoming_branch_text_ on ImxNode).
+  // Valid IMX trees are strict trees; assert no duplicate targets for non-empty branch text.
   std::unordered_map<std::string, std::string> branch_text_by_target;
   for (const auto& edge : edges) {
     if (!edge.text_.empty()) {
+      assert(branch_text_by_target.find(edge.target_) == branch_text_by_target.end());
       branch_text_by_target.try_emplace(edge.target_, edge.text_);
     }
   }
@@ -302,17 +314,6 @@ void ApplyImageAssetId(ImxNode& node,
     all_ids.insert(edge.source_);
     all_ids.insert(edge.target_);
   }
-
-  // Branch edge text takes priority; fall back to the element's own text.
-  auto resolve_text = [&](const std::string& id) -> std::string {
-    if (const auto it = branch_text_by_target.find(id); it != branch_text_by_target.end()) {
-      return it->second;
-    }
-    if (const auto it = element_text.find(id); it != element_text.end()) {
-      return it->second;
-    }
-    return {};
-  };
 
   std::vector<ImxNode> ordered_nodes;
   std::unordered_set<std::string> visited;
@@ -327,7 +328,7 @@ void ApplyImageAssetId(ImxNode& node,
     }
     ImxNode node;
     node.id_ = id;
-    node.text_ = resolve_text(id);
+    FillNodeText(node, id, element_text, branch_text_by_target);
     ApplyImageAssetId(node, id_to_image_asset);
     if (const auto it = children_by_parent.find(id); it != children_by_parent.end()) {
       node.children_ = it->second;
@@ -344,7 +345,7 @@ void ApplyImageAssetId(ImxNode& node,
     }
     ImxNode node;
     node.id_ = id;
-    node.text_ = resolve_text(id);
+    FillNodeText(node, id, element_text, branch_text_by_target);
     ApplyImageAssetId(node, id_to_image_asset);
     if (const auto it = children_by_parent.find(id); it != children_by_parent.end()) {
       node.children_ = it->second;

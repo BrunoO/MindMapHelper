@@ -60,6 +60,7 @@ mind_map::core::MindMapDocument BuildSampleDocument() {
       edge.parent_id_ = node_ids[static_cast<size_t>(kSampleMindMapSpecs[idx].parent_)];
       edge.child_id_ = node_ids[idx];
       edge.style_ = std::string(kDefaultEdgeStyles[idx]);
+      if (idx == 1U) { edge.label_ = "supports"; }
       doc.edges_.push_back(std::move(edge));
     }
   }

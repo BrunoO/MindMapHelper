@@ -21,6 +21,7 @@ struct MindMapEdge {
   std::string parent_id_;
   std::string child_id_;
   std::string style_;  // "bezier" | "orthogonal" | "organic_taper"
+  std::string label_;  // caption for the edge from parent_id_ to child_id_; empty = no edge label
 };
 
 struct MindMapNodeLayout {

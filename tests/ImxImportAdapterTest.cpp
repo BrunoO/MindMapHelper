@@ -35,6 +35,16 @@ constexpr std::string_view kMapMetaXml = R"xml(<?xml version="1.0" encoding="UTF
   return nullptr;
 }
 
+[[nodiscard]] const mind_map::core::MindMapNode* FindNodeById(
+    const mind_map::core::MindMapDocument& doc, std::string_view node_id) {
+  for (const auto& node : doc.nodes_) {
+    if (node.id_ == node_id) {
+      return &node;
+    }
+  }
+  return nullptr;
+}
+
 [[nodiscard]] const mind_map::core::MindMapNodeLayout* FindLayout(
     const mind_map::core::MindMapDocument& doc, std::string_view node_id) {
   for (const auto& layout : doc.layouts_) {
@@ -109,6 +119,58 @@ void TestConversionLayout() {
   assert(child_layout->position_.y_ == 0.0F);
 }
 
+void TestBranchTextGoesToEdgeLabel() {
+  constexpr std::string_view kBranchTextXml = R"xml(<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <floatingIdea id="root-1">
+    <property key="com.thinkbuzan.gaia.cell.text" value="Root"/>
+  </floatingIdea>
+  <branch source="root-1" target="child-1">
+    <property key="com.thinkbuzan.gaia.cell.text" value="branch caption"/>
+  </branch>
+  <idea id="child-1"/>
+</root>
+)xml";
+
+  const mind_map::core::ImxImportAdapter adapter;
+  const auto doc = adapter.ImportFromXml(kBranchTextXml, kMapMetaXml);
+  assert(doc.has_value());
+  assert(doc->edges_.size() == 1U);
+  assert(doc->edges_[0].label_ == "branch caption");
+
+  const auto* child = FindNodeById(*doc, doc->edges_[0].child_id_);
+  assert(child != nullptr);
+  assert(child->label_.empty());
+
+  assert(FindNodeByLabel(*doc, "Root") != nullptr);
+}
+
+void TestBranchTextWithNodeBodyText() {
+  constexpr std::string_view kBothTextXml = R"xml(<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <floatingIdea id="root-1">
+    <property key="com.thinkbuzan.gaia.cell.text" value="Root"/>
+  </floatingIdea>
+  <branch source="root-1" target="child-1">
+    <property key="com.thinkbuzan.gaia.cell.text" value="edge caption"/>
+  </branch>
+  <idea id="child-1">
+    <property key="com.thinkbuzan.gaia.cell.text" value="node title"/>
+  </idea>
+</root>
+)xml";
+
+  const mind_map::core::ImxImportAdapter adapter;
+  const auto doc = adapter.ImportFromXml(kBothTextXml, kMapMetaXml);
+  assert(doc.has_value());
+  assert(doc->edges_.size() == 1U);
+  assert(doc->edges_[0].label_ == "edge caption");
+
+  const auto* child = FindNodeById(*doc, doc->edges_[0].child_id_);
+  assert(child != nullptr);
+  assert(child->label_ == "node title");
+}
+
 void TestRejectsMissingFloatingIdea() {
   constexpr std::string_view bad_xml = R"xml(<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -133,6 +195,8 @@ int main() {  // NOLINT(bugprone-exception-escape)
   TestConversionEdgeStyle();
   TestConversionEdgeConnectivity();
   TestConversionLayout();
+  TestBranchTextGoesToEdgeLabel();
+  TestBranchTextWithNodeBodyText();
   TestRejectsMissingFloatingIdea();
   TestRejectsMalformedXml();
   return 0;

@@ -18,7 +18,6 @@ namespace {
 constexpr float kXSpacing = 260.0F;
 constexpr float kYSpacing = 120.0F;
 constexpr const char* kDefaultEdgeStyle = "bezier";
-constexpr const char* kFallbackLabel = "(no text)";
 
 // Maps every IMX node id to a freshly generated UUID v4.
 [[nodiscard]] std::unordered_map<std::string, std::string> BuildIdToUuidMap(
@@ -39,7 +38,7 @@ constexpr const char* kFallbackLabel = "(no text)";
   for (const ImxNode& imx_node : model.nodes_) {
     MindMapNode node;
     node.id_ = id_to_uuid.at(imx_node.id_);
-    node.label_ = imx_node.text_.empty() ? kFallbackLabel : imx_node.text_;
+    node.label_ = imx_node.text_;
     if (!imx_node.image_bytes_.empty()) {
       node.image_png_base64_ = Base64Encode(imx_node.image_bytes_);
     }
@@ -51,6 +50,14 @@ constexpr const char* kFallbackLabel = "(no text)";
 [[nodiscard]] std::vector<MindMapEdge> BuildDocumentEdges(
     const ImxMindMapModel& model,
     const std::unordered_map<std::string, std::string>& id_to_uuid) {
+  std::unordered_map<std::string, std::string> child_branch_text;
+  child_branch_text.reserve(model.nodes_.size());
+  for (const ImxNode& n : model.nodes_) {
+    if (!n.incoming_branch_text_.empty()) {
+      child_branch_text.try_emplace(n.id_, n.incoming_branch_text_);
+    }
+  }
+
   std::vector<MindMapEdge> edges;
   for (const ImxNode& imx_node : model.nodes_) {
     for (const std::string& child_id : imx_node.children_) {
@@ -63,6 +70,9 @@ constexpr const char* kFallbackLabel = "(no text)";
       edge.parent_id_ = id_to_uuid.at(imx_node.id_);
       edge.child_id_ = child_it->second;
       edge.style_ = kDefaultEdgeStyle;
+      if (const auto bt = child_branch_text.find(child_id); bt != child_branch_text.end()) {
+        edge.label_ = bt->second;
+      }
       edges.push_back(std::move(edge));
     }
   }

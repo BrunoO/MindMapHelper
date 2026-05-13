@@ -7,7 +7,8 @@ namespace mind_map::core {
 
 struct ImxNode {
   std::string id_;
-  std::string text_;
+  std::string text_;                   // body/element text from the node element itself
+  std::string incoming_branch_text_;   // text from the <branch> edge pointing to this node; empty = none
   std::vector<std::string> children_;
   std::string image_asset_id_;  // numeric ID extracted from style="image=<id>;..." attribute
   std::string image_bytes_;     // raw PNG bytes read from ZIP; empty when no image

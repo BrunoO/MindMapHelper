@@ -30,6 +30,7 @@ MindMapDocument FromJson(const nlohmann::json& j) {
     edge.parent_id_ = e.at("parent").get<std::string>();
     edge.child_id_ = e.at("child").get<std::string>();
     edge.style_ = e.at("style").get<std::string>();
+    edge.label_ = e.value("label", std::string{});
     doc.edges_.push_back(std::move(edge));
   }
 
@@ -67,12 +68,14 @@ nlohmann::json ToJson(const MindMapDocument& doc) {
 
   j["edges"] = nlohmann::json::array();
   for (const auto& edge : doc.edges_) {
-    j["edges"].push_back({
+    nlohmann::json e_json = {
       {"id", edge.id_},
       {"parent", edge.parent_id_},
       {"child", edge.child_id_},
       {"style", edge.style_},
-    });
+    };
+    if (!edge.label_.empty()) { e_json["label"] = edge.label_; }
+    j["edges"].push_back(std::move(e_json));
   }
 
   j["layout"] = nlohmann::json::array();
