@@ -8,7 +8,7 @@ InsertChildNodeCommand::InsertChildNodeCommand(mind_map::ui::MindMapCanvasView& 
     : canvas_(canvas), parent_idx_(parent_idx) {}
 
 void InsertChildNodeCommand::Execute() {
-  if (!inserted_idx_) {
+  if (!inserted_idx_.has_value()) {
     inserted_idx_ = canvas_.InsertChildNode(parent_idx_);
   } else {
     canvas_.SetNodeActive(*inserted_idx_, true);

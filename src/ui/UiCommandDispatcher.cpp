@@ -45,8 +45,7 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       state.show_status_bar_ = !state.show_status_bar_;
       return;
     case UiCommandId::DeleteNode: {
-      const auto sel = state.canvas_.GetSelectedChildForBranchStyle();
-      if (sel && *sel > 0U) {  // root (index 0) cannot be deleted
+      if (const auto sel = state.canvas_.GetSelectedChildForBranchStyle(); sel.has_value() && *sel > 0U) {  // root (index 0) cannot be deleted
         history_.Push(std::make_unique<commands::DeleteNodeCommand>(state.canvas_, *sel));
         session.MarkDirty();
       }
@@ -69,7 +68,7 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       return;
     case UiCommandId::PasteImage: {
       const auto sel = state.canvas_.GetSelectedNode();
-      if (!sel) { return; }
+      if (!sel.has_value()) { return; }
       const auto png = GetClipboardImagePng();
       if (!png) { return; }
       history_.Push(std::make_unique<commands::PasteImageCommand>(

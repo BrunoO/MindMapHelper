@@ -59,7 +59,7 @@ constexpr float kResizeHandleHitPx = 8.0F;
 constexpr float kMinHalfExtent = 15.0F;
 constexpr float kMinResizeScale = 0.05F;
 
-// Corner index to sign: 0=TL(-1,-1), 1=TR(+1,-1), 2=BR(+1,+1), 3=BL(-1,+1)
+// Corner indices: TL idx=0 sign=(-1,-1), TR idx=1 sign=(+1,-1), BR idx=2 sign=(+1,+1), BL idx=3 sign=(-1,+1)
 constexpr std::array<float, 4> kCornerSignX = {-1.0F, +1.0F, +1.0F, -1.0F};
 constexpr std::array<float, 4> kCornerSignY = {-1.0F, -1.0F, +1.0F, +1.0F};
 
@@ -187,7 +187,7 @@ MindMapCanvasView::~MindMapCanvasView() {
 
 mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() const {
   for (const auto& node : nodes_) {
-    if (node.active_ && node.parent_idx_) {
+    if (node.active_ && node.parent_idx_.has_value()) {
       return node.branch_style_;
     }
   }
@@ -197,7 +197,7 @@ mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() co
 bool MindMapCanvasView::BranchStylesAreUniform_() const {
   const mind_map::ui::branch::BranchStyle ref = StyleOfFirstChildEdge_();
   return std::all_of(nodes_.begin(), nodes_.end(), [ref](const CanvasNode& node) {  // NOLINT(llvm-use-ranges)
-    return !node.active_ || !node.parent_idx_ || node.branch_style_ == ref;
+    return !node.active_ || !node.parent_idx_.has_value() || node.branch_style_ == ref;
   });
 }
 
@@ -255,7 +255,7 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
       if (nodes_[i].id_ == edge.child_id_)  { child_idx  = i; }
       if (nodes_[i].id_ == edge.parent_id_) { parent_idx = i; }
     }
-    if (child_idx && parent_idx) {
+    if (child_idx.has_value() && parent_idx.has_value()) {
       auto& child_node = nodes_[*child_idx];
       child_node.parent_idx_ = parent_idx;
       child_node.edge_id_ = edge.id_;
@@ -287,7 +287,7 @@ mind_map::core::MindMapDocument MindMapCanvasView::ToDocument(const mind_map::co
     layout.size_h_ = node.half_extent_override_.y;
     doc.layouts_.push_back(std::move(layout));
 
-    if (node.parent_idx_) {
+    if (node.parent_idx_.has_value()) {
       mind_map::core::MindMapEdge edge;
       edge.id_ = node.edge_id_;
       edge.parent_id_ = nodes_[*node.parent_idx_].id_;
@@ -304,7 +304,7 @@ void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
   if (!ptr.canvas_hovered_) { return; }
 
   // Check corner resize handles first (any node may be selected, including root).
-  if (selected_node_) {
+  if (selected_node_.has_value()) {
     const size_t sel = *selected_node_;
     const auto& sel_node = nodes_[sel];
     const ImVec2 half = mind_map::canvas::NodeHalfExtent(sel_node);
@@ -329,12 +329,12 @@ void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
     }
   }
 
-  if (const auto hit = HitTestNodes(ptr.mouse_world_, nodes_)) {
+  if (const auto hit = HitTestNodes(ptr.mouse_world_, nodes_); hit.has_value()) {
     dragging_node_ = hit;
     selected_node_ = hit;
     const ImVec2 c = nodes_[*hit].pos_world_;
     grab_offset_world_ = {ptr.mouse_world_.x - c.x, ptr.mouse_world_.y - c.y};
-    if (nodes_[*hit].parent_idx_) {
+    if (nodes_[*hit].parent_idx_.has_value()) {
       selected_child_for_edge_style_ = hit;
     } else {
       selected_child_for_edge_style_ = std::nullopt;
@@ -347,7 +347,7 @@ void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
 }
 
 void MindMapCanvasView::OnPrimaryDrag(const MindMapPointerState& ptr) {  // NOLINT(readability-make-member-function-const)
-  if (resizing_node_ && resizing_corner_) {
+  if (resizing_node_.has_value() && resizing_corner_.has_value()) {
     auto& node = nodes_[*resizing_node_];
     const float csx = kCornerSignX[*resizing_corner_];
     const float csy = kCornerSignY[*resizing_corner_];
@@ -375,7 +375,7 @@ void MindMapCanvasView::OnPrimaryDrag(const MindMapPointerState& ptr) {  // NOLI
     return;
   }
 
-  if (!dragging_node_) { return; }
+  if (!dragging_node_.has_value()) { return; }
   nodes_[*dragging_node_].pos_world_ = {
       ptr.mouse_world_.x - grab_offset_world_.x, ptr.mouse_world_.y - grab_offset_world_.y};
 }
@@ -391,7 +391,7 @@ bool MindMapCanvasView::IsDraggingContent() const {
 
 void MindMapCanvasView::SetBranchStyleForAllEdges(const mind_map::ui::branch::BranchStyle style) {
   for (auto& node : nodes_) {
-    if (node.active_ && node.parent_idx_) {
+    if (node.active_ && node.parent_idx_.has_value()) {
       node.branch_style_ = style;
     }
   }
@@ -413,7 +413,7 @@ mind_map::ui::branch::BranchStyle MindMapCanvasView::RepresentativeChildEdgeStyl
 }
 
 bool MindMapCanvasView::HasSelectedIncomingEdgeStyleTarget() const {
-  if (!selected_child_for_edge_style_) { return false; }
+  if (!selected_child_for_edge_style_.has_value()) { return false; }
   if (*selected_child_for_edge_style_ >= nodes_.size()) { return false; }
   return nodes_[*selected_child_for_edge_style_].parent_idx_.has_value();
 }
@@ -427,21 +427,21 @@ std::optional<size_t> MindMapCanvasView::GetSelectedChildForBranchStyle() const 
 }
 
 const char* MindMapCanvasView::GetSelectedIncomingEdgeChildLabel() const {
-  if (const auto idx = selected_child_for_edge_style_; idx && HasSelectedIncomingEdgeStyleTarget()) {
+  if (const auto idx = selected_child_for_edge_style_; idx.has_value() && HasSelectedIncomingEdgeStyleTarget()) {
     return nodes_[*idx].label_.c_str();
   }
   return nullptr;
 }
 
 mind_map::ui::branch::BranchStyle MindMapCanvasView::GetBranchStyleForSelectedChildEdge() const {
-  if (const auto idx = selected_child_for_edge_style_; idx && HasSelectedIncomingEdgeStyleTarget()) {
+  if (const auto idx = selected_child_for_edge_style_; idx.has_value() && HasSelectedIncomingEdgeStyleTarget()) {
     return nodes_[*idx].branch_style_;
   }
   return mind_map::ui::branch::BranchStyle::Bezier;
 }
 
 void MindMapCanvasView::SetBranchStyleForSelectedChildEdge(mind_map::ui::branch::BranchStyle style) {  // NOLINT(readability-make-member-function-const)
-  if (const auto idx = selected_child_for_edge_style_; idx && HasSelectedIncomingEdgeStyleTarget()) {
+  if (const auto idx = selected_child_for_edge_style_; idx.has_value() && HasSelectedIncomingEdgeStyleTarget()) {
     nodes_[*idx].branch_style_ = style;
   }
 }
@@ -455,7 +455,7 @@ void MindMapCanvasView::Render(const MindMapCanvasRenderContext& ctx) {
 
   for (size_t child = 0; child < nodes_.size(); ++child) {
     const CanvasNode& node = nodes_[child];
-    if (!node.active_ || !node.parent_idx_) { continue; }
+    if (!node.active_ || !node.parent_idx_.has_value()) { continue; }
     DrawOneChildBranch(branch_ctx, child, node.branch_style_, nodes_);
   }
 
@@ -529,7 +529,7 @@ size_t MindMapCanvasView::InsertChildNode(size_t parent_idx) {
   child.edge_id_     = mind_map::core::mindmap::GenerateUuidV4();
   child.label_       = "New node";
   child.parent_idx_  = parent_idx;
-  child.branch_style_ = !parent.parent_idx_
+  child.branch_style_ = !parent.parent_idx_.has_value()
       ? RepresentativeChildEdgeStyle() : parent.branch_style_;
   child.pos_world_   = {parent.pos_world_.x + kChildOffsetX,
                         parent.pos_world_.y + static_cast<float>(sibling_count) * kSiblingStepY};

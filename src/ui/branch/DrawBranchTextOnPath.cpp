@@ -90,8 +90,7 @@ void DrawMindMapBranchTextOnPath(const BranchRenderContext& ctx, const size_t ch
   const ImVec2 p1w = poly.points_world_.size() > 1U ? poly.points_world_.back() : poly.points_world_.front();
   float dx = p1w.x - p0w.x;
   float dy = p1w.y - p0w.y;
-  const float len = std::sqrt(dx * dx + dy * dy);
-  if (len > kNearZero) {
+  if (const float len = std::sqrt(dx * dx + dy * dy); len > kNearZero) {
     dx /= len;
     dy /= len;
   }
@@ -103,8 +102,7 @@ void DrawMindMapBranchTextOnPath(const BranchRenderContext& ctx, const size_t ch
       mind_map::canvas::WorldToScreen(anchor_world, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
   float sx = dx * ctx.zoom_;
   float sy = dy * ctx.zoom_;
-  const float slen = std::sqrt(sx * sx + sy * sy);
-  if (slen > kNearZero) {
+  if (const float slen = std::sqrt(sx * sx + sy * sy); slen > kNearZero) {
     sx /= slen;
     sy /= slen;
   }
