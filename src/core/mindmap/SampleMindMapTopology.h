@@ -6,7 +6,7 @@
 
 namespace mind_map::core::mindmap {
 
-inline constexpr int kSampleMindMapNodeCount = 7;
+inline constexpr std::size_t kSampleMindMapNodeCount = 7U;
 
 struct SampleMindMapNodeSpec {
   const char* label_;

@@ -16,7 +16,7 @@ namespace {
 
 constexpr float kNearZero = 1.0e-6F;
 constexpr float kMinZoomForEdgeLabels = 0.5F;
-constexpr int kCenterlineSamples = 8;
+constexpr std::size_t kCenterlineSamples = 8U;
 
 [[nodiscard]] ImVec2 SampleCubicBezier(ImVec2 p0, ImVec2 p1, ImVec2 p2, ImVec2 p3, float t) {
   const float u = 1.0F - t;
@@ -144,8 +144,8 @@ BranchTextPathPolyline BuildMindMapBranchTextPathWorld(const size_t child_index,
           g.pw_, g.parent_half_, g.cw_, g.child_half_,
           g.p0_attachment_, g.p3_attachment_, 96.0F, 0.55F, nullptr, nullptr};
       const mind_map::canvas::BezierArms arms = mind_map::canvas::ComputeBezierArmsWorld(arm_inputs);
-      out.points_world_.reserve(static_cast<size_t>(kCenterlineSamples) + 1U);
-      for (int i = 0; i <= kCenterlineSamples; ++i) {
+      out.points_world_.reserve(kCenterlineSamples + 1U);
+      for (std::size_t i = 0; i <= kCenterlineSamples; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(kCenterlineSamples);
         out.points_world_.push_back(
             SampleCubicBezier(g.p0_attachment_, arms.p1_, arms.p2_, g.p3_attachment_, t));

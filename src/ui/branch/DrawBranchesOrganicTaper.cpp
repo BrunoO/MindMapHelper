@@ -14,7 +14,7 @@ namespace mind_map::ui::branch {
 
 namespace {
 
-constexpr int kBranchStripSegments = 32;
+constexpr std::size_t kBranchStripSegments = 32U;
 constexpr float kTaperPower = 1.65F;
 constexpr float kMinParentHalfWidthWorld = 9.0F;
 constexpr float kMaxParentHalfWidthScale = 0.42F;
@@ -118,35 +118,35 @@ void ProjectTaperStripPair(const CanvasTransform& canvas_transform, const ImVec2
 }
 
 void DrawFilledStripAndOutlines(ImDrawList* draw_list,
-                                const std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)>& left_s,
-                                const std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)>& right_s) {
+                                const std::array<ImVec2, kBranchStripSegments + 1>& left_s,
+                                const std::array<ImVec2, kBranchStripSegments + 1>& right_s) {
   assert(draw_list != nullptr);
-  for (int i = 0; i < kBranchStripSegments; ++i) {
-    const ImVec2& l0 = left_s[static_cast<size_t>(i)];
-    const ImVec2& r0 = right_s[static_cast<size_t>(i)];
-    const ImVec2& l1 = left_s[static_cast<size_t>(i) + 1];
-    const ImVec2& r1 = right_s[static_cast<size_t>(i) + 1];
+  for (std::size_t i = 0; i < kBranchStripSegments; ++i) {
+    const ImVec2& l0 = left_s[i];
+    const ImVec2& r0 = right_s[i];
+    const ImVec2& l1 = left_s[i + 1U];
+    const ImVec2& r1 = right_s[i + 1U];
     draw_list->AddTriangleFilled(l0, r0, l1, kColorBranchFill);
     draw_list->AddTriangleFilled(r0, r1, l1, kColorBranchFill);
   }
 
-  draw_list->AddPolyline(left_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, kBranchOutlineThickness);
-  draw_list->AddPolyline(right_s.data(), kBranchStripSegments + 1, kColorBranchOutline, 0, kBranchOutlineThickness);
+  constexpr int kPolylinePointCount = static_cast<int>(kBranchStripSegments) + 1;  // ImDrawList::AddPolyline takes int
+  draw_list->AddPolyline(left_s.data(),  kPolylinePointCount, kColorBranchOutline, 0, kBranchOutlineThickness);
+  draw_list->AddPolyline(right_s.data(), kPolylinePointCount, kColorBranchOutline, 0, kBranchOutlineThickness);
 }
 
 void DrawTaperBezierBranch(ImDrawList* draw_list, const CanvasTransform& canvas_transform, const ImVec2& p0w,
                            const ImVec2& p1w, const ImVec2& p2w, const ImVec2& p3w, TaperWidths widths) {
   assert(draw_list != nullptr);
-  std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> left_s{};
-  std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> right_s{};
+  std::array<ImVec2, kBranchStripSegments + 1> left_s{};
+  std::array<ImVec2, kBranchStripSegments + 1> right_s{};
 
-  for (int i = 0; i <= kBranchStripSegments; ++i) {
+  for (std::size_t i = 0; i <= kBranchStripSegments; ++i) {
     const float t = static_cast<float>(i) / static_cast<float>(kBranchStripSegments);
     const ImVec2 pw = CubicBezierPoint(p0w, p1w, p2w, p3w, t);
     const float half_w = BranchHalfWidthAlongEdge(t, widths.half_width_start_, widths.half_width_end_);
     const ImVec2 tan_w = CubicBezierTangent(p0w, p1w, p2w, p3w, t);
-    ProjectTaperStripPair(canvas_transform, pw, tan_w, half_w, &left_s[static_cast<size_t>(i)],
-                          &right_s[static_cast<size_t>(i)]);
+    ProjectTaperStripPair(canvas_transform, pw, tan_w, half_w, &left_s[i], &right_s[i]);
   }
 
   DrawFilledStripAndOutlines(draw_list, left_s, right_s);
@@ -212,10 +212,10 @@ void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, const CanvasTransfor
   assert(draw_list != nullptr);
   assert(seg0 != nullptr);
   assert(seg1 != nullptr);
-  std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> left_s{};
-  std::array<ImVec2, static_cast<size_t>(kBranchStripSegments + 1)> right_s{};
+  std::array<ImVec2, kBranchStripSegments + 1> left_s{};
+  std::array<ImVec2, kBranchStripSegments + 1> right_s{};
 
-  for (int i = 0; i <= kBranchStripSegments; ++i) {
+  for (std::size_t i = 0; i <= kBranchStripSegments; ++i) {
     const float u = static_cast<float>(i) / static_cast<float>(kBranchStripSegments);
     float t_curve = 0.0F;
     const ImVec2* c = nullptr;
@@ -230,8 +230,7 @@ void DrawTaperTwoSegmentBezierBranch(ImDrawList* draw_list, const CanvasTransfor
     const ImVec2 pw = CubicBezierPoint(c[0], c[1], c[2], c[3], t_curve);
     const ImVec2 tan_w = CubicBezierTangent(c[0], c[1], c[2], c[3], t_curve);
     const float half_w = BranchHalfWidthAlongEdge(u, widths.half_width_start_, widths.half_width_end_);
-    ProjectTaperStripPair(canvas_transform, pw, tan_w, half_w, &left_s[static_cast<size_t>(i)],
-                          &right_s[static_cast<size_t>(i)]);
+    ProjectTaperStripPair(canvas_transform, pw, tan_w, half_w, &left_s[i], &right_s[i]);
   }
 
   DrawFilledStripAndOutlines(draw_list, left_s, right_s);
@@ -280,7 +279,7 @@ void DrawMindMapBranchOrganicTaper(
 }
 
 std::vector<ImVec2> SampleOrganicTaperCenterlineWorld(
-    const size_t child_index, const std::vector<mind_map::ui::CanvasNode>& nodes, const int n_samples) {
+    const size_t child_index, const std::vector<mind_map::ui::CanvasNode>& nodes, const std::size_t n_samples) {
   if (child_index >= nodes.size() || !nodes[child_index].parent_idx_.has_value()) {
     return {};
   }
@@ -314,8 +313,8 @@ std::vector<ImVec2> SampleOrganicTaperCenterlineWorld(
   }
 
   std::vector<ImVec2> pts;
-  pts.reserve(static_cast<size_t>(n_samples) + 1U);
-  for (int i = 0; i <= n_samples; ++i) {
+  pts.reserve(n_samples + 1U);
+  for (std::size_t i = 0; i <= n_samples; ++i) {
     const float u = static_cast<float>(i) / static_cast<float>(n_samples);
     ImVec2 pw{};
     if (two_cubics) {
