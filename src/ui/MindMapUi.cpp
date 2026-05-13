@@ -174,7 +174,7 @@ void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
   if (ImGui::MenuItem("Open...", "Cmd+O")) {
     IGFD::FileDialogConfig cfg;
     cfg.path = ".";
-    ImGuiFileDialog::Instance()->OpenDialog("OpenFileDlg", "Open Mind Map", ".mmh", cfg);
+    ImGuiFileDialog::Instance()->OpenDialog("OpenFileDlg", "Open Mind Map", ".mmh,.imx", cfg);
   }
   ImGui::Separator();
   if (ImGui::MenuItem("Save", "Cmd+S")) {
@@ -381,12 +381,10 @@ void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& se
     if (fd->IsOk()) {
       const std::string path = fd->GetFilePathName();
       if (auto doc = import_service.ImportFile(path)) {
-        mind_map::core::MindMapDocument dummy;
-        session.New(dummy);  // clears path so Save prompts Save As
+        session.ApplyImportedDocument();
         history.Clear();
         state.canvas_.LoadFrom(*doc);
         state.ApplyViewport(doc->viewport_);
-        session.MarkDirty();
       }
     }
     fd->Close();
@@ -396,7 +394,7 @@ void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& se
     if (fd->IsOk()) {
       const std::string path = fd->GetFilePathName();
       mind_map::core::MindMapDocument doc;
-      if (session.Open(path, doc)) {
+      if (session.OpenFromPath(path, doc, import_service)) {
         history.Clear();
         state.canvas_.LoadFrom(doc);
         state.ApplyViewport(doc.viewport_);

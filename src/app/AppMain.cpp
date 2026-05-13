@@ -1,6 +1,7 @@
 #include "app/AppMain.h"
 
 #include "app/DocumentSessionService.h"
+#include "core/ImportService.h"
 #include "core/JsonNativeDocumentRepository.h"
 #include "platform/PlatformBootstrap.h"
 #include "ui/MindMapUi.h"
@@ -14,6 +15,7 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -42,12 +44,15 @@ int RunApp(std::string_view startup_path) {
   mind_map::ui::commands::CommandHistory history;
   mind_map::core::JsonNativeDocumentRepository repo;
   mind_map::app::DocumentSessionService session(repo);
+  const mind_map::core::ImportService import_service;
 
+  // LoadFrom touches OpenGL (node textures). Defer until after the GL context exists — same order as
+  // File → Open / Import in the main loop (ImGui + GL are initialized first).
+  std::optional<mind_map::core::MindMapDocument> deferred_startup_document;
   if (!startup_path.empty()) {
     mind_map::core::MindMapDocument doc;
-    if (session.Open(startup_path, doc)) {
-      ui_state.canvas_.LoadFrom(doc);
-      ui_state.ApplyViewport(doc.viewport_);
+    if (session.OpenFromPath(startup_path, doc, import_service)) {
+      deferred_startup_document = std::move(doc);
     }
   }
 
@@ -67,6 +72,12 @@ int RunApp(std::string_view startup_path) {
 
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init(mind_map::platform::GetGlslVersion());
+
+  if (deferred_startup_document.has_value()) {
+    ui_state.canvas_.LoadFrom(*deferred_startup_document);
+    ui_state.ApplyViewport(deferred_startup_document->viewport_);
+    deferred_startup_document.reset();
+  }
 
   constexpr ImVec4 kClearColor{0.11F, 0.11F, 0.14F, 1.0F};
   constexpr int kIconifiedSleepMs = 10;

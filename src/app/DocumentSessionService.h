@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/IDocumentRepository.h"
+#include "core/ImportService.h"
 #include "core/MindMapDocument.h"
 
 #include <string>
@@ -17,8 +18,16 @@ class DocumentSessionService {
   // Populates doc_out with a minimal one-root-node document; clears path and dirty.
   void New(mind_map::core::MindMapDocument& doc_out);
 
-  // Loads from path into doc_out. Returns false and leaves doc_out unchanged on failure.
-  [[nodiscard]] bool Open(std::string_view path, mind_map::core::MindMapDocument& doc_out);
+  // Loads native `.mmh` from path into doc_out. Returns false and leaves doc_out unchanged on failure.
+  [[nodiscard]] bool OpenNative(std::string_view path, mind_map::core::MindMapDocument& doc_out);
+
+  // Loads `.mmh` via the repository or a registered import extension via ImportService; updates path/dirty
+  // to match native open vs import semantics.
+  [[nodiscard]] bool OpenFromPath(std::string_view path, mind_map::core::MindMapDocument& doc_out,
+                                  const mind_map::core::ImportService& imports);
+
+  // Call after loading imported content into the canvas (same session semantics as File → Import).
+  void ApplyImportedDocument();
 
   // Saves doc to current_path_. Returns false when no path is set — caller must use SaveAs.
   [[nodiscard]] bool Save(const mind_map::core::MindMapDocument& doc);
@@ -43,6 +52,10 @@ class DocumentSessionService {
   [[nodiscard]] bool IsCloseConfirmed() const;
 
  private:
+  void ResetCloseGuardState_();
+  void SetNativeSessionAfterOpen_(std::string_view path);
+  void SetImportedSessionAfterOpen_();
+
   mind_map::core::IDocumentRepository* repo_;
   std::string current_path_;
   bool dirty_ = false;

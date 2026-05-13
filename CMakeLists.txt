@@ -219,6 +219,7 @@ set(BM_CORE_SOURCES
   src/core/imx/ImxMindMapLoader.cpp
   src/core/imx/ImxImportAdapter.cpp
   src/core/ImportService.cpp
+  src/core/DocumentPathLoader.cpp
   src/core/mindmap/SampleMindMapTopology.cpp
   src/core/mindmap/UuidGenerator.cpp
   src/core/JsonNativeDocumentRepository.cpp
@@ -359,6 +360,21 @@ if(BM_ENABLE_TESTS)
   bm_target_use_src_includes(mindmap_helper_import_service_test)
   target_link_libraries(mindmap_helper_import_service_test PRIVATE mindmap_helper_core)
   add_test(NAME mindmap_helper_import_service_test COMMAND mindmap_helper_import_service_test)
+
+  add_executable(mindmap_helper_document_path_loader_test
+    tests/DocumentPathLoaderTest.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_document_path_loader_test)
+  target_link_libraries(mindmap_helper_document_path_loader_test PRIVATE mindmap_helper_core libzip::zip)
+  add_test(NAME mindmap_helper_document_path_loader_test COMMAND mindmap_helper_document_path_loader_test)
+
+  add_executable(mindmap_helper_document_session_path_test
+    tests/DocumentSessionServicePathTest.cpp
+    src/app/DocumentSessionService.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_document_session_path_test)
+  target_link_libraries(mindmap_helper_document_session_path_test PRIVATE mindmap_helper_core libzip::zip)
+  add_test(NAME mindmap_helper_document_session_path_test COMMAND mindmap_helper_document_session_path_test)
 
   add_executable(mindmap_helper_command_history_test
     tests/CommandHistoryTest.cpp
