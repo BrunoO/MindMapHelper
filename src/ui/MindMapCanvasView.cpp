@@ -607,7 +607,7 @@ void MindMapCanvasView::ApplyPersistedCollapses_() {
 }
 
 void MindMapCanvasView::CollapseNode(size_t idx) {
-  if (idx >= nodes_.size()) { return; }
+  if (idx >= nodes_.size() || nodes_[idx].collapsed_) { return; }
   nodes_[idx].collapsed_ = true;
   const std::vector<size_t> subtree = CollectActiveSubtree(idx);
   std::vector<size_t> affected;

@@ -57,7 +57,7 @@ constexpr unsigned int kUtf8Lead3Bits = 4U;     // data bits in a 3-byte lead
 constexpr unsigned int kUtf8Lead4Bits = 3U;     // data bits in a 4-byte lead
 constexpr int          kQuadIdxCount      = 6;       // 2 triangles × 3 indices per quad
 constexpr int          kQuadVtxCount      = 4;       // vertices per quad
-constexpr unsigned int kUtf8Replacement   = kUtf8Replacement; // U+FFFD REPLACEMENT CHARACTER
+constexpr unsigned int kUtf8Replacement   = 0xFFFDU; // U+FFFD REPLACEMENT CHARACTER
 
 // Returns number of bytes consumed and sets *out to the Unicode codepoint.
 // Returns 1 and sets *out = 0xFFFD on a truncated or malformed sequence.
