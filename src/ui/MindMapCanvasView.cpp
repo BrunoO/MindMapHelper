@@ -300,7 +300,6 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
   }
 
   ApplyPersistedCollapses_();
-  RebuildHasChildren_();
 
   initial_pos_world_.resize(nodes_.size());
   for (size_t i = 0; i < nodes_.size(); ++i) {
@@ -637,21 +636,9 @@ bool MindMapCanvasView::IsCollapsed(size_t idx) const {
 }
 
 bool MindMapCanvasView::NodeHasChildren(size_t idx) const {
-  if (idx >= nodes_.size()) { return false; }
-  return nodes_[idx].has_children_;
-}
-
-void MindMapCanvasView::RebuildHasChildren_() {
-  // Counts all nodes regardless of active_ — matches the pre-cache behaviour of NodeHasChildren.
-  // A parent whose only child is deleted (active_=false) still reports has_children_=true, so
-  // the collapse triangle stays visible on that parent after deletion. If active-only semantics
-  // are ever wanted, filter here and update has_children_ inside SetNodeActive as well.
-  for (auto& node : nodes_) { node.has_children_ = false; }
-  for (const auto& node : nodes_) {
-    if (node.parent_idx_.has_value()) {
-      nodes_[*node.parent_idx_].has_children_ = true;
-    }
-  }
+  return std::any_of(nodes_.begin(), nodes_.end(), [idx](const CanvasNode& node) {  // NOLINT(llvm-use-ranges)
+    return node.parent_idx_ == idx;
+  });
 }
 
 std::optional<size_t> MindMapCanvasView::ConsumeCollapseToggleTarget() {
@@ -688,7 +675,6 @@ size_t MindMapCanvasView::InsertChildNode(size_t parent_idx) {
   const size_t new_idx = nodes_.size();
   initial_pos_world_.push_back(child.pos_world_);
   nodes_.push_back(std::move(child));
-  nodes_[parent_idx].has_children_ = true;
   selected_node_ = new_idx;
   selected_child_for_edge_style_ = new_idx;
   return new_idx;

@@ -113,7 +113,6 @@ class MindMapCanvasView {
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
   [[nodiscard]] bool BranchStylesAreUniform_() const;
   void ApplyPersistedCollapses_();
-  void RebuildHasChildren_();
 
   std::vector<CanvasNode> nodes_;
   std::vector<ImVec2> initial_pos_world_;
