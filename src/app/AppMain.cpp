@@ -1,6 +1,7 @@
 #include "app/AppMain.h"
 
 #include "app/DocumentSessionService.h"
+#include "app/HelpMindMapDocument.h"
 #include "core/ImportService.h"
 #include "core/JsonNativeDocumentRepository.h"
 #include "platform/PlatformBootstrap.h"
@@ -40,9 +41,30 @@ namespace {
                       : FilenameFromPath(path) + " - MindMap Helper";
 }
 
+struct StartupCli {
+  bool help_map_ = false;
+  std::string path_;
+};
+
+[[nodiscard]] StartupCli ParseStartupCli(int argc, char** argv) {
+  StartupCli out;
+  for (int i = 1; i < argc; ++i) {
+    const std::string_view arg{argv[i]};
+    if (arg == "--help") {
+      out.help_map_ = true;
+      continue;
+    }
+    if (out.path_.empty() && !arg.empty()) {
+      out.path_ = std::string{arg};
+    }
+  }
+  return out;
+}
+
 }  // namespace
 
-int RunApp(std::string_view startup_path) {
+int RunApp(int argc, char** argv) {
+  const StartupCli cli = ParseStartupCli(argc, argv);
   mind_map::ui::UiState ui_state;
   mind_map::ui::commands::CommandHistory history;
   mind_map::core::JsonNativeDocumentRepository repo;
@@ -52,9 +74,13 @@ int RunApp(std::string_view startup_path) {
   // LoadFrom touches OpenGL (node textures). Defer until after the GL context exists — same order as
   // File → Open / Import in the main loop (ImGui + GL are initialized first).
   std::optional<mind_map::core::MindMapDocument> deferred_startup_document;
-  if (!startup_path.empty()) {
+  if (cli.help_map_) {
+    mind_map::core::MindMapDocument scratch;
+    session.New(scratch);
+    deferred_startup_document = BuildHelpMindMapDocument();
+  } else if (!cli.path_.empty()) {
     mind_map::core::MindMapDocument doc;
-    if (session.OpenFromPath(startup_path, doc, import_service)) {
+    if (session.OpenFromPath(cli.path_, doc, import_service)) {
       deferred_startup_document = std::move(doc);
     }
   } else {
@@ -63,7 +89,8 @@ int RunApp(std::string_view startup_path) {
     deferred_startup_document = std::move(doc);
   }
 
-  const std::string initial_title = WindowTitleForPath(session.GetCurrentPath());
+  const std::string initial_title =
+      cli.help_map_ ? "Help — MindMap Helper" : WindowTitleForPath(session.GetCurrentPath());
   GLFWwindow* const window = mind_map::platform::CreateMainWindow(1280, 720, initial_title.c_str());
   if (window == nullptr) {
     return 1;
@@ -120,6 +147,7 @@ int RunApp(std::string_view startup_path) {
   constexpr ImVec4 kClearColor{0.11F, 0.11F, 0.14F, 1.0F};
   constexpr int kIconifiedSleepMs = 10;
   std::string last_path{session.GetCurrentPath()};
+  const bool fixed_help_window_title = cli.help_map_;
 
   while (glfwWindowShouldClose(window) == 0) {
     glfwPollEvents();
@@ -152,7 +180,7 @@ int RunApp(std::string_view startup_path) {
       ui_state.pending_launch_path_.reset();
     }
 
-    if (session.GetCurrentPath() != last_path) {
+    if (!fixed_help_window_title && session.GetCurrentPath() != last_path) {
       last_path = session.GetCurrentPath();
       glfwSetWindowTitle(window, WindowTitleForPath(last_path).c_str());
     }

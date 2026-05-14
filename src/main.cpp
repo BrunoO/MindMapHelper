@@ -1,5 +1,5 @@
 #include "app/AppMain.h"
 
 int main(int argc, char** argv) {
-  return mind_map::app::RunApp(argc > 1 ? argv[1] : "");
+  return mind_map::app::RunApp(argc, argv);
 }

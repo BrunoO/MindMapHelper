@@ -304,6 +304,7 @@ add_executable(mindmap_helper
   src/main.cpp
   src/app/AppMain.cpp
   src/app/DocumentSessionService.cpp
+  src/app/HelpMindMapDocument.cpp
 )
 
 set_target_properties(mindmap_helper PROPERTIES OUTPUT_NAME "MindMapHelper")
@@ -408,5 +409,13 @@ if(BM_ENABLE_TESTS)
   )
   bm_target_use_src_includes(mindmap_helper_base64_test)
   add_test(NAME mindmap_helper_base64_test COMMAND mindmap_helper_base64_test)
+
+  add_executable(mindmap_helper_help_doc_test
+    tests/HelpMindMapDocumentTest.cpp
+    src/app/HelpMindMapDocument.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_help_doc_test)
+  target_link_libraries(mindmap_helper_help_doc_test PRIVATE mindmap_helper_core)
+  add_test(NAME mindmap_helper_help_doc_test COMMAND mindmap_helper_help_doc_test)
 
 endif()

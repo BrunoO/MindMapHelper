@@ -273,7 +273,7 @@ void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, UiState& state,
   }
 
   if (ImGui::BeginMenu("Help")) {
-    ImGui::MenuItem("Canvas: drag nodes; empty space pans; wheel zooms.", nullptr, false, false);
+    ImGui::MenuItem("Guide map: run MindMapHelper with --help (command line).", nullptr, false, false);
     ImGui::MenuItem("Non-root node: select to edit incoming edge style; root clears selection.", nullptr, false, false);
     ImGui::EndMenu();
   }
@@ -567,10 +567,6 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
       command_dispatcher.Dispatch(UiCommandId::ResetLayout, state, session);
     }
     RenderSelectedIncomingEdgeStyleSelector(state.canvas_, session);
-    ImGui::TextUnformatted(
-        "Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms. Click a non-root node to edit its incoming "
-        "edge style; root or empty canvas clears selection. Click the triangle (▶/▼) or press Space to "
-        "collapse/expand a node's subtree. \"Set all branches\" applies one style to every edge.");
     ImGui::Text("Zoom %.2f", state.zoom_);
     RenderCanvas(state, session, history);
   }
