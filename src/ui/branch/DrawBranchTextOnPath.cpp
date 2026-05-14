@@ -1,8 +1,8 @@
 #include "ui/branch/DrawBranchTextOnPath.h"
 
 #include "core/ByteOps.h"
+#include "ui/branch/BranchEdgeAttachments.h"
 #include "ui/branch/DrawBranchesOrganicTaper.h"
-#include "ui/branch/SampleMindMapBranchAttachments.h"
 #include "ui/canvas/CanvasMath.h"
 #include "ui/canvas/NodeGeometry.h"
 

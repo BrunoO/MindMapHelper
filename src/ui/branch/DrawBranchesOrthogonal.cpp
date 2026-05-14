@@ -1,6 +1,6 @@
 #include "ui/branch/DrawBranchesOrthogonal.h"
 
-#include "ui/branch/SampleMindMapBranchAttachments.h"
+#include "ui/branch/BranchEdgeAttachments.h"
 #include "ui/canvas/CanvasMath.h"
 
 #include <cassert>

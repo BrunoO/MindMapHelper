@@ -1,6 +1,6 @@
 #include "ui/branch/DrawBranchesOrganicTaper.h"
 
-#include "ui/branch/SampleMindMapBranchAttachments.h"
+#include "ui/branch/BranchEdgeAttachments.h"
 #include "ui/canvas/CanvasMath.h"
 
 #include <algorithm>
