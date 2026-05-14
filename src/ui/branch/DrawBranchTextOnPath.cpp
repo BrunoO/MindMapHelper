@@ -55,19 +55,24 @@ constexpr unsigned int kUtf8ContShift = 6U;     // bits per continuation byte
 constexpr unsigned int kUtf8Lead2Bits = 5U;     // data bits in a 2-byte lead
 constexpr unsigned int kUtf8Lead3Bits = 4U;     // data bits in a 3-byte lead
 constexpr unsigned int kUtf8Lead4Bits = 3U;     // data bits in a 4-byte lead
-constexpr int kQuadIdxCount           = 6;      // 2 triangles × 3 indices per quad
-constexpr int kQuadVtxCount           = 4;      // vertices per quad
+constexpr int          kQuadIdxCount      = 6;       // 2 triangles × 3 indices per quad
+constexpr int          kQuadVtxCount      = 4;       // vertices per quad
+constexpr unsigned int kUtf8Replacement   = kUtf8Replacement; // U+FFFD REPLACEMENT CHARACTER
 
 // Returns number of bytes consumed and sets *out to the Unicode codepoint.
-[[nodiscard]] int NextUtf8Codepoint(const char* s, unsigned int* out) {
+// Returns 1 and sets *out = 0xFFFD on a truncated or malformed sequence.
+[[nodiscard]] int NextUtf8Codepoint(const char* s, const char* text_end, unsigned int* out) {
+  const ptrdiff_t remaining = text_end - s;
   const unsigned int b = mind_map::core::ToUnsignedByte(*s);
   if (b < 0x80U) { *out = b; return 1; }
   if ((b & kUtf8Lead2Test) == kUtf8Lead2Val) {
+    if (remaining < 2) { *out = kUtf8Replacement; return 1; }
     const unsigned int b1 = mind_map::core::ToUnsignedByte(s[1]);
     *out = ((b & ((1U << kUtf8Lead2Bits) - 1U)) << kUtf8ContShift) | (b1 & kUtf8ContMask);
     return 2;
   }
   if ((b & kUtf8Lead3Test) == kUtf8Lead3Val) {
+    if (remaining < 3) { *out = kUtf8Replacement; return 1; }
     const unsigned int b1 = mind_map::core::ToUnsignedByte(s[1]);
     const unsigned int b2 = mind_map::core::ToUnsignedByte(s[2]);
     *out = ((b & ((1U << kUtf8Lead3Bits) - 1U)) << (kUtf8ContShift * 2U))
@@ -75,6 +80,7 @@ constexpr int kQuadVtxCount           = 4;      // vertices per quad
          | (b2 & kUtf8ContMask);
     return 3;
   }
+  if (remaining < 4) { *out = kUtf8Replacement; return 1; }
   const unsigned int b1 = mind_map::core::ToUnsignedByte(s[1]);
   const unsigned int b2 = mind_map::core::ToUnsignedByte(s[2]);
   const unsigned int b3 = mind_map::core::ToUnsignedByte(s[3]);
@@ -105,7 +111,7 @@ void AddTextRotated(ImDrawList* draw_list, ImFont* font, float font_size,
   const char* s = text_begin;
   while (s < text_end) {
     unsigned int c = 0U;
-    s += NextUtf8Codepoint(s, &c);
+    s += NextUtf8Codepoint(s, text_end, &c);
     if (c == 0U) { break; }
     if (c < 32U) { continue; }
     const ImFontGlyph* g = font->FindGlyph(static_cast<ImWchar>(c));
