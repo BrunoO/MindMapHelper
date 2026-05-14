@@ -4,6 +4,7 @@
 #include "core/Base64.h"
 #include "ui/UiState.h"
 #include "ui/canvas/ClipboardImage.h"
+#include "ui/commands/CollapseNodeCommand.h"
 #include "ui/commands/CommandHistory.h"
 #include "ui/commands/DeleteNodeCommand.h"
 #include "ui/commands/InsertChildNodeCommand.h"
@@ -73,6 +74,14 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       if (!png) { return; }
       history_.Push(std::make_unique<commands::PasteImageCommand>(
           state.canvas_, *sel, mind_map::core::Base64Encode(*png)));
+      session.MarkDirty();
+      return;
+    }
+    case UiCommandId::ToggleCollapsed: {
+      const auto sel = state.canvas_.GetSelectedNode();
+      if (!sel.has_value() || !state.canvas_.NodeHasChildren(*sel)) { return; }
+      const bool collapsing = !state.canvas_.IsCollapsed(*sel);
+      history_.Push(std::make_unique<commands::CollapseNodeCommand>(state.canvas_, *sel, collapsing));
       session.MarkDirty();
       return;
     }

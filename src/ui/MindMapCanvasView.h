@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace mind_map::ui {
@@ -87,6 +88,15 @@ class MindMapCanvasView {
   // Returns the indices of all currently active nodes in the subtree rooted at idx.
   [[nodiscard]] std::vector<size_t> CollectActiveSubtree(size_t idx) const;
 
+  // Collapse / expand — sets collapsed_ flag and toggles active_ on the subtree.
+  void CollapseNode(size_t idx);
+  void ExpandNode(size_t idx);
+  [[nodiscard]] bool IsCollapsed(size_t idx) const;
+  [[nodiscard]] bool NodeHasChildren(size_t idx) const;
+
+  // Triangle click: OnPrimaryDown stores a pending toggle; caller reads and clears it.
+  [[nodiscard]] std::optional<size_t> ConsumeCollapseToggleTarget();
+
   // Appends a new child node under parent_idx, selects it, and returns its index.
   // The node is appended to nodes_ and initial_pos_world_; undo toggles active_ only.
   size_t InsertChildNode(size_t parent_idx);
@@ -99,6 +109,7 @@ class MindMapCanvasView {
  private:
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
   [[nodiscard]] bool BranchStylesAreUniform_() const;
+  void ApplyPersistedCollapses_();
 
   std::vector<CanvasNode> nodes_;
   std::vector<ImVec2> initial_pos_world_;
@@ -113,6 +124,11 @@ class MindMapCanvasView {
   ImVec2 resize_anchor_world_;             // opposite corner; fixed during the drag
   ImVec2 resize_orig_half_;               // half-extents at drag start (for aspect-ratio lock)
   bool resize_lock_aspect_ = false;       // true when the node has a texture
+
+  // Nodes deactivated by each collapse; used by ExpandNode to restore exactly the right set.
+  std::unordered_map<size_t, std::vector<size_t>> collapse_affected_;
+  // Set by OnPrimaryDown when a collapse triangle is clicked; consumed by MindMapUi.
+  std::optional<size_t> collapse_toggle_target_;
 };
 
 }  // namespace mind_map::ui

@@ -7,6 +7,7 @@
 #include "ui/UiCommandDispatcher.h"
 #include "ui/branch/BranchStyle.h"
 #include "ui/canvas/CanvasMath.h"
+#include "ui/commands/CollapseNodeCommand.h"
 #include "ui/commands/CommandHistory.h"
 
 #include "ImGuiFileDialog.h"
@@ -68,6 +69,15 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
   if (ImGui::MenuItem("Paste Image", FormatLabel(FindShortcut(ShortcutAction::PasteImage)).c_str(),
                       /*selected=*/false, can_paste)) {
     dispatcher.Dispatch(UiCommandId::PasteImage, state, session);
+  }
+  ImGui::Separator();
+  const auto collapse_sel = state.canvas_.GetSelectedNode();
+  const bool can_toggle_collapse = collapse_sel.has_value() && state.canvas_.NodeHasChildren(*collapse_sel);
+  const char* const toggle_label = (can_toggle_collapse && state.canvas_.IsCollapsed(*collapse_sel))
+      ? "Expand Node" : "Collapse Node";
+  if (ImGui::MenuItem(toggle_label, FormatLabel(FindShortcut(ShortcutAction::CollapseNode)).c_str(),
+                      /*selected=*/false, can_toggle_collapse)) {
+    dispatcher.Dispatch(UiCommandId::ToggleCollapsed, state, session);
   }
 }
 
@@ -240,9 +250,15 @@ void HandleCanvasZoom(const ImGuiIO& io, bool canvas_hovered, ImVec2 canvas_p0, 
 void HandleCanvasPointerInput(bool canvas_hovered, bool canvas_item_active, const ImGuiIO& io,
                               const MindMapPointerState& pointer_state, ImVec2& pan_px,
                               MindMapCanvasView& canvas,
-                              mind_map::app::DocumentSessionService& session) {
+                              mind_map::app::DocumentSessionService& session,
+                              commands::CommandHistory& history) {
   if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && canvas_hovered) {
     canvas.OnPrimaryDown(pointer_state);
+    if (auto target = canvas.ConsumeCollapseToggleTarget(); target.has_value()) {
+      const bool collapsing = !canvas.IsCollapsed(*target);
+      history.Push(std::make_unique<commands::CollapseNodeCommand>(canvas, *target, collapsing));
+      session.MarkDirty();
+    }
   }
 
   if (canvas_item_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
@@ -261,7 +277,8 @@ void HandleCanvasPointerInput(bool canvas_hovered, bool canvas_item_active, cons
   }
 }
 
-void RenderCanvas(UiState& state, mind_map::app::DocumentSessionService& session) {
+void RenderCanvas(UiState& state, mind_map::app::DocumentSessionService& session,
+                  commands::CommandHistory& history) {
   const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
   const ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
   const ImVec2 canvas_p1 = {canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y};
@@ -280,7 +297,7 @@ void RenderCanvas(UiState& state, mind_map::app::DocumentSessionService& session
   pointer_state.canvas_hovered_ = canvas_hovered;
   pointer_state.zoom_ = state.zoom_;
   HandleCanvasPointerInput(canvas_hovered, canvas_item_active, io, pointer_state, state.pan_px_,
-                           state.canvas_, session);
+                           state.canvas_, session, history);
 
   MindMapCanvasRenderContext render_context = {};
   render_context.draw_list_ = ImGui::GetWindowDrawList();
@@ -430,9 +447,10 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
     RenderSelectedIncomingEdgeStyleSelector(state.canvas_, session);
     ImGui::TextUnformatted(
         "Canvas: drag nodes. Drag empty space to pan. Mouse wheel zooms. Click a non-root node to edit its incoming "
-        "edge style; root or empty canvas clears selection. \"Set all branches\" applies one style to every edge.");
+        "edge style; root or empty canvas clears selection. Click the triangle (▶/▼) or press Space to "
+        "collapse/expand a node's subtree. \"Set all branches\" applies one style to every edge.");
     ImGui::Text("Zoom %.2f", state.zoom_);
-    RenderCanvas(state, session);
+    RenderCanvas(state, session, history);
   }
   ImGui::EndChild();
 

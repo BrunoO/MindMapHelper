@@ -22,6 +22,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 namespace mind_map::ui {
@@ -46,6 +47,9 @@ namespace {
 }
 
 constexpr float kHandleRadius = 5.0F;
+constexpr float kCollapseTriangleOffsetX = 14.0F;  // world units right of the node edge
+constexpr float kCollapseHitRadius = 10.0F;        // screen pixels; divided by zoom for world hit
+constexpr float kCollapseTrianglePx = 5.0F;        // screen-space half-size of the triangle
 constexpr ImU32 kColorNodeFill = IM_COL32(48, 52, 64, 255);             // NOLINT(hicpp-signed-bitwise)
 constexpr ImU32 kColorNodeBorder = IM_COL32(110, 120, 145, 255);        // NOLINT(hicpp-signed-bitwise)
 constexpr ImU32 kColorNodeBorderHot = IM_COL32(200, 200, 240, 255);     // NOLINT(hicpp-signed-bitwise)
@@ -93,6 +97,20 @@ void DrawResizeHandles(ImDrawList* draw_list, ImVec2 rmin, ImVec2 rmax) {
   }
 }
 
+void DrawCollapseTriangle(ImDrawList* draw_list, ImVec2 rmax, ImVec2 rmin, bool collapsed) {
+  constexpr ImU32 kColorTriangle = IM_COL32(180, 200, 255, 200);  // NOLINT(hicpp-signed-bitwise)
+  const float cx = rmax.x + kCollapseTriangleOffsetX;
+  const float cy = (rmin.y + rmax.y) * 0.5F;
+  const float r = kCollapseTrianglePx;
+  if (collapsed) {
+    // ▶ pointing right
+    draw_list->AddTriangleFilled({cx + r, cy}, {cx - r, cy - r}, {cx - r, cy + r}, kColorTriangle);
+  } else {
+    // ▼ pointing down
+    draw_list->AddTriangleFilled({cx, cy + r}, {cx - r, cy - r}, {cx + r, cy - r}, kColorTriangle);
+  }
+}
+
 void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx,
                       std::optional<size_t> dragging_node,
                       std::optional<size_t> selected_node,
@@ -101,6 +119,14 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx,
   assert(ctx.draw_list_ != nullptr);
   const std::optional<size_t> hot_node = ctx.canvas_hovered_
       ? HitTestNodes(ctx.mouse_world_, nodes) : std::nullopt;
+
+  // Pre-compute set of node indices that have at least one child (active or inactive).
+  std::unordered_set<size_t> parent_set;
+  for (const auto& n : nodes) {
+    if (n.parent_idx_.has_value()) {
+      parent_set.insert(*n.parent_idx_);
+    }
+  }
 
   for (size_t i = 0; i < nodes.size(); ++i) {
     const CanvasNode& node = nodes[i];
@@ -148,6 +174,10 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx,
 
     if (selected_node == i) {
       DrawResizeHandles(ctx.draw_list_, rmin, rmax);
+    }
+
+    if (parent_set.count(i) != 0U) {
+      DrawCollapseTriangle(ctx.draw_list_, rmax, rmin, node.collapsed_);
     }
   }
 }
@@ -203,13 +233,16 @@ void MindMapCanvasView::Reset() {
   for (size_t i = 0; i < nodes_.size() && i < initial_pos_world_.size(); ++i) {
     nodes_[i].pos_world_ = initial_pos_world_[i];
     nodes_[i].active_ = true;
+    nodes_[i].collapsed_ = false;
     nodes_[i].half_extent_override_ = {0.0F, 0.0F};
     nodes_[i].branch_edge_label_ = {};
   }
+  collapse_affected_.clear();
   dragging_node_ = std::nullopt;
   resizing_node_ = std::nullopt;
   selected_node_ = std::nullopt;
   selected_child_for_edge_style_ = std::nullopt;
+  collapse_toggle_target_ = std::nullopt;
 }
 
 void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
@@ -217,6 +250,8 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
   resizing_node_ = std::nullopt;
   selected_node_ = std::nullopt;
   selected_child_for_edge_style_ = std::nullopt;
+  collapse_toggle_target_ = std::nullopt;
+  collapse_affected_.clear();
 
   for (auto& node : nodes_) {
     ReleaseTexture(node.texture_id_);
@@ -230,6 +265,7 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
     node.id_ = n.id_;
     node.label_ = n.label_;
     node.active_ = true;
+    node.collapsed_ = n.collapsed_;
     if (!n.image_png_base64_.empty()) {
       node.image_png_base64_ = n.image_png_base64_;
       node.texture_id_ = UploadPngTexture(mind_map::core::Base64Decode(n.image_png_base64_));
@@ -263,6 +299,8 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
     }
   }
 
+  ApplyPersistedCollapses_();
+
   initial_pos_world_.resize(nodes_.size());
   for (size_t i = 0; i < nodes_.size(); ++i) {
     initial_pos_world_[i] = nodes_[i].pos_world_;
@@ -278,6 +316,7 @@ mind_map::core::MindMapDocument MindMapCanvasView::ToDocument(const mind_map::co
     n.id_ = node.id_;
     n.label_ = node.label_;
     n.image_png_base64_ = node.image_png_base64_;
+    n.collapsed_ = node.collapsed_;
     doc.nodes_.push_back(std::move(n));
 
     mind_map::core::MindMapNodeLayout layout;
@@ -303,6 +342,21 @@ mind_map::core::MindMapDocument MindMapCanvasView::ToDocument(const mind_map::co
 
 void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
   if (!ptr.canvas_hovered_) { return; }
+
+  // Check collapse triangles before everything else; they sit outside the node box.
+  const float triangle_hit_r = kCollapseHitRadius / (std::max)(ptr.zoom_, 0.01F);
+  for (size_t i = 0; i < nodes_.size(); ++i) {
+    const CanvasNode& node = nodes_[i];
+    if (!node.active_ || !NodeHasChildren(i)) { continue; }
+    const ImVec2 half = mind_map::canvas::NodeHalfExtent(node);
+    const float tx = node.pos_world_.x + half.x + kCollapseTriangleOffsetX;
+    const float ty = node.pos_world_.y;
+    if (std::abs(ptr.mouse_world_.x - tx) <= triangle_hit_r &&
+        std::abs(ptr.mouse_world_.y - ty) <= triangle_hit_r) {
+      collapse_toggle_target_ = i;
+      return;
+    }
+  }
 
   // Check corner resize handles first (any node may be selected, including root).
   if (selected_node_.has_value()) {
@@ -512,6 +566,74 @@ const std::string& MindMapCanvasView::GetNodeImageBase64(size_t idx) const {
   static const std::string kEmpty;
   if (idx >= nodes_.size()) { return kEmpty; }
   return nodes_[idx].image_png_base64_;
+}
+
+void MindMapCanvasView::ApplyPersistedCollapses_() {
+  // Process deepest nodes first so inner collapses are established before outer ones.
+  // CollapseNode uses CollectActiveSubtree (active nodes only), so this order matches
+  // the active-subtree boundaries the user originally produced.
+  auto depth_of = [this](size_t idx) {
+    size_t depth = 0;
+    auto p = nodes_[idx].parent_idx_;
+    while (p.has_value()) {
+      ++depth;
+      p = nodes_[*p].parent_idx_;
+    }
+    return depth;
+  };
+  std::vector<size_t> collapsed_indices;
+  for (size_t i = 0; i < nodes_.size(); ++i) {
+    if (nodes_[i].collapsed_) {
+      nodes_[i].collapsed_ = false;  // CollapseNode will set it back
+      collapsed_indices.push_back(i);
+    }
+  }
+  std::stable_sort(collapsed_indices.begin(), collapsed_indices.end(),  // NOLINT(llvm-use-ranges)
+                   [&](size_t a, size_t b) { return depth_of(a) > depth_of(b); });
+  for (const size_t idx : collapsed_indices) {
+    CollapseNode(idx);
+  }
+}
+
+void MindMapCanvasView::CollapseNode(size_t idx) {
+  if (idx >= nodes_.size()) { return; }
+  nodes_[idx].collapsed_ = true;
+  const std::vector<size_t> subtree = CollectActiveSubtree(idx);
+  std::vector<size_t> affected;
+  for (const size_t c : subtree) {
+    if (c == idx) { continue; }
+    affected.push_back(c);
+    SetNodeActive(c, false);
+  }
+  collapse_affected_[idx] = std::move(affected);
+}
+
+void MindMapCanvasView::ExpandNode(size_t idx) {
+  if (idx >= nodes_.size()) { return; }
+  nodes_[idx].collapsed_ = false;
+  if (const auto it = collapse_affected_.find(idx); it != collapse_affected_.end()) {
+    for (const size_t c : it->second) {
+      SetNodeActive(c, true);
+    }
+    collapse_affected_.erase(it);
+  }
+}
+
+bool MindMapCanvasView::IsCollapsed(size_t idx) const {
+  if (idx >= nodes_.size()) { return false; }
+  return nodes_[idx].collapsed_;
+}
+
+bool MindMapCanvasView::NodeHasChildren(size_t idx) const {
+  return std::any_of(nodes_.begin(), nodes_.end(), [idx](const CanvasNode& node) {  // NOLINT(llvm-use-ranges)
+    return node.parent_idx_ == idx;
+  });
+}
+
+std::optional<size_t> MindMapCanvasView::ConsumeCollapseToggleTarget() {
+  const auto target = collapse_toggle_target_;
+  collapse_toggle_target_ = std::nullopt;
+  return target;
 }
 
 size_t MindMapCanvasView::InsertChildNode(size_t parent_idx) {

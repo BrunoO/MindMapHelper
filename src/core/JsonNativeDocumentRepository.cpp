@@ -21,6 +21,7 @@ MindMapDocument FromJson(const nlohmann::json& j) {
     node.id_ = n.at("id").get<std::string>();
     node.label_ = n.at("label").get<std::string>();
     node.image_png_base64_ = n.value("image", std::string{});
+    node.collapsed_ = n.value("collapsed", false);
     doc.nodes_.push_back(std::move(node));
   }
 
@@ -63,6 +64,7 @@ nlohmann::json ToJson(const MindMapDocument& doc) {
     if (!node.image_png_base64_.empty()) {
       n["image"] = node.image_png_base64_;
     }
+    if (node.collapsed_) { n["collapsed"] = true; }
     j["nodes"].push_back(std::move(n));
   }
 

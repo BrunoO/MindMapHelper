@@ -15,7 +15,8 @@ enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   InsertChildNode,
   Undo,
   Redo,
-  PasteImage
+  PasteImage,
+  ToggleCollapsed
 };
 
 }  // namespace mind_map::ui

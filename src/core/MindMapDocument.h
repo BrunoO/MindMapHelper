@@ -15,6 +15,7 @@ struct MindMapNode {
   std::string id_;
   std::string label_;
   std::string image_png_base64_;  // base64-encoded PNG bytes; empty when no image
+  bool collapsed_ = false;        // children hidden; persisted so the fold state survives save/load
 };
 
 /// A directed parent→child edge with optional style override and display label.
