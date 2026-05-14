@@ -21,7 +21,7 @@ enum class ShortcutAction : std::uint8_t {
   InsertChildNode,
   Undo,
   Redo,
-  PasteImage,
+  Paste,
   CollapseNode,
   Count
 };
@@ -48,7 +48,7 @@ inline constexpr std::array<ShortcutDef, static_cast<size_t>(ShortcutAction::Cou
   /* InsertChildNode*/ {ImGuiKey_Tab,    false, false, false, "Tab",    "Insert child node",                UiCommandId::InsertChildNode, ImGuiKey_Insert, "Insert"},
   /* Undo           */ {ImGuiKey_Z,      true,  false, true,  "Z",      "Undo",                             UiCommandId::Undo},
   /* Redo           */ {ImGuiKey_Z,      true,  true,  true,  "Z",      "Redo",                             UiCommandId::Redo},
-  /* PasteImage     */ {ImGuiKey_V,      true,  false, false, "V",      "Paste image or text into selected node", UiCommandId::PasteImage},
+  /* Paste          */ {ImGuiKey_V,      true,  false, false, "V",      "Paste image or text into selected node", UiCommandId::Paste},
   /* CollapseNode   */ {ImGuiKey_Space,  false, false, false, "Space",  "Collapse/expand selected node",    UiCommandId::ToggleCollapsed},
 }};
 // clang-format on

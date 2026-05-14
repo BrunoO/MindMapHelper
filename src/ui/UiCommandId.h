@@ -15,7 +15,7 @@ enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   InsertChildNode,
   Undo,
   Redo,
-  PasteImage,
+  Paste,
   ToggleCollapsed
 };
 

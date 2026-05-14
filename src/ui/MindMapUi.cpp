@@ -104,9 +104,9 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
   }
   ImGui::Separator();
   const bool can_paste = state.canvas_.GetSelectedNode().has_value();
-  if (ImGui::MenuItem("Paste", FormatLabel(FindShortcut(ShortcutAction::PasteImage)).c_str(),
+  if (ImGui::MenuItem("Paste", FormatLabel(FindShortcut(ShortcutAction::Paste)).c_str(),
                       /*selected=*/false, can_paste)) {
-    dispatcher.Dispatch(UiCommandId::PasteImage, state, session);
+    dispatcher.Dispatch(UiCommandId::Paste, state, session);
   }
   ImGui::Separator();
   const auto collapse_sel = state.canvas_.GetSelectedNode();
@@ -409,6 +409,7 @@ void RenderNavGuardModal(UiState& state, mind_map::app::DocumentSessionService& 
 
   ImGui::SameLine();
   if (ImGui::Button("Discard")) {
+    session.ClearDirty();
     proceed = true;
     ImGui::CloseCurrentPopup();
   }

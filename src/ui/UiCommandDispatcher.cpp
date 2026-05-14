@@ -70,7 +70,7 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       history_.Redo();
       session.MarkDirty();
       return;
-    case UiCommandId::PasteImage: {
+    case UiCommandId::Paste: {
       const auto sel = state.canvas_.GetSelectedNode();
       if (!sel.has_value()) { return; }
       if (const auto png = GetClipboardImagePng(); png.has_value()) {
