@@ -2,6 +2,9 @@
 
 #include <GLFW/glfw3.h>
 
+#include <array>
+#include <string>
+
 namespace mind_map::platform {
 
 void ConfigurePlatformGlContextHints() {
@@ -17,6 +20,28 @@ void ConfigurePlatformGlContextHints() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
+}
+
+void LaunchNewWindow(std::string_view path) {
+  std::array<char, MAX_PATH> exe_buf{};
+  if (GetModuleFileNameA(nullptr, exe_buf.data(), MAX_PATH) == 0) { return; }
+
+  std::string cmd = "\"";
+  cmd += exe_buf.data();
+  cmd += "\"";
+  if (!path.empty()) {
+    cmd += " \"";
+    cmd += std::string(path);
+    cmd += "\"";
+  }
+
+  STARTUPINFOA si{};
+  si.cb = sizeof(si);
+  PROCESS_INFORMATION pi{};
+  if (CreateProcessA(nullptr, cmd.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi) != 0) {
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+  }
 }
 
 }  // namespace mind_map::platform

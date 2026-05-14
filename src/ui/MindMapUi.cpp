@@ -103,8 +103,8 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
     dispatcher.Dispatch(UiCommandId::DeleteNode, state, session);
   }
   ImGui::Separator();
-  const bool can_paste = state.canvas_.GetSelectedNode().has_value();
-  if (ImGui::MenuItem("Paste", FormatLabel(FindShortcut(ShortcutAction::Paste)).c_str(),
+  if (const bool can_paste = state.canvas_.GetSelectedNode().has_value();
+      ImGui::MenuItem("Paste", FormatLabel(FindShortcut(ShortcutAction::Paste)).c_str(),
                       /*selected=*/false, can_paste)) {
     dispatcher.Dispatch(UiCommandId::Paste, state, session);
   }
@@ -197,21 +197,25 @@ void HandleSaveMenuItem(const UiState& state, mind_map::app::DocumentSessionServ
 void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
                     mind_map::app::DocumentSessionService& session,
                     commands::CommandHistory& history) {
-  if (ImGui::MenuItem("New")) {
-    if (TryNavigate(PendingNavAction::New, state, session)) {
-      mind_map::core::MindMapDocument dummy;
-      session.New(dummy);
-      history.Clear();
-      state.canvas_.LoadFrom(dummy);
-      state.ApplyViewport(dummy.viewport_);
-    }
+  if (ImGui::MenuItem("New") && TryNavigate(PendingNavAction::New, state, session)) {
+    mind_map::core::MindMapDocument dummy;
+    session.New(dummy);
+    history.Clear();
+    state.canvas_.LoadFrom(dummy);
+    state.ApplyViewport(dummy.viewport_);
   }
-  if (ImGui::MenuItem("Open...", "Cmd+O")) {
-    if (TryNavigate(PendingNavAction::OpenDialog, state, session)) {
-      IGFD::FileDialogConfig cfg;
-      cfg.path = ".";
-      ImGuiFileDialog::Instance()->OpenDialog("OpenFileDlg", "Open Mind Map", ".mmh,.imx", cfg);
-    }
+  if (ImGui::MenuItem("Open...", "Cmd+O") && TryNavigate(PendingNavAction::OpenDialog, state, session)) {
+    IGFD::FileDialogConfig cfg;
+    cfg.path = ".";
+    ImGuiFileDialog::Instance()->OpenDialog("OpenFileDlg", "Open Mind Map", ".mmh,.imx", cfg);
+  }
+  if (ImGui::MenuItem("New Window")) {
+    state.pending_launch_path_ = "";
+  }
+  if (ImGui::MenuItem("Open in New Window...")) {
+    IGFD::FileDialogConfig cfg;
+    cfg.path = ".";
+    ImGuiFileDialog::Instance()->OpenDialog("OpenInNewWindowDlg", "Open in New Window", ".mmh,.imx", cfg);
   }
   ImGui::Separator();
   if (ImGui::MenuItem("Save", "Cmd+S")) {
@@ -221,12 +225,10 @@ void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
     OpenSaveAsDialog(session);
   }
   ImGui::Separator();
-  if (ImGui::MenuItem("Import...", "Cmd+Shift+O")) {
-    if (TryNavigate(PendingNavAction::ImportDialog, state, session)) {
-      IGFD::FileDialogConfig cfg;
-      cfg.path = ".";
-      ImGuiFileDialog::Instance()->OpenDialog("ImportFileDlg", "Import Mind Map", ".imx", cfg);
-    }
+  if (ImGui::MenuItem("Import...", "Cmd+Shift+O") && TryNavigate(PendingNavAction::ImportDialog, state, session)) {
+    IGFD::FileDialogConfig cfg;
+    cfg.path = ".";
+    ImGuiFileDialog::Instance()->OpenDialog("ImportFileDlg", "Import Mind Map", ".imx", cfg);
   }
   ImGui::Separator();
   if (ImGui::MenuItem("Reset Layout")) {
@@ -291,12 +293,12 @@ void HandleCanvasZoom(const ImGuiIO& io, bool canvas_hovered, ImVec2 canvas_p0, 
   pan_px.y += world_under_cursor.y * (previous_zoom - zoom);
 }
 
-void HandleCanvasPointerInput(bool canvas_hovered, bool canvas_item_active, const ImGuiIO& io,
+void HandleCanvasPointerInput(bool canvas_item_active, const ImGuiIO& io,
                               const MindMapPointerState& pointer_state, ImVec2& pan_px,
                               MindMapCanvasView& canvas,
                               mind_map::app::DocumentSessionService& session,
                               commands::CommandHistory& history) {
-  if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && canvas_hovered) {
+  if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && pointer_state.canvas_hovered_) {
     canvas.OnPrimaryDown(pointer_state);
     if (auto target = canvas.ConsumeCollapseToggleTarget(); target.has_value()) {
       const bool collapsing = !canvas.IsCollapsed(*target);
@@ -340,7 +342,7 @@ void RenderCanvas(UiState& state, mind_map::app::DocumentSessionService& session
   pointer_state.mouse_world_ = mouse_world;
   pointer_state.canvas_hovered_ = canvas_hovered;
   pointer_state.zoom_ = state.zoom_;
-  HandleCanvasPointerInput(canvas_hovered, canvas_item_active, io, pointer_state, state.pan_px_,
+  HandleCanvasPointerInput(canvas_item_active, io, pointer_state, state.pan_px_,
                            state.canvas_, session, history);
 
   MindMapCanvasRenderContext render_context = {};
@@ -525,6 +527,13 @@ void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& se
     }
     // If context is set, resume the action that triggered Save As (or let modal reopen on cancel).
     ResumeSaveAsContext(state, session, history, saved);
+    fd->Close();
+  }
+
+  if (fd->Display("OpenInNewWindowDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
+    if (fd->IsOk()) {
+      state.pending_launch_path_ = fd->GetFilePathName();
+    }
     fd->Close();
   }
 }

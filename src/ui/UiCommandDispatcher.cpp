@@ -79,8 +79,7 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
         session.MarkDirty();
         return;
       }
-      const char* const text = ImGui::GetClipboardText();
-      if (text != nullptr && text[0] != '\0') {
+      if (const char* const text = ImGui::GetClipboardText(); text != nullptr && text[0] != '\0') {
         history_.Push(std::make_unique<commands::PasteTextCommand>(
             state.canvas_, *sel, text));
         session.MarkDirty();

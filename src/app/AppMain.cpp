@@ -93,9 +93,9 @@ int RunApp(std::string_view startup_path) {
     0x25BC, 0x25BC,  // ▼ BLACK DOWN-POINTING TRIANGLE
     0,
   };
-  const ImFont* const loaded_font =
-      io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-Regular.ttf", font_size, nullptr, kGlyphRanges.data());
-  if (loaded_font == nullptr) {
+  if (const ImFont* const loaded_font =
+          io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-Regular.ttf", font_size, nullptr, kGlyphRanges.data());
+      loaded_font == nullptr) {
     (void)fprintf(stderr,
                   "[AppMain] failed to load 'assets/fonts/Inter-Regular.ttf' "
                   "(size %.0fpx) — falling back to ImGui built-in font\n",
@@ -146,6 +146,11 @@ int RunApp(std::string_view startup_path) {
     ImGui::NewFrame();
 
     mind_map::ui::RenderMainUi(ui_state, session, history);
+
+    if (ui_state.pending_launch_path_.has_value()) {
+      mind_map::platform::LaunchNewWindow(*ui_state.pending_launch_path_);
+      ui_state.pending_launch_path_.reset();
+    }
 
     if (session.GetCurrentPath() != last_path) {
       last_path = session.GetCurrentPath();

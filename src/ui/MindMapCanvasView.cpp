@@ -46,6 +46,41 @@ namespace {
   return BranchStyle::Bezier;
 }
 
+[[nodiscard]] branch::BranchStyle FirstActiveChildEdgeStyle(const std::vector<CanvasNode>& nodes) {
+  for (const auto& node : nodes) {
+    if (node.active_ && node.parent_idx_.has_value()) { return node.branch_style_; }
+  }
+  return branch::BranchStyle::Bezier;
+}
+
+[[nodiscard]] bool ChildEdgeStylesUniform(const std::vector<CanvasNode>& nodes) {
+  const branch::BranchStyle ref = FirstActiveChildEdgeStyle(nodes);
+  return std::all_of(nodes.begin(), nodes.end(), [ref](const CanvasNode& node) {  // NOLINT(llvm-use-ranges)
+    return !node.active_ || !node.parent_idx_.has_value() || node.branch_style_ == ref;
+  });
+}
+
+// Collects nodes marked collapsed_, resets their flag (CollapseNode will re-set it), and
+// returns their indices sorted deepest-first so inner collapses are established before outer ones.
+[[nodiscard]] std::vector<size_t> PrepareCollapseOrder(std::vector<CanvasNode>& nodes) {
+  auto depth_of = [&nodes](size_t idx) {
+    size_t depth = 0;
+    auto p = nodes[idx].parent_idx_;
+    while (p.has_value()) { ++depth; p = nodes[*p].parent_idx_; }
+    return depth;
+  };
+  std::vector<size_t> indices;
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    if (nodes[i].collapsed_) {
+      nodes[i].collapsed_ = false;
+      indices.push_back(i);
+    }
+  }
+  std::stable_sort(indices.begin(), indices.end(),  // NOLINT(llvm-use-ranges)
+                   [&depth_of](size_t a, size_t b) { return depth_of(a) > depth_of(b); });
+  return indices;
+}
+
 constexpr float kHandleRadius = 5.0F;
 constexpr float kCollapseTriangleOffsetX = 14.0F;  // world units right of the node edge
 constexpr float kCollapseHitRadius = 10.0F;        // screen pixels; divided by zoom for world hit
@@ -213,21 +248,6 @@ MindMapCanvasView::~MindMapCanvasView() {
   }
 }
 
-mind_map::ui::branch::BranchStyle MindMapCanvasView::StyleOfFirstChildEdge_() const {
-  for (const auto& node : nodes_) {
-    if (node.active_ && node.parent_idx_.has_value()) {
-      return node.branch_style_;
-    }
-  }
-  return mind_map::ui::branch::BranchStyle::Bezier;
-}
-
-bool MindMapCanvasView::BranchStylesAreUniform_() const {
-  const mind_map::ui::branch::BranchStyle ref = StyleOfFirstChildEdge_();
-  return std::all_of(nodes_.begin(), nodes_.end(), [ref](const CanvasNode& node) {  // NOLINT(llvm-use-ranges)
-    return !node.active_ || !node.parent_idx_.has_value() || node.branch_style_ == ref;
-  });
-}
 
 void MindMapCanvasView::Reset() {
   for (size_t i = 0; i < nodes_.size() && i < initial_pos_world_.size(); ++i) {
@@ -299,7 +319,7 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
     }
   }
 
-  ApplyPersistedCollapses_();
+  for (const size_t idx : PrepareCollapseOrder(nodes_)) { CollapseNode(idx); }
 
   initial_pos_world_.resize(nodes_.size());
   for (size_t i = 0; i < nodes_.size(); ++i) {
@@ -453,18 +473,18 @@ void MindMapCanvasView::SetBranchStyleForAllEdges(const mind_map::ui::branch::Br
 }
 
 const char* MindMapCanvasView::GetBranchStyleComboPreviewLabel() const {
-  if (!BranchStylesAreUniform_()) {
+  if (!ChildEdgeStylesUniform(nodes_)) {
     return kMixedBranchStylesPreview.data();
   }
-  return mind_map::ui::branch::GetBranchStyleDisplayName(StyleOfFirstChildEdge_());
+  return mind_map::ui::branch::GetBranchStyleDisplayName(FirstActiveChildEdgeStyle(nodes_));
 }
 
 bool MindMapCanvasView::BranchStylesAreUniform() const {
-  return BranchStylesAreUniform_();
+  return ChildEdgeStylesUniform(nodes_);
 }
 
 mind_map::ui::branch::BranchStyle MindMapCanvasView::RepresentativeChildEdgeStyle() const {
-  return StyleOfFirstChildEdge_();
+  return FirstActiveChildEdgeStyle(nodes_);
 }
 
 bool MindMapCanvasView::HasSelectedIncomingEdgeStyleTarget() const {
@@ -579,32 +599,6 @@ const std::string& MindMapCanvasView::GetNodeLabel(size_t idx) const {
   return nodes_[idx].label_;
 }
 
-void MindMapCanvasView::ApplyPersistedCollapses_() {
-  // Process deepest nodes first so inner collapses are established before outer ones.
-  // CollapseNode uses CollectActiveSubtree (active nodes only), so this order matches
-  // the active-subtree boundaries the user originally produced.
-  auto depth_of = [this](size_t idx) {
-    size_t depth = 0;
-    auto p = nodes_[idx].parent_idx_;
-    while (p.has_value()) {
-      ++depth;
-      p = nodes_[*p].parent_idx_;
-    }
-    return depth;
-  };
-  std::vector<size_t> collapsed_indices;
-  for (size_t i = 0; i < nodes_.size(); ++i) {
-    if (nodes_[i].collapsed_) {
-      nodes_[i].collapsed_ = false;  // CollapseNode will set it back
-      collapsed_indices.push_back(i);
-    }
-  }
-  std::stable_sort(collapsed_indices.begin(), collapsed_indices.end(),  // NOLINT(llvm-use-ranges)
-                   [&](size_t a, size_t b) { return depth_of(a) > depth_of(b); });
-  for (const size_t idx : collapsed_indices) {
-    CollapseNode(idx);
-  }
-}
 
 void MindMapCanvasView::CollapseNode(size_t idx) {
   if (idx >= nodes_.size() || nodes_[idx].collapsed_) { return; }
@@ -630,20 +624,15 @@ void MindMapCanvasView::ExpandNode(size_t idx) {
   // subtree visible when it should stay hidden.  Skip any node that still has a collapsed
   // ancestor between itself and idx.
   for (const size_t c : it->second) {
-    if (!HasCollapsedAncestorBetween_(c, idx)) {
-      SetNodeActive(c, true);
+    auto p = nodes_[c].parent_idx_;
+    bool has_collapsed_ancestor = false;
+    while (p.has_value() && *p != idx) {
+      if (nodes_[*p].collapsed_) { has_collapsed_ancestor = true; break; }
+      p = nodes_[*p].parent_idx_;
     }
+    if (!has_collapsed_ancestor) { SetNodeActive(c, true); }
   }
   collapse_affected_.erase(it);
-}
-
-bool MindMapCanvasView::HasCollapsedAncestorBetween_(size_t child, size_t stop) const {
-  auto p = nodes_[child].parent_idx_;
-  while (p.has_value() && *p != stop) {
-    if (nodes_[*p].collapsed_) { return true; }
-    p = nodes_[*p].parent_idx_;
-  }
-  return false;
 }
 
 bool MindMapCanvasView::IsCollapsed(size_t idx) const {

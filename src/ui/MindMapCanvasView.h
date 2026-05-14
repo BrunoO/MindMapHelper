@@ -110,11 +110,6 @@ class MindMapCanvasView {
   [[nodiscard]] const std::string& GetNodeLabel(size_t idx) const;
 
  private:
-  [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
-  [[nodiscard]] bool BranchStylesAreUniform_() const;
-  void ApplyPersistedCollapses_();
-  // Returns true if any ancestor of child (up to but not including stop) has collapsed_=true.
-  [[nodiscard]] bool HasCollapsedAncestorBetween_(size_t child, size_t stop) const;
 
   std::vector<CanvasNode> nodes_;
   std::vector<ImVec2> initial_pos_world_;

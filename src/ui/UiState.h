@@ -6,6 +6,8 @@
 #include "imgui.h"
 
 #include <cstdint>
+#include <optional>
+#include <string>
 
 namespace mind_map::ui {
 
@@ -28,6 +30,9 @@ struct UiState {
   bool show_status_bar_ = true;
   PendingNavAction pending_nav_ = PendingNavAction::None;
   SaveAsResumingContext save_as_context_ = SaveAsResumingContext::None;
+  // Set by RenderFileMenu/RenderFileDialogs; consumed by AppMain to launch a new process.
+  // nullopt = no request; "" = blank new map; non-empty = open that file.
+  std::optional<std::string> pending_launch_path_;
 
   [[nodiscard]] mind_map::core::MindMapViewport ToViewport() const {
     return {{pan_px_.x, pan_px_.y}, zoom_};
