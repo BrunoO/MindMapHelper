@@ -68,7 +68,7 @@ AppMain::RunApp()
        ImGui::NewFrame()
        RenderMainUi()                       ← MindMapUi.cpp
          └─ MindMapCanvasView::Render()     ← canvas pan/zoom, node drag, edge selection
-              ├─ DrawSampleMindMapNodes()
+              ├─ DrawMindMapNodes()
               └─ DrawOneChildBranch()       ← dispatches to Bezier / Orthogonal / OrganicTaper
        ImGui::Render()  →  OpenGL swap
 ```
@@ -77,7 +77,7 @@ AppMain::RunApp()
 
 - **`MindMapCanvasView`** owns all canvas state: node world positions, drag state, per-child branch styles (`branch_style_by_child_[]`), and selection for edge-style editing (`selected_child_for_edge_`).
 - **`UiCommandDispatcher`** + `UiCommandId` enum decouples menu/toolbar actions from state mutation.
-- **`SampleMindMapGraph.h`** contains geometry helpers: rounded-rect attachment, cubic control-point computation, orthogonal edge routing.
+- **`NodeGeometry.h`** (`mind_map::canvas`) and **`BranchEdgeAttachments.h`** (`mind_map::ui::branch`) hold rounded-rect attachment and shared edge geometry used by branch renderers.
 - **`CanvasMath.h`** handles world↔screen transforms and hit testing.
 
 ### Branch styles

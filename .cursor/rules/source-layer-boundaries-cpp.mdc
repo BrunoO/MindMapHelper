@@ -19,7 +19,7 @@ Use the project source layering to keep platform code isolated and cross-platfor
 - `src/main.cpp`: thin launcher only.
 - `src/app/`: startup/shutdown orchestration.
 - `src/core/`: platform-neutral logic.
-- `src/ui/`: UI composition and demos.
+- `src/ui/`: UI composition.
 - `src/platform/`: GLFW/OpenGL bootstrap and OS-specific behavior.
 
 ## Dependency constraints

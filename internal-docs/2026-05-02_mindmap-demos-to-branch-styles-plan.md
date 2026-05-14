@@ -154,3 +154,7 @@
 ## Rollback
 
 Each milestone is revert-friendly if PRs stay focused: A is behavior-neutral; B is the largest delete — keep a branch or tag before demo removal until Milestone B is signed off visually.
+
+---
+
+**Update (2026-05-14):** The seven-node demo topology and `src/ui/demos/` were removed from the tree; see `specs/2026-05-13_remove-default-sample-mindmap-plan.md`. Earlier sections that reference `kSampleMindMapSpecs` or a dedicated demos layer describe pre-removal architecture only.

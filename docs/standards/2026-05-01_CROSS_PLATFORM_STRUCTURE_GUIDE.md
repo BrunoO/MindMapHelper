@@ -7,8 +7,7 @@ This document defines the cross-platform structure for MindMap Helper (`MindMapH
 - `src/main.cpp`: thin launcher only.
 - `src/app/`: app orchestration (`RunApp`) and top-level lifecycle.
 - `src/core/`: platform-neutral domain logic (no ImGui/GLFW/OpenGL/OS headers).
-- `src/ui/`: UI composition and demos.
-- `src/ui/demos/`: sample interactive mind map demos and shared demo graph helpers.
+- `src/ui/`: UI composition (ImGui, canvas, branch rendering).
 - `src/platform/`: platform bootstrap contracts and implementations.
   - `src/platform/windows/`
   - `src/platform/macos/`

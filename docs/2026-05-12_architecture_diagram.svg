@@ -78,7 +78,7 @@
   <text x="875" y="652" class="box-text">MindMapCanvasView owns node positions, drag state, selection, branch styles</text>
   <text x="875" y="679" class="box-text">CanvasMath and NodeGeometry handle transforms and hit testing</text>
   <text x="875" y="706" class="box-text">Branch renderers: Bezier, Orthogonal, OrganicTaper</text>
-  <text x="875" y="733" class="small">SampleMindMapGraph / SampleMindMapTopology provide demo topology and geometry helpers</text>
+  <text x="875" y="733" class="small">BranchEdgeAttachments.h + NodeGeometry.h supply attachment points and stable canvas geometry</text>
   <text x="875" y="756" class="small">LoadFrom / ToDocument bridge UI state to the persisted core document model</text>
 
   <rect x="90" y="875" width="1380" height="1" fill="#cbd5e0"/>

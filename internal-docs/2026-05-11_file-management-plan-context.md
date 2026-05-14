@@ -34,7 +34,7 @@ Add robust file management to MindMapHelper with:
 
 - The graph currently behaves as a sample/static topology setup.
 - Topology single source of truth: `src/core/mindmap/SampleMindMapTopology.h/.cpp`; `SampleMindMapGraph.h` re-exports via `using` and now only contains `HitTestSampleMap` + `InitialSampleMapPositions` (both deleted in step 2).
-- Stable geometry (rounded-rect attachment, bezier arms, etc.) lives in `src/ui/canvas/NodeGeometry.h` (`mind_map::canvas` namespace); `SampleMindMapBranchAttachments.h` consumes it directly with no dependency on `SampleMindMapGraph.h`.
+- Stable geometry (rounded-rect attachment, bezier arms, etc.) lives in `src/ui/canvas/NodeGeometry.h` (`mind_map::canvas` namespace); `BranchEdgeAttachments.h` consumes it directly with no dependency on demo code.
 - `UiState` is defined in `src/ui/UiState.h`; owned by `AppMain::RunApp()` and passed into `RenderMainUi(UiState&)` each frame — no static locals.
 - No persistence infrastructure currently exists:
   - No document repository
@@ -223,3 +223,7 @@ Use a strict versioned top-level shape:
 - Unsaved-changes close guard: handled inline in `AppMain.cpp` after `glfwPollEvents()` — if `glfwWindowShouldClose` is set and `session.IsDirty()`, call `glfwSetWindowShouldClose(window, 0)` to veto and `session.RequestClose()` to set a flag. `RenderMainUi()` checks the flag and opens the ImGui confirmation modal. On Discard/Save the modal calls `glfwSetWindowShouldClose(window, 1)`; on Cancel it clears the flag. No callbacks, no cross-layer wiring.
 - CLI path support (step 6) is a contained 3-file change (`main.cpp`, `AppMain.h`, `AppMain.cpp`); platform bootstrap files are unaffected.
 - Import format for the first adapter (step 7) is not yet chosen. Decision affects whether an XML parser or zip library is also needed.
+
+---
+
+**Update (2026-05-14):** The default sample mind map (`BuildSampleDocument`, `SampleMindMapTopology`, `src/ui/demos/`) was removed; startup and **File > New** use `DocumentSessionService::New` as described in `specs/2026-05-13_remove-default-sample-mindmap-plan.md`. Paragraphs above that reference `BuildSampleDocument()` / `SampleMindMapGraph.h` as current startup behavior are superseded by that change.
