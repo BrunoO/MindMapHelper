@@ -568,6 +568,17 @@ const std::string& MindMapCanvasView::GetNodeImageBase64(size_t idx) const {
   return nodes_[idx].image_png_base64_;
 }
 
+void MindMapCanvasView::SetNodeLabel(size_t idx, std::string_view label) {
+  if (idx >= nodes_.size()) { return; }
+  nodes_[idx].label_ = label;
+}
+
+const std::string& MindMapCanvasView::GetNodeLabel(size_t idx) const {
+  static const std::string kEmpty;
+  if (idx >= nodes_.size()) { return kEmpty; }
+  return nodes_[idx].label_;
+}
+
 void MindMapCanvasView::ApplyPersistedCollapses_() {
   // Process deepest nodes first so inner collapses are established before outer ones.
   // CollapseNode uses CollectActiveSubtree (active nodes only), so this order matches

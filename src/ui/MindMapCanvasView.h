@@ -106,6 +106,9 @@ class MindMapCanvasView {
   void SetNodeImage(size_t idx, std::string_view png_base64);
   [[nodiscard]] const std::string& GetNodeImageBase64(size_t idx) const;
 
+  void SetNodeLabel(size_t idx, std::string_view label);
+  [[nodiscard]] const std::string& GetNodeLabel(size_t idx) const;
+
  private:
   [[nodiscard]] mind_map::ui::branch::BranchStyle StyleOfFirstChildEdge_() const;
   [[nodiscard]] bool BranchStylesAreUniform_() const;

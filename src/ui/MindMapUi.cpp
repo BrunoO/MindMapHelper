@@ -29,6 +29,44 @@ constexpr float kStatusBarHeight = 26.0F;
 constexpr float kFileDialogWidth = 600.0F;
 constexpr float kFileDialogHeight = 400.0F;
 
+// Returns true when the caller should proceed immediately; when false the action is queued behind
+// the unsaved-changes guard modal which will invoke it after Save or Discard.
+[[nodiscard]] bool TryNavigate(PendingNavAction action, UiState& state,
+                                const mind_map::app::DocumentSessionService& session) {
+  if (!session.IsDirty()) { return true; }
+  state.pending_nav_ = action;
+  return false;
+}
+
+void ExecutePendingNav(UiState& state, mind_map::app::DocumentSessionService& session,
+                       commands::CommandHistory& history) {
+  switch (state.pending_nav_) {
+    case PendingNavAction::New: {
+      mind_map::core::MindMapDocument dummy;
+      session.New(dummy);
+      history.Clear();
+      state.canvas_.LoadFrom(dummy);
+      state.ApplyViewport(dummy.viewport_);
+      break;
+    }
+    case PendingNavAction::OpenDialog: {
+      IGFD::FileDialogConfig cfg;
+      cfg.path = ".";
+      ImGuiFileDialog::Instance()->OpenDialog("OpenFileDlg", "Open Mind Map", ".mmh,.imx", cfg);
+      break;
+    }
+    case PendingNavAction::ImportDialog: {
+      IGFD::FileDialogConfig cfg;
+      cfg.path = ".";
+      ImGuiFileDialog::Instance()->OpenDialog("ImportFileDlg", "Import Mind Map", ".imx", cfg);
+      break;
+    }
+    case PendingNavAction::None:
+      break;
+  }
+  state.pending_nav_ = PendingNavAction::None;
+}
+
 void HandleMindMapKeyboardShortcuts(const ImGuiIO& io, const UiCommandDispatcher& dispatcher,
                                     UiState& state,
                                     mind_map::app::DocumentSessionService& session) {
@@ -66,7 +104,7 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
   }
   ImGui::Separator();
   const bool can_paste = state.canvas_.GetSelectedNode().has_value();
-  if (ImGui::MenuItem("Paste Image", FormatLabel(FindShortcut(ShortcutAction::PasteImage)).c_str(),
+  if (ImGui::MenuItem("Paste", FormatLabel(FindShortcut(ShortcutAction::PasteImage)).c_str(),
                       /*selected=*/false, can_paste)) {
     dispatcher.Dispatch(UiCommandId::PasteImage, state, session);
   }
@@ -160,16 +198,20 @@ void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
                     mind_map::app::DocumentSessionService& session,
                     commands::CommandHistory& history) {
   if (ImGui::MenuItem("New")) {
-    mind_map::core::MindMapDocument dummy;
-    session.New(dummy);
-    history.Clear();
-    state.canvas_.LoadFrom(dummy);
-    state.ApplyViewport(dummy.viewport_);
+    if (TryNavigate(PendingNavAction::New, state, session)) {
+      mind_map::core::MindMapDocument dummy;
+      session.New(dummy);
+      history.Clear();
+      state.canvas_.LoadFrom(dummy);
+      state.ApplyViewport(dummy.viewport_);
+    }
   }
   if (ImGui::MenuItem("Open...", "Cmd+O")) {
-    IGFD::FileDialogConfig cfg;
-    cfg.path = ".";
-    ImGuiFileDialog::Instance()->OpenDialog("OpenFileDlg", "Open Mind Map", ".mmh,.imx", cfg);
+    if (TryNavigate(PendingNavAction::OpenDialog, state, session)) {
+      IGFD::FileDialogConfig cfg;
+      cfg.path = ".";
+      ImGuiFileDialog::Instance()->OpenDialog("OpenFileDlg", "Open Mind Map", ".mmh,.imx", cfg);
+    }
   }
   ImGui::Separator();
   if (ImGui::MenuItem("Save", "Cmd+S")) {
@@ -180,9 +222,11 @@ void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
   }
   ImGui::Separator();
   if (ImGui::MenuItem("Import...", "Cmd+Shift+O")) {
-    IGFD::FileDialogConfig cfg;
-    cfg.path = ".";
-    ImGuiFileDialog::Instance()->OpenDialog("ImportFileDlg", "Import Mind Map", ".imx", cfg);
+    if (TryNavigate(PendingNavAction::ImportDialog, state, session)) {
+      IGFD::FileDialogConfig cfg;
+      cfg.path = ".";
+      ImGuiFileDialog::Instance()->OpenDialog("ImportFileDlg", "Import Mind Map", ".imx", cfg);
+    }
   }
   ImGui::Separator();
   if (ImGui::MenuItem("Reset Layout")) {
@@ -333,6 +377,49 @@ void RenderStatusBar(const UiState& state) {
   }
 }
 
+void RenderNavGuardModal(UiState& state, mind_map::app::DocumentSessionService& session,
+                         commands::CommandHistory& history) {
+  const ImGuiViewport* const main_vp = ImGui::GetMainViewport();
+  assert(main_vp != nullptr);
+  ImGui::SetNextWindowPos(main_vp->GetCenter(), ImGuiCond_Always, ImVec2(0.5F, 0.5F));
+  if (!ImGui::BeginPopupModal("Unsaved Changes##nav", nullptr,
+                              ImGuiWindowFlags_AlwaysAutoResize)) {
+    return;
+  }
+
+  ImGui::TextUnformatted("You have unsaved changes. What would you like to do?");
+  ImGui::Separator();
+
+  bool proceed = false;
+  const bool can_save = session.HasPath();
+  if (!can_save) { ImGui::BeginDisabled(); }
+  if (ImGui::Button("Save")) {
+    const auto doc = state.canvas_.ToDocument(state.ToViewport());
+    if (session.Save(doc)) {
+      proceed = true;
+      ImGui::CloseCurrentPopup();
+    }
+  }
+  if (!can_save) { ImGui::EndDisabled(); }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Discard")) {
+    proceed = true;
+    ImGui::CloseCurrentPopup();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Cancel")) {
+    state.pending_nav_ = PendingNavAction::None;
+    ImGui::CloseCurrentPopup();
+  }
+
+  ImGui::EndPopup();
+
+  if (proceed) {
+    ExecutePendingNav(state, session, history);
+  }
+}
+
 void RenderCloseGuardModal(const UiState& state, mind_map::app::DocumentSessionService& session) {
   const ImGuiViewport* const main_vp = ImGui::GetMainViewport();
   assert(main_vp != nullptr);
@@ -455,6 +542,12 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
   ImGui::EndChild();
 
   RenderStatusBar(state);
+
+  // Navigation guard: open modal when a destructive navigation was requested while dirty.
+  if (state.pending_nav_ != PendingNavAction::None && !ImGui::IsPopupOpen("Unsaved Changes##nav")) {
+    ImGui::OpenPopup("Unsaved Changes##nav");
+  }
+  RenderNavGuardModal(state, session, history);
 
   // Close guard: open modal once when AppMain requests a close while dirty.
   if (session.IsCloseRequested() && !ImGui::IsPopupOpen("Unsaved Changes##close")) {

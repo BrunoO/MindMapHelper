@@ -9,6 +9,9 @@
 #include "ui/commands/DeleteNodeCommand.h"
 #include "ui/commands/InsertChildNodeCommand.h"
 #include "ui/commands/PasteImageCommand.h"
+#include "ui/commands/PasteTextCommand.h"
+
+#include "imgui.h"
 
 #include <algorithm>
 #include <memory>
@@ -70,11 +73,18 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
     case UiCommandId::PasteImage: {
       const auto sel = state.canvas_.GetSelectedNode();
       if (!sel.has_value()) { return; }
-      const auto png = GetClipboardImagePng();
-      if (!png) { return; }
-      history_.Push(std::make_unique<commands::PasteImageCommand>(
-          state.canvas_, *sel, mind_map::core::Base64Encode(*png)));
-      session.MarkDirty();
+      if (const auto png = GetClipboardImagePng(); png.has_value()) {
+        history_.Push(std::make_unique<commands::PasteImageCommand>(
+            state.canvas_, *sel, mind_map::core::Base64Encode(*png)));
+        session.MarkDirty();
+        return;
+      }
+      const char* const text = ImGui::GetClipboardText();
+      if (text != nullptr && text[0] != '\0') {
+        history_.Push(std::make_unique<commands::PasteTextCommand>(
+            state.canvas_, *sel, text));
+        session.MarkDirty();
+      }
       return;
     }
     case UiCommandId::ToggleCollapsed: {

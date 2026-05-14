@@ -213,6 +213,7 @@ set(BM_UI_SOURCES
   src/ui/branch/DrawBranchTextOnPath.cpp
   src/ui/canvas/NodeTextureUtils.cpp
   src/ui/commands/PasteImageCommand.cpp
+  src/ui/commands/PasteTextCommand.cpp
 )
 
 set(BM_CORE_SOURCES
