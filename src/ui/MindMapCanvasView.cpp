@@ -622,12 +622,28 @@ void MindMapCanvasView::CollapseNode(size_t idx) {
 void MindMapCanvasView::ExpandNode(size_t idx) {
   if (idx >= nodes_.size()) { return; }
   nodes_[idx].collapsed_ = false;
-  if (const auto it = collapse_affected_.find(idx); it != collapse_affected_.end()) {
-    for (const size_t c : it->second) {
+  const auto it = collapse_affected_.find(idx);
+  if (it == collapse_affected_.end()) { return; }
+  // Guard against undo/redo interleaving: collapse_affected_[idx] records every node that was
+  // active when CollapseNode(idx) ran, but a subsequent undo/redo may have collapsed an inner
+  // ancestor since then.  Reactivating such a node would bypass that inner collapse and make its
+  // subtree visible when it should stay hidden.  Skip any node that still has a collapsed
+  // ancestor between itself and idx.
+  for (const size_t c : it->second) {
+    if (!HasCollapsedAncestorBetween_(c, idx)) {
       SetNodeActive(c, true);
     }
-    collapse_affected_.erase(it);
   }
+  collapse_affected_.erase(it);
+}
+
+bool MindMapCanvasView::HasCollapsedAncestorBetween_(size_t child, size_t stop) const {
+  auto p = nodes_[child].parent_idx_;
+  while (p.has_value() && *p != stop) {
+    if (nodes_[*p].collapsed_) { return true; }
+    p = nodes_[*p].parent_idx_;
+  }
+  return false;
 }
 
 bool MindMapCanvasView::IsCollapsed(size_t idx) const {
