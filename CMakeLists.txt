@@ -44,6 +44,19 @@ FetchContent_MakeAvailable(imgui)
 
 set(IMGUI_DIR "${imgui_SOURCE_DIR}")
 
+set(FT_DISABLE_ZLIB     ON  CACHE BOOL "" FORCE)  # avoid collision with the in-tree zlib sentinel
+set(FT_DISABLE_BZIP2    ON  CACHE BOOL "" FORCE)
+set(FT_DISABLE_PNG      ON  CACHE BOOL "" FORCE)
+set(FT_DISABLE_HARFBUZZ ON  CACHE BOOL "" FORCE)
+set(FT_DISABLE_BROTLI   ON  CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  freetype
+  GIT_REPOSITORY https://gitlab.freedesktop.org/freetype/freetype.git
+  GIT_TAG        VER-2-13-3
+  GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(freetype)
+
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 set(JSON_Install OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
@@ -197,6 +210,7 @@ set(IMGUI_SOURCES
   ${IMGUI_DIR}/imgui_demo.cpp
   ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
   ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+  ${IMGUI_DIR}/misc/freetype/imgui_freetype.cpp
 )
 
 set(BM_UI_SOURCES
@@ -263,6 +277,13 @@ target_link_libraries(mindmap_helper_core PRIVATE
 )
 target_include_directories(mindmap_helper_ui PRIVATE "${imguifiledialog_SOURCE_DIR}")
 
+target_compile_definitions(mindmap_helper_ui PRIVATE
+  IMGUI_USER_CONFIG="ui/imconfig.h"
+)
+target_include_directories(mindmap_helper_ui PRIVATE
+  "${IMGUI_DIR}/misc/freetype"
+)
+target_link_libraries(mindmap_helper_ui PRIVATE freetype)
 target_link_libraries(mindmap_helper_ui PRIVATE ${BM_GLFW_TARGET})
 target_link_libraries(mindmap_helper_ui PRIVATE mindmap_helper_core)
 bm_link_opengl_for_platform(mindmap_helper_ui)

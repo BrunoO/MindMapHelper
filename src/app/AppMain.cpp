@@ -15,6 +15,7 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
+#include <cmath>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -71,6 +72,12 @@ int RunApp(std::string_view startup_path) {
   ImGuiIO& io = ImGui::GetIO();
   (void)io;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // NOLINT(hicpp-signed-bitwise)
+
+  float xscale = 1.0F;
+  glfwGetWindowContentScale(window, &xscale, nullptr);
+  const float font_size = std::floor(15.0F * xscale);
+  io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-Regular.ttf", font_size);
+  io.FontGlobalScale = 1.0F / xscale;  // undo the pixel scaling so layout sizes stay in logical px
 
   ImGui::StyleColorsDark();
 
