@@ -86,8 +86,15 @@ int RunApp(std::string_view startup_path) {
   xscale = (std::max)(kXScaleMin, (std::min)(xscale, kXScaleMax));
   const float font_size =
       (std::max)(kFontSizeMin, (std::min)(std::floor(kFontSizeBase * xscale), kFontSizeMax));
+  // Null-terminated pair array: each pair is [first, last] codepoint; 0 ends the list.
+  static const std::array<ImWchar, 7> kGlyphRanges = {
+    0x0020, 0x00FF,  // Basic Latin + Latin Supplement
+    0x25B6, 0x25B6,  // ▶ BLACK RIGHT-POINTING TRIANGLE
+    0x25BC, 0x25BC,  // ▼ BLACK DOWN-POINTING TRIANGLE
+    0,
+  };
   const ImFont* const loaded_font =
-      io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-Regular.ttf", font_size);
+      io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-Regular.ttf", font_size, nullptr, kGlyphRanges.data());
   if (loaded_font == nullptr) {
     (void)fprintf(stderr,
                   "[AppMain] failed to load 'assets/fonts/Inter-Regular.ttf' "
