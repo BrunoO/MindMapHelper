@@ -12,6 +12,7 @@
 
 namespace mind_map::ui {
 
+/// All keyboard-triggered actions; each maps 1:1 to a UiCommandId via kShortcuts.
 enum class ShortcutAction : std::uint8_t {
   ZoomIn,
   ZoomOut,
@@ -24,6 +25,7 @@ enum class ShortcutAction : std::uint8_t {
   Count
 };
 
+/// Key, modifier, display label, and UiCommandId for one keyboard shortcut; stored in kShortcuts.
 struct ShortcutDef {
   ImGuiKey key_ = ImGuiKey_None;
   bool primary_modifier_ = false;

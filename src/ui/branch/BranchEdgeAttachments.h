@@ -12,7 +12,7 @@
 
 namespace mind_map::ui::branch {
 
-// Shared world-space attachment points for mind-map edges (rounded-rect toward opposite node).
+/// Precomputed world-space edge geometry for one parent→child pair; filled by FillBranchEdgeData and consumed by all branch-draw functions.
 struct BranchEdgeData {
   bool parent_is_root_ = false;
   const char* parent_label_ = nullptr;

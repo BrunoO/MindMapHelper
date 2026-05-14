@@ -4,6 +4,7 @@
 
 namespace mind_map::core {
 
+/// IImportAdapter for .imx: delegates to ImxMindMapLoader, then converts ImxMindMapModel to MindMapDocument.
 class ImxImportAdapter final : public IImportAdapter {
  public:
   [[nodiscard]] std::optional<MindMapDocument> Import(std::string_view path) const override;

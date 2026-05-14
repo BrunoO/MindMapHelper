@@ -8,6 +8,7 @@ namespace mind_map::ui::commands { class CommandHistory; }
 
 namespace mind_map::ui {
 
+/// Routes UiCommandId actions from menus and shortcuts to mutations on UiState and DocumentSessionService.
 class UiCommandDispatcher final {
  public:
   explicit UiCommandDispatcher(commands::CommandHistory& history);

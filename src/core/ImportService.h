@@ -12,7 +12,7 @@ namespace mind_map::core {
 
 class IImportAdapter;
 
-// Dispatches to the appropriate IImportAdapter based on file extension (registry).
+/// Dispatches to the registered IImportAdapter for a file extension; pre-registers ImxImportAdapter for .imx.
 class ImportService {
  public:
   ImportService();

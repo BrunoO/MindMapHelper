@@ -7,6 +7,7 @@
 
 namespace mind_map::ui::commands {
 
+/// ICommand that calls MindMapCanvasView::SetNodeImage with a new PNG; Undo restores the previous image.
 class PasteImageCommand final : public ICommand {
  public:
   PasteImageCommand(mind_map::ui::MindMapCanvasView& canvas, size_t node_idx,

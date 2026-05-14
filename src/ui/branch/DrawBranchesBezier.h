@@ -7,6 +7,7 @@
 
 namespace mind_map::ui::branch {
 
+/// Draws a cubic Bézier branch from parent to child using BranchEdgeData rounded-rect attachment points.
 // child_index must satisfy nodes[child_index].parent_idx_.has_value().
 void DrawMindMapBranchBezier(
     const BranchRenderContext& ctx, size_t child_index,

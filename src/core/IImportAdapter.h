@@ -7,6 +7,7 @@
 
 namespace mind_map::core {
 
+/// Converts a foreign file format to MindMapDocument; registered in ImportService. ImxImportAdapter handles .imx.
 class IImportAdapter {
  public:
   virtual ~IImportAdapter() = default;

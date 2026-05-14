@@ -5,9 +5,7 @@
 
 namespace mind_map::ui {
 
-// Returns raw PNG bytes from the system clipboard image, or nullopt if no
-// image is present. Thread-safe on macOS; must be called from the main thread
-// on Windows and Linux.
+/// Returns raw PNG bytes from the clipboard image, or nullopt if none. Main thread on Windows/Linux; thread-safe on macOS.
 [[nodiscard]] std::optional<std::string> GetClipboardImagePng();
 
 }  // namespace mind_map::ui

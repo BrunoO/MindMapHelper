@@ -11,10 +11,12 @@ namespace mind_map::canvas {
 constexpr ImU32 kGridMajorColor = IM_COL32(60, 60, 72, 255);   // NOLINT(hicpp-signed-bitwise)
 constexpr ImU32 kGridMinorColor = IM_COL32(45, 45, 55, 255);   // NOLINT(hicpp-signed-bitwise)
 
+/// Maps a world-space point to screen-space using canvas origin, pan, and zoom.
 [[nodiscard]] inline ImVec2 WorldToScreen(ImVec2 world, ImVec2 canvas_p0, ImVec2 pan_px, float zoom) {
   return {canvas_p0.x + pan_px.x + world.x * zoom, canvas_p0.y + pan_px.y + world.y * zoom};
 }
 
+/// Maps a screen-space point back to world-space; inverse of WorldToScreen.
 [[nodiscard]] inline ImVec2 ScreenToWorld(ImVec2 screen, ImVec2 canvas_p0, ImVec2 pan_px, float zoom) {
   assert(zoom > 0.0F);
   return {(screen.x - canvas_p0.x - pan_px.x) / zoom, (screen.y - canvas_p0.y - pan_px.y) / zoom};
@@ -24,6 +26,7 @@ constexpr ImU32 kGridMinorColor = IM_COL32(45, 45, 55, 255);   // NOLINT(hicpp-s
   return p.x >= rect_min.x && p.x <= rect_max.x && p.y >= rect_min.y && p.y <= rect_max.y;
 }
 
+/// Draws a minor/major grid over the visible canvas area using WorldToScreen transforms.
 inline void DrawGrid(ImDrawList* draw_list, ImVec2 canvas_p0, ImVec2 canvas_p1, ImVec2 pan_px, float zoom) {
   assert(draw_list != nullptr);
   constexpr float kMinorStep = 32.0F;

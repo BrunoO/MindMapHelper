@@ -20,6 +20,7 @@ constexpr uint8_t  kInvalidEntry   = 0xFFU;   // decode-table sentinel for inval
 
 }  // namespace base64_detail
 
+/// RFC 4648 base64 encoding with `=` padding; used to embed PNG images in MindMapNode::image_png_base64_.
 [[nodiscard]] inline std::string Base64Encode(std::string_view raw) {
   using namespace base64_detail;  // NOLINT(google-build-using-namespace)
   constexpr uint32_t kShift0 = kBitsPerB64Char * 3U;  // 18
@@ -41,6 +42,7 @@ constexpr uint8_t  kInvalidEntry   = 0xFFU;   // decode-table sentinel for inval
   return out;
 }
 
+/// RFC 4648 base64 decoding; ignores whitespace and invalid characters.
 [[nodiscard]] inline std::string Base64Decode(std::string_view encoded) {
   using namespace base64_detail;  // NOLINT(google-build-using-namespace)
   static const auto kDecTable = [] {

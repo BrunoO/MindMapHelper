@@ -10,6 +10,7 @@ namespace mind_map::ui {
 inline constexpr float kInitialPanX = 40.0F;
 inline constexpr float kInitialPanY = 120.0F;
 
+/// All per-frame mutable UI state owned by RenderMainUi: canvas view, pan/zoom, and status-bar flag.
 struct UiState {
   MindMapCanvasView canvas_;
   ImVec2 pan_px_ = {kInitialPanX, kInitialPanY};

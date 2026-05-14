@@ -5,6 +5,7 @@
 
 namespace mind_map::ui::branch {
 
+/// Rendering strategy for a parent→child edge; stored per-edge in CanvasNode::branch_style_.
 enum class BranchStyle : std::uint8_t {
   Bezier = 0,
   Orthogonal = 1,

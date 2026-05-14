@@ -7,6 +7,7 @@
 
 namespace mind_map::ui::commands {
 
+/// Undo/redo stack for ICommand objects; Push executes immediately and clears the redo stack.
 class CommandHistory {
  public:
   // Execute cmd immediately and push it onto the undo stack; clears redo stack.

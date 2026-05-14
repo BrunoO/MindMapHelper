@@ -8,6 +8,7 @@
 
 namespace mind_map::ui::commands {
 
+/// ICommand that sets active_=false on a node subtree in MindMapCanvasView; Undo restores the subtree.
 class DeleteNodeCommand final : public ICommand {
  public:
   DeleteNodeCommand(mind_map::ui::MindMapCanvasView& canvas, size_t node_idx);

@@ -8,6 +8,7 @@
 
 namespace mind_map::ui::commands {
 
+/// ICommand that appends a child node via MindMapCanvasView::InsertChildNode; Undo sets it inactive.
 class InsertChildNodeCommand final : public ICommand {
  public:
   InsertChildNodeCommand(mind_map::ui::MindMapCanvasView& canvas, size_t parent_idx);

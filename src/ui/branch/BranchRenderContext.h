@@ -4,7 +4,7 @@
 
 namespace mind_map::ui::branch {
 
-// ImGui draw-list + canvas transform for branch rendering (world → screen via canvas helpers).
+/// ImGui draw-list and canvas transform passed to all branch-draw functions; built by MindMapCanvasView::Render.
 struct BranchRenderContext {
   ImDrawList* draw_list_ = nullptr;
   ImVec2 canvas_p0_;

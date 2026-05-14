@@ -7,7 +7,7 @@
 
 namespace mind_map::core {
 
-// Native on-disk format used by JsonNativeDocumentRepository (convention for CLI and dialogs).
+/// Native on-disk format used by JsonNativeDocumentRepository and DocumentPathLoader for extension dispatch.
 inline constexpr std::string_view kNativeMindMapFileExtension = ".mmh";
 
 [[nodiscard]] inline std::string LowercaseExtensionOf(std::string_view path) {

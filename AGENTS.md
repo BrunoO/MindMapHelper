@@ -79,6 +79,26 @@ See **`docs/standards/CXX17_NAMING_CONVENTIONS.md`**. Summary:
 
 ---
 
+## Comments
+
+Comment the **WHY**, never the **WHAT** — well-named identifiers already say what.
+
+| Situation | Style |
+|---|---|
+| Non-obvious invariant or constraint | `// root (index 0) cannot be deleted` |
+| Workaround for a library / compiler limitation | `// std::lerp is C++20; manual lerp here` |
+| Magic constant whose meaning isn't self-evident | `// data bits in a continuation byte` |
+| `#endif` closing a platform block | `#endif  // _WIN32` (mandatory) |
+| Closing namespace brace | `}  // namespace mind_map::ui` |
+| Lint suppression | same-line `// NOLINT(…)` / `// NOSONAR(…)` with rationale |
+| Public API header (type or free function) | `///` Doxygen — one short line, no multi-paragraph blocks |
+| What a function does when the name already says it | **omit** |
+| Line-by-line paraphrase of the code | **omit** |
+
+Never reference the task, issue number, or caller in a comment — that belongs in the commit message.
+
+---
+
 ## Modifying `.clang-tidy` safely
 
 YAML treats `#` as end-of-line comment. **Do not** put `#` on the same line as a check name under `Checks: >-` or inside other values — the check name would be truncated. Document disabled checks in a separate comment block. After edits, run `clang-tidy --config-file=.clang-tidy --dump-config` and confirm `Checks:` is correct.

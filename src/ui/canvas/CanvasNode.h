@@ -10,6 +10,7 @@
 
 namespace mind_map::ui {
 
+/// Runtime canvas node: world position, optional parent link (nullopt = root), BranchStyle, and optional GL texture.
 struct CanvasNode {
   std::string id_;
   std::string label_;

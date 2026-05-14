@@ -2,6 +2,7 @@
 
 namespace mind_map::ui::commands {
 
+/// Command pattern base used by CommandHistory; Execute applies the operation, Undo reverses it.
 class ICommand {
  public:
   virtual ~ICommand() = default;

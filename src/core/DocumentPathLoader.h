@@ -17,8 +17,7 @@ struct DocumentPathLoadResult {
   MindMapDocument doc_{};
 };
 
-// Extension-first dispatch: `.mmh` → native repository; registered import extensions (e.g. `.imx`)
-// → ImportService. Other extensions fail without probing file contents.
+/// Extension-first dispatch: `.mmh` → IDocumentRepository; registered extensions → ImportService; others fail.
 [[nodiscard]] DocumentPathLoadResult LoadMindMapFromPath(std::string_view path, const IDocumentRepository& repo,
                                                          const ImportService& imports);
 

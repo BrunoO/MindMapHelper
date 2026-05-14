@@ -10,12 +10,14 @@ struct Vec2 {
   float y_ = 0.0F;
 };
 
+/// A node in the mind map: unique id, display label, and optional embedded image (base64 PNG).
 struct MindMapNode {
   std::string id_;
   std::string label_;
   std::string image_png_base64_;  // base64-encoded PNG bytes; empty when no image
 };
 
+/// A directed parent→child edge with optional style override and display label.
 struct MindMapEdge {
   std::string id_;
   std::string parent_id_;
@@ -24,6 +26,7 @@ struct MindMapEdge {
   std::string label_;  // caption for the edge from parent_id_ to child_id_; empty = no edge label
 };
 
+/// Persisted position and size hint for a node; size {0,0} means auto-fit to label.
 struct MindMapNodeLayout {
   std::string node_id_;
   Vec2 position_;
@@ -31,11 +34,13 @@ struct MindMapNodeLayout {
   float size_h_ = 0.0F;  // half-height override; 0 = auto-size from label
 };
 
+/// Saved camera state (pan, zoom) restored when the document is reopened.
 struct MindMapViewport {
   Vec2 pan_;
   float zoom_ = 1.0F;
 };
 
+/// Full serializable mind-map state: nodes, edges, layout hints, and viewport; exchanged between core and ui layers.
 struct MindMapDocument {
   std::vector<MindMapNode> nodes_;
   std::vector<MindMapEdge> edges_;

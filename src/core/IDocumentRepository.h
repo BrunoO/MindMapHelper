@@ -7,6 +7,7 @@
 
 namespace mind_map::core {
 
+/// Persistence abstraction for MindMapDocument; implemented by JsonNativeDocumentRepository (.mmh files).
 class IDocumentRepository {
  public:
   virtual ~IDocumentRepository() = default;

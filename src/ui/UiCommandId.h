@@ -4,6 +4,7 @@
 
 namespace mind_map::ui {
 
+/// All user-level actions; dispatched from menus and ShortcutRegistry via UiCommandDispatcher.
 enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   ResetLayout,
   ZoomIn,

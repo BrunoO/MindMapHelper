@@ -17,6 +17,7 @@ inline constexpr float kDefaultHorizontalStickiness = 1.12F;
 inline constexpr float kDefaultBlendFromNormalized = 0.22F;
 inline constexpr float kDefaultBlendToNormalized = 0.62F;
 
+/// Returns the label-fitted half-extents for a node box (ImGui text size + kNodePad padding).
 [[nodiscard]] inline ImVec2 NodeHalfExtentForLabel(const char* label) {
   assert(label != nullptr);
   const ImVec2 text_sz = ImGui::CalcTextSize(label);
@@ -29,6 +30,7 @@ inline constexpr float kDefaultBlendToNormalized = 0.62F;
   return (std::max)(half.x, half.y);
 }
 
+/// Returns the point on a sharp-cornered box surface along the ray toward toward_point; fallback for RoundedRectAttachmentToward.
 [[nodiscard]] inline ImVec2 AttachmentToward(ImVec2 from_center, ImVec2 half_extents, ImVec2 toward_point) {
   constexpr float kEpsLenSq = 1.0e-12F;
   float vx = toward_point.x - from_center.x;
@@ -165,6 +167,7 @@ struct RoundedRectFlatRayContext {
   return best_t;
 }
 
+/// Returns the point on a rounded-rect surface along the ray toward toward_point; used by all branch renderers via BranchEdgeAttachments.
 [[nodiscard]] inline ImVec2 RoundedRectAttachmentToward(ImVec2 center, ImVec2 half_extents, float corner_r,
                                                         ImVec2 toward_point) {
   constexpr float kEpsLenSq = 1.0e-12F;
@@ -250,6 +253,7 @@ enum class BoxSide : std::uint8_t { Right, Left, Bottom, Top };  // NOLINT(perfo
   return false;
 }
 
+/// Like RoundedRectAttachmentToward but snaps toward the flat edge midpoint for a cleaner connection; called by FillBranchEdgeData.
 [[nodiscard]] inline ImVec2 RoundedRectAttachmentPreferEdgeMid(
     ImVec2 center, ImVec2 half_extents, float corner_r, ImVec2 toward_point,
     float blend_from_normalized = kDefaultBlendFromNormalized,
@@ -324,6 +328,7 @@ struct BezierArmInputs {
   const ImVec2* p3_border_for_normal_ = nullptr;
 };
 
+/// Computes Bézier control arms (p1, p2) for a parent→child edge using outward face normals and a span fraction.
 [[nodiscard]] inline BezierArms ComputeBezierArmsWorld(const BezierArmInputs& inputs) {
   constexpr float kMaxArmAsChordFraction = 0.45F;
   constexpr float kEpsChord = 1.0e-6F;

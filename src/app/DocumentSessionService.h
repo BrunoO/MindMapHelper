@@ -9,8 +9,8 @@
 
 namespace mind_map::app {
 
-// Owns the single-document lifecycle: path, dirty flag, and close-guard state.
-// All canvas I/O (LoadFrom / ToDocument) is the caller's responsibility.
+/// Owns the single-document lifecycle: path, dirty flag, and close-guard state.
+/// Canvas I/O (MindMapCanvasView::LoadFrom / ToDocument) is the caller's responsibility.
 class DocumentSessionService {
  public:
   explicit DocumentSessionService(mind_map::core::IDocumentRepository& repo);
