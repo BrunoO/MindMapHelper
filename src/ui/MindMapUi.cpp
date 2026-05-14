@@ -391,16 +391,21 @@ void RenderNavGuardModal(UiState& state, mind_map::app::DocumentSessionService& 
   ImGui::Separator();
 
   bool proceed = false;
-  const bool can_save = session.HasPath();
-  if (!can_save) { ImGui::BeginDisabled(); }
-  if (ImGui::Button("Save")) {
-    const auto doc = state.canvas_.ToDocument(state.ToViewport());
-    if (session.Save(doc)) {
-      proceed = true;
+  if (session.HasPath()) {
+    if (ImGui::Button("Save")) {
+      const auto doc = state.canvas_.ToDocument(state.ToViewport());
+      if (session.Save(doc)) {
+        proceed = true;
+        ImGui::CloseCurrentPopup();
+      }
+    }
+  } else {
+    if (ImGui::Button("Save As...")) {
+      state.save_as_context_ = SaveAsResumingContext::NavGuard;
+      OpenSaveAsDialog(session);
       ImGui::CloseCurrentPopup();
     }
   }
-  if (!can_save) { ImGui::EndDisabled(); }
 
   ImGui::SameLine();
   if (ImGui::Button("Discard")) {
@@ -420,7 +425,7 @@ void RenderNavGuardModal(UiState& state, mind_map::app::DocumentSessionService& 
   }
 }
 
-void RenderCloseGuardModal(const UiState& state, mind_map::app::DocumentSessionService& session) {
+void RenderCloseGuardModal(UiState& state, mind_map::app::DocumentSessionService& session) {
   const ImGuiViewport* const main_vp = ImGui::GetMainViewport();
   assert(main_vp != nullptr);
   ImGui::SetNextWindowPos(main_vp->GetCenter(), ImGuiCond_Always, ImVec2(0.5F, 0.5F));
@@ -432,17 +437,22 @@ void RenderCloseGuardModal(const UiState& state, mind_map::app::DocumentSessionS
   ImGui::TextUnformatted("You have unsaved changes. What would you like to do?");
   ImGui::Separator();
 
-  const bool can_save = session.HasPath();
-  if (!can_save) { ImGui::BeginDisabled(); }
-  if (ImGui::Button("Save")) {
-    const auto doc = state.canvas_.ToDocument(state.ToViewport());
-    if (session.Save(doc)) {
-      session.ConfirmClose();
-      session.CancelClose();
+  if (session.HasPath()) {
+    if (ImGui::Button("Save")) {
+      const auto doc = state.canvas_.ToDocument(state.ToViewport());
+      if (session.Save(doc)) {
+        session.ConfirmClose();
+        session.CancelClose();
+        ImGui::CloseCurrentPopup();
+      }
+    }
+  } else {
+    if (ImGui::Button("Save As...")) {
+      state.save_as_context_ = SaveAsResumingContext::CloseGuard;
+      OpenSaveAsDialog(session);
       ImGui::CloseCurrentPopup();
     }
   }
-  if (!can_save) { ImGui::EndDisabled(); }
 
   ImGui::SameLine();
   if (ImGui::Button("Discard")) {
@@ -457,6 +467,17 @@ void RenderCloseGuardModal(const UiState& state, mind_map::app::DocumentSessionS
   }
 
   ImGui::EndPopup();
+}
+
+void ResumeSaveAsContext(UiState& state, mind_map::app::DocumentSessionService& session,
+                         commands::CommandHistory& history, bool saved) {
+  if (state.save_as_context_ == SaveAsResumingContext::NavGuard) {
+    state.save_as_context_ = SaveAsResumingContext::None;
+    if (saved) { ExecutePendingNav(state, session, history); }
+  } else if (state.save_as_context_ == SaveAsResumingContext::CloseGuard) {
+    state.save_as_context_ = SaveAsResumingContext::None;
+    if (saved) { session.ConfirmClose(); session.CancelClose(); }
+  }
 }
 
 void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& session,
@@ -492,13 +513,17 @@ void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& se
   }
 
   if (fd->Display("SaveAsFileDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
+    bool saved = false;
     if (fd->IsOk()) {
       const std::string path = fd->GetFilePathName();
       const auto doc = state.canvas_.ToDocument(state.ToViewport());
-      if (!session.SaveAs(path, doc)) {
+      saved = session.SaveAs(path, doc);
+      if (!saved) {
         // Save failed; repository already logged the error to stderr.
       }
     }
+    // If context is set, resume the action that triggered Save As (or let modal reopen on cancel).
+    ResumeSaveAsContext(state, session, history, saved);
     fd->Close();
   }
 }
@@ -543,14 +568,18 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
 
   RenderStatusBar(state);
 
+  const bool save_as_pending = state.save_as_context_ != SaveAsResumingContext::None;
+
   // Navigation guard: open modal when a destructive navigation was requested while dirty.
-  if (state.pending_nav_ != PendingNavAction::None && !ImGui::IsPopupOpen("Unsaved Changes##nav")) {
+  if (state.pending_nav_ != PendingNavAction::None && !save_as_pending
+      && !ImGui::IsPopupOpen("Unsaved Changes##nav")) {
     ImGui::OpenPopup("Unsaved Changes##nav");
   }
   RenderNavGuardModal(state, session, history);
 
   // Close guard: open modal once when AppMain requests a close while dirty.
-  if (session.IsCloseRequested() && !ImGui::IsPopupOpen("Unsaved Changes##close")) {
+  if (session.IsCloseRequested() && !save_as_pending
+      && !ImGui::IsPopupOpen("Unsaved Changes##close")) {
     ImGui::OpenPopup("Unsaved Changes##close");
   }
   RenderCloseGuardModal(state, session);
