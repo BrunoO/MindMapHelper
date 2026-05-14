@@ -102,7 +102,9 @@ void AddTextRotated(ImDrawList* draw_list, ImFont* font, float font_size,
   const float sin_a  = std::sin(angle_rad);
   const ImVec2 tsize = font->CalcTextSizeA(font_size, FLT_MAX, 0.0F, text_begin, text_end);
   const float half_w = tsize.x * 0.5F;
-  const float half_h = tsize.y * 0.5F;
+  // Use the midpoint between ascent and descent rather than half the line height so the
+  // visual center of the glyphs lands on the branch path instead of floating above it.
+  const float half_h = (font->Ascent + font->Descent) * scale * 0.5F;
   const auto rot = [cos_a, sin_a, center](float lx, float ly) -> ImVec2 {
     return {center.x + lx * cos_a - ly * sin_a, center.y + lx * sin_a + ly * cos_a};
   };
