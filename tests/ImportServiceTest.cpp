@@ -14,7 +14,8 @@ void TestUnknownExtensionReturnsNullopt() {
 void TestHandlesImportExtension() {
   const mind_map::core::ImportService service;
   assert(service.HandlesImportExtension(".imx"));
-  assert(!service.HandlesImportExtension(".IMX"));  // callers must pass lowercased extension
+  assert(service.HandlesImportExtension(".IMX"));
+  assert(service.HandlesImportExtension(".Imx"));
   assert(!service.HandlesImportExtension(".mmh"));
   assert(!service.HandlesImportExtension(""));
 }

@@ -19,8 +19,8 @@ class ImportService {
 
   [[nodiscard]] std::optional<MindMapDocument> ImportFile(std::string_view path) const;
 
-  // Lowercase extension including leading dot (as returned by LowercaseExtensionOf).
-  [[nodiscard]] bool HandlesImportExtension(std::string_view lowercase_extension) const;
+  /// Returns true if a registered adapter handles @p extension (case-insensitive, with leading dot).
+  [[nodiscard]] bool HandlesImportExtension(std::string_view extension) const;
 
  private:
   [[nodiscard]] const IImportAdapter* FindAdapterForExtension_(std::string_view lowercase_extension) const;

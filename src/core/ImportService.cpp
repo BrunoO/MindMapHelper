@@ -23,8 +23,8 @@ const IImportAdapter* ImportService::FindAdapterForExtension_(std::string_view l
   return nullptr;
 }
 
-bool ImportService::HandlesImportExtension(const std::string_view lowercase_extension) const {
-  return FindAdapterForExtension_(lowercase_extension) != nullptr;
+bool ImportService::HandlesImportExtension(const std::string_view extension) const {
+  return FindAdapterForExtension_(LowercaseExtensionOf(extension)) != nullptr;
 }
 
 std::optional<MindMapDocument> ImportService::ImportFile(const std::string_view path) const {
