@@ -11,7 +11,6 @@
 #include "ui/canvas/NodeExtent.h"
 #include "ui/canvas/NodeGeometry.h"
 #include "ui/canvas/NodeTextureUtils.h"
-#include "ui/demos/SampleMindMapGraph.h"
 
 #include "imgui.h"
 
@@ -175,9 +174,7 @@ void DrawOneChildBranch(const mind_map::ui::branch::BranchRenderContext& branch_
 
 }  // namespace
 
-MindMapCanvasView::MindMapCanvasView() {
-  LoadFrom(mind_map::demos::BuildSampleDocument());
-}
+MindMapCanvasView::MindMapCanvasView() = default;
 
 MindMapCanvasView::~MindMapCanvasView() {
   for (auto& node : nodes_) {

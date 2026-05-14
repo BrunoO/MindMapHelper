@@ -8,7 +8,6 @@
 #include "ui/branch/BranchStyle.h"
 #include "ui/canvas/CanvasMath.h"
 #include "ui/commands/CommandHistory.h"
-#include "ui/demos/SampleMindMapGraph.h"
 
 #include "ImGuiFileDialog.h"
 #include "imgui.h"
@@ -154,9 +153,8 @@ void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
     mind_map::core::MindMapDocument dummy;
     session.New(dummy);
     history.Clear();
-    const auto sample_doc = mind_map::demos::BuildSampleDocument();
-    state.canvas_.LoadFrom(sample_doc);
-    state.ApplyViewport(sample_doc.viewport_);
+    state.canvas_.LoadFrom(dummy);
+    state.ApplyViewport(dummy.viewport_);
   }
   if (ImGui::MenuItem("Open...", "Cmd+O")) {
     IGFD::FileDialogConfig cfg;

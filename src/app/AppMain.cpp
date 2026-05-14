@@ -54,6 +54,10 @@ int RunApp(std::string_view startup_path) {
     if (session.OpenFromPath(startup_path, doc, import_service)) {
       deferred_startup_document = std::move(doc);
     }
+  } else {
+    mind_map::core::MindMapDocument doc;
+    session.New(doc);
+    deferred_startup_document = std::move(doc);
   }
 
   const std::string initial_title = WindowTitleForPath(session.GetCurrentPath());
