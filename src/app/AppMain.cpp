@@ -15,7 +15,9 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -73,11 +75,29 @@ int RunApp(std::string_view startup_path) {
   (void)io;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // NOLINT(hicpp-signed-bitwise)
 
+  constexpr float kXScaleMin    = 0.5F;
+  constexpr float kXScaleMax    = 4.0F;
+  constexpr float kFontSizeBase = 15.0F;
+  constexpr float kFontSizeMin  = 8.0F;
+  constexpr float kFontSizeMax  = 72.0F;
+
   float xscale = 1.0F;
   glfwGetWindowContentScale(window, &xscale, nullptr);
-  const float font_size = std::floor(15.0F * xscale);
-  io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-Regular.ttf", font_size);
-  io.FontGlobalScale = 1.0F / xscale;  // undo the pixel scaling so layout sizes stay in logical px
+  xscale = (std::max)(kXScaleMin, (std::min)(xscale, kXScaleMax));
+  const float font_size =
+      (std::max)(kFontSizeMin, (std::min)(std::floor(kFontSizeBase * xscale), kFontSizeMax));
+  const ImFont* const loaded_font =
+      io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-Regular.ttf", font_size);
+  if (loaded_font == nullptr) {
+    (void)fprintf(stderr,
+                  "[AppMain] failed to load 'assets/fonts/Inter-Regular.ttf' "
+                  "(size %.0fpx) — falling back to ImGui built-in font\n",
+                  font_size);
+    io.Fonts->AddFontDefault();
+    io.FontGlobalScale = 1.0F;
+  } else {
+    io.FontGlobalScale = 1.0F / xscale;  // undo pixel scaling so layout sizes stay in logical px
+  }
 
   ImGui::StyleColorsDark();
 
