@@ -1,0 +1,33 @@
+https://substack.com/@charliehills/note/c-258820809?r=6wdvmg
+
+Step 3: Build MEMORY (memory/memory.md)
+
+Every correction becomes its own .md file.
+
+Mine has 135 of them. Each one is a rule.
+
+Paste this:
+
+"From now on, whenever I correct you or tell you to remember something, save it as its own .md file at ~/.claude/projects/{project}/memory/, prefixed feedback_, user_, project_, or reference_. Index everything in memory.md so the right rule loads next session."
+
+
+Step 4: Build SKILLS (skills/{name}/skill.md)
+
+A workflow I fire from any chat with one command.
+
+Mine: /today, /ideas, /create, /infographic-maker.
+
+Paste this:
+
+"I want to turn this workflow into a /{name} skill: [describe the workflow in plain English. What triggers it, what data it pulls, what it produces.] Create ~/.claude/skills/{name}/skill.md, wire the MCP connectors I need (Notion, Gmail, Drive, etc.), and make it fire-able from any chat."
+
+Step 5: Build AGENTS (.claude/agents/{role}.md)
+
+One job per file. The pipeline hands them off in order.
+
+Mine: strategist → designer → builder → QA scorer.
+
+Paste this:
+
+"Build me an agent team for [process]. Create one .md file per specialist at ~/.claude/agents/. Use Opus for agents that analyse or judge, Sonnet for ones that execute. Define the handoff order and add a 95/100 QA gate that fails the pipeline if it scores below."
+
