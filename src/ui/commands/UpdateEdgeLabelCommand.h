@@ -19,7 +19,7 @@ class UpdateEdgeLabelCommand final : public ICommand {
   void Undo() override;
 
  private:
-  MindMapCanvasView& canvas_;  // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members) - bound to canvas lifetime for undo
+  MindMapCanvasView& canvas_;  // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members) - safe: history.Clear() always precedes canvas replacement (see CommandHistory invariant)
   size_t node_idx_;
   std::string old_label_;
   std::string new_label_;

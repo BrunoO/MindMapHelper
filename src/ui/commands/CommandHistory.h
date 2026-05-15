@@ -8,6 +8,12 @@
 namespace mind_map::ui::commands {
 
 /// Undo/redo stack for ICommand objects; Push executes immediately and clears the redo stack.
+///
+/// Lifetime invariant: commands may store raw references to canvas/session objects.
+/// Clear() MUST be called before the referenced objects are destroyed or replaced
+/// (e.g., before LoadFrom on a new document). All document-load paths in MindMapUi.cpp
+/// already do this. If in-process multi-canvas support is ever added, audit every
+/// canvas-replacing call site to ensure Clear() precedes it.
 class CommandHistory {
  public:
   // Execute cmd immediately and push it onto the undo stack; clears redo stack.
