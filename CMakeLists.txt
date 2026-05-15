@@ -252,6 +252,14 @@ set(BM_PLATFORM_SOURCES
   src/platform/PlatformBootstrapCommon.cpp
 )
 
+set(BM_UTILS_SOURCES
+  src/utils/ExceptionHandling.cpp
+)
+
+if(WIN32)
+  list(APPEND BM_UTILS_SOURCES src/utils/LoggingUtils.cpp)
+endif()
+
 if(WIN32)
   list(APPEND BM_PLATFORM_SOURCES src/platform/windows/PlatformBootstrap_windows.cpp)
 elseif(APPLE)
@@ -259,6 +267,10 @@ elseif(APPLE)
 elseif(UNIX)
   list(APPEND BM_PLATFORM_SOURCES src/platform/linux/PlatformBootstrap_linux.cpp)
 endif()
+
+add_library(mindmap_helper_utils STATIC
+  ${BM_UTILS_SOURCES}
+)
 
 add_library(mindmap_helper_core STATIC
   ${BM_CORE_SOURCES}
@@ -273,12 +285,18 @@ add_library(mindmap_helper_ui STATIC
   ${IMGUI_SOURCES}
 )
 
+bm_target_use_src_includes(mindmap_helper_utils)
 bm_target_use_src_includes(mindmap_helper_core)
 bm_target_use_src_includes(mindmap_helper_platform)
 bm_target_use_src_includes(mindmap_helper_ui)
 bm_target_use_imgui_includes(mindmap_helper_ui)
 
+if(WIN32)
+  target_link_libraries(mindmap_helper_utils PRIVATE psapi)
+endif()
+
 target_link_libraries(mindmap_helper_core PRIVATE
+  mindmap_helper_utils
   nlohmann_json::nlohmann_json
   libzip::zip
   ZLIB::ZLIB
@@ -307,7 +325,10 @@ elseif(UNIX)
   target_sources(mindmap_helper_ui PRIVATE src/ui/canvas/ClipboardImage_linux.cpp)
 endif()
 
-target_link_libraries(mindmap_helper_platform PRIVATE ${BM_GLFW_TARGET})
+target_link_libraries(mindmap_helper_platform PRIVATE
+  mindmap_helper_utils
+  ${BM_GLFW_TARGET}
+)
 bm_link_opengl_for_platform(mindmap_helper_platform)
 
 add_executable(mindmap_helper

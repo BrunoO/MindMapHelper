@@ -1,9 +1,10 @@
 #include "core/JsonNativeDocumentRepository.h"
 
+#include "utils/Logger.h"
+
 #include <nlohmann/json.hpp>
 
 #include <fstream>
-#include <iostream>
 
 namespace mind_map::core {
 
@@ -107,7 +108,7 @@ std::optional<MindMapDocument> JsonNativeDocumentRepository::Load(std::string_vi
   const std::string path_str{path};
   std::ifstream file(path_str);
   if (!file.is_open()) {
-    std::cerr << "JsonNativeDocumentRepository: cannot open '" << path << "'\n";
+    LOG_ERROR_BUILD("JsonNativeDocumentRepository: cannot open '" << path << '\'');
     return std::nullopt;
   }
 
@@ -115,19 +116,20 @@ std::optional<MindMapDocument> JsonNativeDocumentRepository::Load(std::string_vi
     const nlohmann::json j = nlohmann::json::parse(file);
 
     if (j.at("format").get<std::string>() != kFormatName) {
-      std::cerr << "JsonNativeDocumentRepository: not a mindmaphelper file\n";
+      LOG_ERROR("JsonNativeDocumentRepository: not a mindmaphelper file");
       return std::nullopt;
     }
 
     if (const int version = j.at("version").get<int>(); version != kCurrentVersion) {
-      std::cerr << "JsonNativeDocumentRepository: unsupported version " << version << '\n';
+      LOG_ERROR_BUILD("JsonNativeDocumentRepository: unsupported version " << version);
       return std::nullopt;
     }
 
     return FromJson(j);
   }
   catch (const nlohmann::json::exception& e) {
-    std::cerr << "JsonNativeDocumentRepository: load failed — " << e.what() << '\n';
+    (void)e;
+    LOG_ERROR_BUILD("JsonNativeDocumentRepository: load failed — " << e.what());
     return std::nullopt;
   }
 }
@@ -136,20 +138,21 @@ bool JsonNativeDocumentRepository::Save(std::string_view path, const MindMapDocu
   const std::string path_str{path};
   std::ofstream file(path_str);
   if (!file.is_open()) {
-    std::cerr << "JsonNativeDocumentRepository: cannot write '" << path << "'\n";
+    LOG_ERROR_BUILD("JsonNativeDocumentRepository: cannot write '" << path << '\'');
     return false;
   }
 
   try {
     file << ToJson(doc).dump(kJsonIndent);
     if (!file.good()) {
-      std::cerr << "JsonNativeDocumentRepository: write error for '" << path << "'\n";
+      LOG_ERROR_BUILD("JsonNativeDocumentRepository: write error for '" << path << '\'');
       return false;
     }
     return true;
   }
   catch (const nlohmann::json::exception& e) {
-    std::cerr << "JsonNativeDocumentRepository: save failed — " << e.what() << '\n';
+    (void)e;
+    LOG_ERROR_BUILD("JsonNativeDocumentRepository: save failed — " << e.what());
     return false;
   }
 }

@@ -1,5 +1,8 @@
 #include "app/AppMain.h"
 
+#include "utils/ExceptionHandling.h"
+#include "utils/Logger.h"
+
 #include "app/DocumentSessionService.h"
 #include "app/HelpMindMapDocument.h"
 #include "core/ImportService.h"
@@ -66,7 +69,8 @@ struct StartupCli {
 
 }  // namespace
 
-int RunApp(int argc, char** argv) {
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GLFW/ImGui bootstrap and main loop
+[[nodiscard]] int RunAppBody(int argc, char** argv) {
   const StartupCli cli = ParseStartupCli(argc, argv);
   mind_map::ui::UiState ui_state;
   mind_map::ui::commands::CommandHistory history;
@@ -228,6 +232,14 @@ int RunApp(int argc, char** argv) {
 
   mind_map::platform::DestroyMainWindow(window);
   return 0;
+}
+
+int RunApp(int argc, char** argv) {
+  exception_handling::InstallTerminateHandler();
+  LOG_IMPORTANT_BUILD("MindMap Helper starting");
+
+  return exception_handling::RunFatal(
+      "RunApp", [&]() { return RunAppBody(argc, argv); }, 1);
 }
 
 }  // namespace mind_map::app

@@ -3,8 +3,8 @@
 #include "core/IDocumentRepository.h"
 #include "core/ImportService.h"
 #include "core/PathExtension.h"
+#include "utils/Logger.h"
 
-#include <iostream>
 #include <utility>
 
 namespace mind_map::core {
@@ -16,7 +16,7 @@ DocumentPathLoadResult LoadMindMapFromPath(std::string_view path, const IDocumen
     if (auto native = repo.Load(path)) {
       return {DocumentPathLoadOutcome::NativeAtPath, std::move(*native)};
     }
-    std::cerr << "LoadMindMapFromPath: failed to load native document '" << path << "'\n";
+    LOG_ERROR_BUILD("LoadMindMapFromPath: failed to load native document '" << path << '\'');
     return {};
   }
 
@@ -24,11 +24,11 @@ DocumentPathLoadResult LoadMindMapFromPath(std::string_view path, const IDocumen
     if (auto imported = imports.ImportFile(path)) {
       return {DocumentPathLoadOutcome::ImportedNoPath, std::move(*imported)};
     }
-    std::cerr << "LoadMindMapFromPath: import failed for '" << path << "'\n";
+    LOG_ERROR_BUILD("LoadMindMapFromPath: import failed for '" << path << '\'');
     return {};
   }
 
-  std::cerr << "LoadMindMapFromPath: unsupported extension for '" << path << "'\n";
+  LOG_ERROR_BUILD("LoadMindMapFromPath: unsupported extension for '" << path << '\'');
   return {};
 }
 
