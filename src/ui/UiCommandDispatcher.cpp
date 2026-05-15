@@ -6,6 +6,7 @@
 #include "core/Base64.h"
 #include "ui/UiState.h"
 #include "ui/canvas/ClipboardImage.h"
+#include "ui/canvas/InlineMarkup.h"
 #include "ui/canvas/MindMapCanvasTreeNav.h"
 #include "ui/commands/CollapseNodeCommand.h"
 #include "ui/commands/CommandHistory.h"
@@ -114,7 +115,7 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       }
       if (const char* const text = ImGui::GetClipboardText(); text != nullptr && text[0] != '\0') {
         history_.Push(std::make_unique<commands::PasteTextCommand>(
-            state.canvas_, *sel, text));
+            state.canvas_, *sel, canvas::InjectMarkupLinks(text)));
         session.MarkDirty();
         return;
       }

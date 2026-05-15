@@ -164,6 +164,10 @@ mind_map::core::MindMapDocument BuildHelpMindMapDocument() {
   b.AddLeaf(markup, R"(~~strikethrough~~ (\~\~...\~\~))", {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
   b.AddLeaf(markup, "Backslash escapes the next special character to show it literally.", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(markup, R"([label](https://example.com) — clickable link (single-click to open in browser).)", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(markup, "Paste plain text: bare http/https URLs are auto-wrapped as [url](url).", {kHelpLeafX, leaf_y});
 
   mind_map::core::MindMapDocument doc = b.Release();
   doc.viewport_.pan_ = {kHelpViewportPanX, kHelpViewportPanY};

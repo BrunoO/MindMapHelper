@@ -56,4 +56,18 @@ void LaunchNewWindow(std::string_view path) {
   }
 }
 
+void OpenUrl(std::string_view url) {
+  std::string url_str{url};
+  std::vector<char*> argv;
+  std::string xdg{"xdg-open"};
+  argv.push_back(xdg.data());
+  argv.push_back(url_str.data());
+  argv.push_back(nullptr);
+  pid_t pid = 0;
+  if (const int err = posix_spawn(&pid, "/usr/bin/xdg-open", nullptr, nullptr, argv.data(), nullptr);
+      err != 0) {
+    LOG_ERROR_BUILD("OpenUrl: posix_spawn failed: " << ThreadSafeStrerror(err));
+  }
+}
+
 }  // namespace mind_map::platform

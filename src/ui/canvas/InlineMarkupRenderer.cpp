@@ -9,10 +9,12 @@ namespace mind_map::ui::canvas {
 
 namespace {
 
-constexpr ImU32  kCodeBgColor   = IM_COL32(55,  60,  80, 220);   // NOLINT(hicpp-signed-bitwise)
-constexpr ImU32  kCodeTextColor = IM_COL32(180, 210, 255, 255);   // NOLINT(hicpp-signed-bitwise)
-constexpr float  kCodeBgPadX    = 2.0F;
-constexpr float  kCodeBgRadius  = 2.0F;
+constexpr ImU32  kCodeBgColor    = IM_COL32(55,  60,  80, 220);   // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32  kCodeTextColor  = IM_COL32(180, 210, 255, 255);  // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32  kLinkColor      = IM_COL32(100, 180, 255, 255);  // NOLINT(hicpp-signed-bitwise)
+constexpr float  kCodeBgPadX     = 2.0F;
+constexpr float  kCodeBgRadius   = 2.0F;
+constexpr float  kLinkUnderlineY = 0.85F;  // fraction of font_size below baseline
 
 ImFont* SelectFont(const MarkupSpan& span) {
   if (span.code_)                        { return nullptr; }  // regular + bg rect
@@ -28,7 +30,7 @@ float MeasureWord(ImFont* font, float font_size, const char* begin, const char* 
   return active->CalcTextSizeA(font_size, FLT_MAX, 0.0F, begin, end).x;
 }
 
-// Word-wrapping layout engine shared by MeasureMarkup and DrawMarkup.
+// Word-wrapping layout engine shared by MeasureMarkup, DrawMarkup, and CollectLinkHits.
 // Iterates each span's text token by token (words, spaces, newlines) and calls
 // place(span, font, word_begin, word_end, word_width_px, offset_from_top_left).
 // Returns the bounding size of the laid-out content in the same unit as font_size / wrap_width.
@@ -96,6 +98,10 @@ void DrawMarkup(ImDrawList* draw_list, ImVec2 top_left,
                                  {pos.x + word_w + kCodeBgPadX, pos.y + font_size},
                                  kCodeBgColor, kCodeBgRadius);
         draw_list->AddText(font, font_size, pos, kCodeTextColor, wb, we);
+      } else if (!span.url_.empty()) {
+        draw_list->AddText(font, font_size, pos, kLinkColor, wb, we);
+        const float ul_y = pos.y + font_size * kLinkUnderlineY;
+        draw_list->AddLine({pos.x, ul_y}, {pos.x + word_w, ul_y}, kLinkColor, 1.0F);
       } else {
         draw_list->AddText(font, font_size, pos, color, wb, we);
       }
@@ -104,6 +110,22 @@ void DrawMarkup(ImDrawList* draw_list, ImVec2 top_left,
         draw_list->AddLine({pos.x, mid_y}, {pos.x + word_w, mid_y}, color, 1.0F);
       }
     });
+}
+
+std::vector<LinkHit> CollectLinkHits(const std::vector<MarkupSpan>& spans,
+                                      ImVec2 top_left, float font_size, float wrap_width) {
+  std::vector<LinkHit> hits;
+  LayoutSpans(spans, font_size, wrap_width,
+    [&hits, top_left, font_size](const MarkupSpan& span, ImFont*, const char*,
+        const char*, float word_w, ImVec2 off) {
+      if (span.url_.empty()) { return; }
+      hits.push_back({
+        {top_left.x + off.x,           top_left.y + off.y},
+        {top_left.x + off.x + word_w,  top_left.y + off.y + font_size},
+        span.url_
+      });
+    });
+  return hits;
 }
 
 }  // namespace mind_map::ui::canvas

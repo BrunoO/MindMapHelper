@@ -17,5 +17,7 @@ void ConfigurePlatformGlContextHints();
 /// Spawns a new instance of this executable as a detached process.
 /// Pass a non-empty path to open that file; pass an empty string for a blank new map.
 void LaunchNewWindow(std::string_view path);
+/// Opens url in the system default browser as a detached process.
+void OpenUrl(std::string_view url);
 
 }  // namespace mind_map::platform

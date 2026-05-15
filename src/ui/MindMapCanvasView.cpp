@@ -2,6 +2,7 @@
 
 #include "core/Base64.h"
 #include "core/mindmap/UuidGenerator.h"
+#include "platform/PlatformBootstrap.h"
 #include "ui/branch/BranchRenderContext.h"
 #include "ui/branch/DrawBranchTextOnPath.h"
 #include "ui/branch/DrawBranchesBezier.h"
@@ -131,6 +132,28 @@ constexpr std::string_view kMixedBranchStylesPreview = "Mixed (per child)";
     }
   }
   return std::nullopt;
+}
+
+// Checks whether mouse_world_ is inside a link word in the given node's label.
+// When a link is hit, opens the URL and returns true so the caller can skip
+// drag/select.  Must be called inside an ImGui frame (uses GetFontSize).
+[[nodiscard]] bool TryOpenLinkAt(const CanvasNode& node, const MindMapPointerState& ptr) {
+  if (!canvas::ContainsMarkup(node.label_)) { return false; }
+  const std::vector<canvas::MarkupSpan> spans = canvas::ParseMarkup(node.label_);
+  const ImVec2 half    = mind_map::canvas::NodeHalfExtent(node);
+  const float  node_w  = half.x * 2.0F - mind_map::canvas::kNodePad * 2.0F;
+  const ImVec2 c       = node.pos_world_;
+  const ImVec2 sz_w    = canvas::MeasureMarkup(spans, node_w);
+  // Node centre is c; text top-left = c - sz/2.
+  const ImVec2 tl      = {c.x - sz_w.x * 0.5F, c.y - sz_w.y * 0.5F};
+  const float  atlas   = ImGui::GetFontSize();
+  for (const auto& lh : canvas::CollectLinkHits(spans, tl, atlas, node_w)) {  // NOLINT(readability-use-anyofallof)
+    if (mind_map::canvas::IsInsideRect(ptr.mouse_world_, lh.min_, lh.max_)) {
+      mind_map::platform::OpenUrl(lh.url_);
+      return true;
+    }
+  }
+  return false;
 }
 
 void DrawResizeHandles(ImDrawList* draw_list, ImVec2 rmin, ImVec2 rmax) {
@@ -440,6 +463,7 @@ void MindMapCanvasView::OnPrimaryDown(const MindMapPointerState& ptr) {
   }
 
   if (const auto hit = HitTestNodes(ptr.mouse_world_, nodes_); hit.has_value()) {
+    if (TryOpenLinkAt(nodes_[*hit], ptr)) { return; }
     dragging_node_ = hit;
     selected_node_ = hit;
     const ImVec2 c = nodes_[*hit].pos_world_;

@@ -8,6 +8,8 @@
 #include <array>
 #include <string>
 
+#include <shellapi.h>
+
 namespace mind_map::platform {
 
 void ConfigurePlatformGlContextHints() {
@@ -50,6 +52,16 @@ void LaunchNewWindow(std::string_view path) {
   } else {
     logging_utils::LogWindowsApiError("CreateProcessA", path, GetLastError());
   }
+}
+
+void OpenUrl(std::string_view url) {
+  const int wide_len = MultiByteToWideChar(CP_UTF8, 0, url.data(),
+                                           static_cast<int>(url.size()), nullptr, 0);
+  if (wide_len <= 0) { return; }
+  std::wstring wide_url(static_cast<size_t>(wide_len), L'\0');
+  MultiByteToWideChar(CP_UTF8, 0, url.data(), static_cast<int>(url.size()),
+                      wide_url.data(), wide_len);
+  ShellExecuteW(nullptr, L"open", wide_url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
 }  // namespace mind_map::platform

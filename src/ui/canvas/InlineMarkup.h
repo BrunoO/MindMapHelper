@@ -11,6 +11,7 @@ namespace mind_map::ui::canvas {
 // A contiguous run of text sharing one visual style.
 struct MarkupSpan {
   std::string text_;           // display text — escape sequences resolved, no markup syntax
+  std::string url_;            // non-empty → span is a clickable hyperlink
   bool bold_          = false;
   bool italic_        = false;
   bool code_          = false;  // rendered with background tint; no font switch
@@ -23,8 +24,14 @@ struct MarkupSpan {
 
 // Parses inline markup into styled spans.
 // Supported: **bold**  *italic*  ***bold+italic***  `code`  ~~strikethrough~~  \<escape>
+//            [text](url) — clickable hyperlink; url stored in MarkupSpan::url_
 // Code spans are raw: style markers inside backticks are treated as literal text.
 [[nodiscard]] std::vector<MarkupSpan> ParseMarkup(std::string_view label);
+
+// Scans plain text for bare http:// / https:// URLs and wraps each one as [url](url)
+// so pasted text automatically becomes clickable markup.  Already-wrapped links are
+// left unchanged (detected by a preceding '(' in the accumulated output).
+[[nodiscard]] std::string InjectMarkupLinks(std::string_view text);
 
 // Font variants for the markup renderer, loaded at atlas-build time alongside Inter-Regular.
 // bold / italic / bold_italic use FreeType synthetic flags — no extra .ttf files are needed.
