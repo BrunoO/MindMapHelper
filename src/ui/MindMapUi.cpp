@@ -152,9 +152,14 @@ void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas,
     ImGui::EndCombo();
   }
 
-  // Edge label text field — synced from the canvas whenever the canvas instance or
-  // selected edge changes. Keyed on (&canvas, edge_idx) so switching windows cannot
-  // carry over a stale buffer from a different canvas instance.
+  // Edge label text field.
+  // Two-phase sync:
+  //   Pre-render : sync when canvas instance or edge index changes (cross-window/edge).
+  //   Post-render: sync whenever the widget is not actively edited — catches undo/redo
+  //                label changes while the same (&canvas, edge_idx) key stays constant.
+  //                IsItemActive() is checked after InputText so it refers to that widget.
+  //                Push() executes immediately, so the canvas already holds the committed
+  //                value when the post-render sync runs on the deactivation frame.
   using SyncKey = std::pair<const MindMapCanvasView*, std::optional<size_t>>;
   static std::string s_edge_label_buf;
   static SyncKey s_last_sync_key{nullptr, std::nullopt};
@@ -175,6 +180,9 @@ void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas,
           canvas, *edge_idx, std::move(old_label), s_edge_label_buf));
       session.MarkDirty();
     }
+  }
+  if (!ImGui::IsItemActive() && edge_idx.has_value()) {
+    s_edge_label_buf = canvas::GetEdgeLabel(canvas, *edge_idx);
   }
 }
 
