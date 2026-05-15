@@ -25,6 +25,7 @@ constexpr float kHelpBranchesHubY = -248.0F;
 constexpr float kHelpFileHubY    = 22.0F;
 constexpr float kHelpEditHubY    = 292.0F;
 constexpr float kHelpCliHubY     = 562.0F;
+constexpr float kHelpMarkupHubY  = 765.0F;
 constexpr float kHelpViewportZoom = 1.0F;
 
 class HelpDocBuilder {
@@ -131,6 +132,22 @@ mind_map::core::MindMapDocument BuildHelpMindMapDocument() {
               {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
   b.AddLeaf(cli, "MindMapHelper --help opens this guide as the startup map.", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+
+  // Each leaf below uses markup so the rendered output demonstrates the syntax it describes.
+  // \* renders as a literal * so the format hint (e.g. "(**...**)") shows the actual characters.
+  const std::string markup = b.AddChild(root, "**Rich text** in labels", {kHelpHubX, kHelpMarkupHubY});
+  b.AddLeaf(markup, R"(**bold** (\*\*...\*\*))", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(markup, R"(*italic* (\*...\*))", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(markup, R"(***bold+italic*** (\*\*\*...\*\*\*))", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(markup, "`code` (backtick, tinted background)", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(markup, R"(~~strikethrough~~ (\~\~...\~\~))", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(markup, "Backslash escapes the next special character to show it literally.", {kHelpLeafX, leaf_y});
 
   mind_map::core::MindMapDocument doc = b.Release();
   doc.viewport_.pan_ = {kHelpViewportPanX, kHelpViewportPanY};
