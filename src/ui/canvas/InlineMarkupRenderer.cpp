@@ -52,7 +52,7 @@ ImVec2 LayoutSpans(const std::vector<MarkupSpan>& spans, float font_size,
         continue;
       }
       if (sv[i] == ' ') {
-        if (x > 0.0F) { x += space_w; }
+        x += (x > 0.0F) ? space_w : 0.0F;
         ++i;
         continue;
       }
@@ -80,7 +80,7 @@ ImVec2 LayoutSpans(const std::vector<MarkupSpan>& spans, float font_size,
 ImVec2 MeasureMarkup(const std::vector<MarkupSpan>& spans, float wrap_width) {
   const float atlas_size = ImGui::GetFontSize();
   return LayoutSpans(spans, atlas_size, wrap_width,
-                     [](const MarkupSpan&, ImFont*, const char*, const char*, float, ImVec2) {});
+                     [](const MarkupSpan&, ImFont*, const char*, const char*, float, ImVec2) { /* measure only — no drawing */ });
 }
 
 void DrawMarkup(ImDrawList* draw_list, ImVec2 top_left,
@@ -88,7 +88,7 @@ void DrawMarkup(ImDrawList* draw_list, ImVec2 top_left,
                 ImU32 color, const std::vector<MarkupSpan>& spans) {
   assert(draw_list != nullptr);
   LayoutSpans(spans, font_size, wrap_width,
-    [&](const MarkupSpan& span, ImFont* font, const char* wb, const char* we,
+    [draw_list, top_left, font_size, color](const MarkupSpan& span, ImFont* font, const char* wb, const char* we,
         float word_w, ImVec2 off) {
       const ImVec2 pos{top_left.x + off.x, top_left.y + off.y};
       if (span.code_) {
