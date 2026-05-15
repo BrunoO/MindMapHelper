@@ -99,9 +99,8 @@ void RenderNodeEditOverlay(const MindMapCanvasRenderContext& ctx,
 
   // Shift+Enter confirms. The widget already inserted a '\n' for the Enter key,
   // so strip it from the buffer before committing.
-  const bool shift_enter = ImGui::IsKeyPressed(ImGuiKey_Enter, /*repeat=*/false)
-                           && ImGui::GetIO().KeyShift;
-  if (shift_enter) {
+  if (const bool shift_enter = ImGui::IsKeyPressed(ImGuiKey_Enter, /*repeat=*/false)
+                               && ImGui::GetIO().KeyShift; shift_enter) {
     if (!buf.empty() && buf.back() == '\n') { buf.pop_back(); }
     CommitEdit(canvas, session, history);
     return;
