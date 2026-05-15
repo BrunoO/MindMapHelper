@@ -1,5 +1,7 @@
 #include "ui/canvas/NodeTextureUtils.h"
 
+#include "utils/Logger.h"
+
 #if defined(__APPLE__)
 #  define GL_SILENCE_DEPRECATION
 #  include <OpenGL/gl3.h>
@@ -22,7 +24,7 @@
 
 namespace mind_map::ui {
 
-ImTextureID UploadPngTexture(std::string_view png_bytes) {
+ImTextureID UploadPngTexture(std::string_view png_bytes, const std::string_view context) {
   if (png_bytes.empty()) {
     return 0;
   }
@@ -36,6 +38,12 @@ ImTextureID UploadPngTexture(std::string_view png_bytes) {
       &width, &height, &channels, 4);
   if (pixels == nullptr || width <= 0 || height <= 0) {
     stbi_image_free(pixels);
+    if (context.empty()) {
+      LOG_WARNING_BUILD("UploadPngTexture: PNG decode failed (" << png_bytes.size() << " bytes)");
+    } else {
+      LOG_WARNING_BUILD("UploadPngTexture: PNG decode failed for " << context << " ("
+                      << png_bytes.size() << " bytes)");
+    }
     return 0;
   }
   GLuint tex = 0U;

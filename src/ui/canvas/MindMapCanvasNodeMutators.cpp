@@ -18,7 +18,8 @@ void SetNodeImage(MindMapCanvasView& view, size_t idx, std::string_view png_base
   node.texture_id_ = 0;
   node.image_png_base64_ = png_base64;
   if (!png_base64.empty()) {
-    node.texture_id_ = UploadPngTexture(mind_map::core::Base64Decode(node.image_png_base64_));
+    node.texture_id_ =
+        UploadPngTexture(mind_map::core::Base64Decode(node.image_png_base64_), "node " + node.id_);
   }
 }
 

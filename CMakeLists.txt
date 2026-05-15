@@ -312,7 +312,10 @@ target_include_directories(mindmap_helper_ui PRIVATE
 )
 target_link_libraries(mindmap_helper_ui PRIVATE freetype)
 target_link_libraries(mindmap_helper_ui PRIVATE ${BM_GLFW_TARGET})
-target_link_libraries(mindmap_helper_ui PRIVATE mindmap_helper_core)
+target_link_libraries(mindmap_helper_ui PRIVATE
+  mindmap_helper_core
+  mindmap_helper_utils
+)
 bm_link_opengl_for_platform(mindmap_helper_ui)
 
 if(APPLE)

@@ -313,7 +313,8 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
     node.collapsed_ = n.collapsed_;
     if (!n.image_png_base64_.empty()) {
       node.image_png_base64_ = n.image_png_base64_;
-      node.texture_id_ = UploadPngTexture(mind_map::core::Base64Decode(n.image_png_base64_));
+      node.texture_id_ =
+          UploadPngTexture(mind_map::core::Base64Decode(n.image_png_base64_), "node " + n.id_);
     }
     nodes_.push_back(std::move(node));
   }

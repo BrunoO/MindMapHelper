@@ -1,5 +1,7 @@
 #include "app/DocumentSessionService.h"
 
+#include "utils/Logger.h"
+
 #include "core/DocumentPathLoader.h"
 #include "core/mindmap/UuidGenerator.h"
 
@@ -77,6 +79,7 @@ void DocumentSessionService::ApplyImportedDocument() { SetImportedSessionAfterOp
 
 bool DocumentSessionService::Save(const mind_map::core::MindMapDocument& doc) {
   if (current_path_.empty()) {
+    LOG_WARNING_BUILD("DocumentSessionService::Save: no current path (use Save As)");
     return false;
   }
   if (!repo_->Save(current_path_, doc)) {

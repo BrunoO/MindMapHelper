@@ -1,5 +1,7 @@
 #include "ui/UiCommandDispatcher.h"
 
+#include "utils/Logger.h"
+
 #include "app/DocumentSessionService.h"
 #include "core/Base64.h"
 #include "ui/UiState.h"
@@ -114,7 +116,9 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
         history_.Push(std::make_unique<commands::PasteTextCommand>(
             state.canvas_, *sel, text));
         session.MarkDirty();
+        return;
       }
+      LOG_DEBUG_BUILD("Paste: no image or text on clipboard");
       return;
     }
     case UiCommandId::ToggleCollapsed: {

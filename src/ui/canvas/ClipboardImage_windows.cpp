@@ -1,5 +1,7 @@
 #include "ui/canvas/ClipboardImage.h"
 
+#include "utils/Logger.h"
+
 #if defined(_WIN32)
 #  include <windows.h>  // NOLINT(llvm-include-order)
 #  include <gdiplus.h>
@@ -176,14 +178,13 @@ std::optional<std::string> EncodeBitmapToPng(HBITMAP bitmap_handle) {
 }  // namespace
 
 std::optional<std::string> GetClipboardImagePng() {
-  // FIXME: improve diagnostics for paste failures.
-  // Currently every clipboard/encoding failure returns nullopt, so callers
-  // cannot distinguish "no image available" from "internal conversion failed".
   if (!IsGdiplusAvailable()) {
+    LOG_WARNING("GetClipboardImagePng: GDI+ unavailable");
     return std::nullopt;
   }
 
   if (OpenClipboard(nullptr) == FALSE) {
+    LOG_WARNING_BUILD("GetClipboardImagePng: OpenClipboard failed, error " << GetLastError());
     return std::nullopt;
   }
 
@@ -211,12 +212,16 @@ std::optional<std::string> GetClipboardImagePng() {
 
   CloseClipboard();
   if (local_bitmap == nullptr) {
+    LOG_DEBUG_BUILD("GetClipboardImagePng: clipboard has no bitmap image");
     return std::nullopt;
   }
 
   const auto png_bytes = EncodeBitmapToPng(local_bitmap);
   if (bitmap_owned) {
     DeleteObject(local_bitmap);
+  }
+  if (!png_bytes.has_value()) {
+    LOG_WARNING("GetClipboardImagePng: failed to encode clipboard bitmap as PNG");
   }
   return png_bytes;
 }

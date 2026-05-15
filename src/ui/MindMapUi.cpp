@@ -1,5 +1,7 @@
 #include "ui/MindMapUi.h"
 
+#include "utils/Logger.h"
+
 #include "app/DocumentSessionService.h"
 #include "core/ImportService.h"
 #include "ui/MindMapCanvasView.h"
@@ -227,7 +229,7 @@ void HandleSaveMenuItem(const UiState& state, mind_map::app::DocumentSessionServ
   }
   const auto doc = state.canvas_.ToDocument(state.ToViewport());
   if (!session.Save(doc)) {
-    // Save failed; repository already logged the error to stderr.
+    LOG_WARNING_BUILD("File menu Save failed for '" << session.GetCurrentPath() << '\'');
   }
 }
 
@@ -530,6 +532,45 @@ void ResumeSaveAsContext(UiState& state, mind_map::app::DocumentSessionService& 
   }
 }
 
+void LoadDocumentIntoCanvas(UiState& state, commands::CommandHistory& history,
+                            const mind_map::core::MindMapDocument& doc) {
+  history.Clear();
+  state.canvas_.LoadFrom(doc);
+  state.ApplyViewport(doc.viewport_);
+}
+
+void HandleImportDialogOk(const std::string& path, const mind_map::core::ImportService& import_service,
+                          UiState& state, mind_map::app::DocumentSessionService& session,
+                          commands::CommandHistory& history) {
+  if (auto doc = import_service.ImportFile(path)) {
+    session.ApplyImportedDocument();
+    LoadDocumentIntoCanvas(state, history, *doc);
+    return;
+  }
+  LOG_WARNING_BUILD("Import failed for '" << path << "' (see session log for details)");
+}
+
+void HandleOpenDialogOk(const std::string& path, const mind_map::core::ImportService& import_service,
+                        UiState& state, mind_map::app::DocumentSessionService& session,
+                        commands::CommandHistory& history) {
+  mind_map::core::MindMapDocument doc;
+  if (session.OpenFromPath(path, doc, import_service)) {
+    LoadDocumentIntoCanvas(state, history, doc);
+    return;
+  }
+  LOG_WARNING_BUILD("Open failed for '" << path << "' (see session log for details)");
+}
+
+[[nodiscard]] bool HandleSaveAsDialogOk(const std::string& path, UiState& state,
+                                        mind_map::app::DocumentSessionService& session) {
+  const auto doc = state.canvas_.ToDocument(state.ToViewport());
+  const bool saved = session.SaveAs(path, doc);
+  if (!saved) {
+    LOG_WARNING_BUILD("Save As failed for '" << path << "' (see session log for details)");
+  }
+  return saved;
+}
+
 void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& session,
                        commands::CommandHistory& history) {
   auto* const fd = ImGuiFileDialog::Instance();
@@ -538,41 +579,21 @@ void RenderFileDialogs(UiState& state, mind_map::app::DocumentSessionService& se
 
   if (fd->Display("ImportFileDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
     if (fd->IsOk()) {
-      const std::string path = fd->GetFilePathName();
-      if (auto doc = import_service.ImportFile(path)) {
-        session.ApplyImportedDocument();
-        history.Clear();
-        state.canvas_.LoadFrom(*doc);
-        state.ApplyViewport(doc->viewport_);
-      }
+      HandleImportDialogOk(fd->GetFilePathName(), import_service, state, session, history);
     }
     fd->Close();
   }
 
   if (fd->Display("OpenFileDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
     if (fd->IsOk()) {
-      const std::string path = fd->GetFilePathName();
-      mind_map::core::MindMapDocument doc;
-      if (session.OpenFromPath(path, doc, import_service)) {
-        history.Clear();
-        state.canvas_.LoadFrom(doc);
-        state.ApplyViewport(doc.viewport_);
-      }
+      HandleOpenDialogOk(fd->GetFilePathName(), import_service, state, session, history);
     }
     fd->Close();
   }
 
   if (fd->Display("SaveAsFileDlg", ImGuiWindowFlags_NoCollapse, dialog_min_size)) {
-    bool saved = false;
-    if (fd->IsOk()) {
-      const std::string path = fd->GetFilePathName();
-      const auto doc = state.canvas_.ToDocument(state.ToViewport());
-      saved = session.SaveAs(path, doc);
-      if (!saved) {
-        // Save failed; repository already logged the error to stderr.
-      }
-    }
-    // If context is set, resume the action that triggered Save As (or let modal reopen on cancel).
+    const bool saved =
+        fd->IsOk() ? HandleSaveAsDialogOk(fd->GetFilePathName(), state, session) : false;
     ResumeSaveAsContext(state, session, history, saved);
     fd->Close();
   }
