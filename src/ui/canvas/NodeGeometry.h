@@ -29,6 +29,23 @@ inline constexpr float kDefaultBlendToNormalized = 0.62F;
   return {kNodeMaxLabelWidth * 0.5F + kNodePad, wrapped.y * 0.5F + kNodePad};
 }
 
+/// Half-extents for a pasted or loaded image: 1 world unit per pixel (half-width = width/2), aspect ratio preserved.
+/// Images larger than a label-max node are scaled down uniformly on the longest side.
+[[nodiscard]] inline ImVec2 NodeHalfExtentForImagePixels(int width_px, int height_px) {
+  assert(width_px > 0);
+  assert(height_px > 0);
+  float hx = static_cast<float>(width_px) * 0.5F;
+  float hy = static_cast<float>(height_px) * 0.5F;
+  const float max_half = kNodeMaxLabelWidth * 0.5F + kNodePad;
+  const float longest = (std::max)(hx, hy);
+  if (longest > max_half) {
+    const float scale = max_half / longest;
+    hx *= scale;
+    hy *= scale;
+  }
+  return {hx, hy};
+}
+
 [[nodiscard]] inline float NodeRadiusWorld(const char* label) {
   assert(label != nullptr);
   const ImVec2 half = NodeHalfExtentForLabel(label);

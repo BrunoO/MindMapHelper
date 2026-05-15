@@ -7,3 +7,4 @@ mindmap_helper_import_service_test
 mindmap_helper_document_path_loader_test
 mindmap_helper_document_session_path_test
 mindmap_helper_help_doc_test
+mindmap_helper_node_image_extent_test

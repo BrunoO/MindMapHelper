@@ -2,29 +2,46 @@
 
 #include "core/Base64.h"
 #include "ui/MindMapCanvasView.h"
+#include "ui/canvas/CanvasNode.h"
+#include "ui/canvas/NodeGeometry.h"
 #include "ui/canvas/NodeTextureUtils.h"
 #include "utils/Logger.h"
 
 #include <cassert>
+#include <string>
 
 namespace mind_map::ui::canvas {
+
+void ApplyImageToCanvasNode(CanvasNode& node, std::string_view png_base64) {
+  ReleaseTexture(node.texture_id_);
+  node.texture_id_ = 0;
+  node.image_png_base64_.assign(png_base64);
+  if (png_base64.empty()) {
+    node.half_extent_override_ = {0.0F, 0.0F};
+    return;
+  }
+  const std::string png_bytes = mind_map::core::Base64Decode(node.image_png_base64_);
+  if (png_bytes.empty()) {
+    LOG_WARNING_BUILD("ApplyImageToCanvasNode: base64 decode produced empty PNG for node " << node.id_);
+    node.half_extent_override_ = {0.0F, 0.0F};
+    return;
+  }
+  const PngTextureUpload uploaded = UploadPngTexture(png_bytes, "node " + node.id_);
+  node.texture_id_ = uploaded.texture_id_;
+  if (uploaded.texture_id_ != 0 && uploaded.width_px_ > 0 && uploaded.height_px_ > 0) {
+    node.half_extent_override_ =
+        mind_map::canvas::NodeHalfExtentForImagePixels(uploaded.width_px_, uploaded.height_px_);
+  } else {
+    node.half_extent_override_ = {0.0F, 0.0F};
+  }
+}
 
 void SetNodeImage(MindMapCanvasView& view, size_t idx, std::string_view png_base64) {
   assert(idx < view.nodes_.size());
   if (idx >= view.nodes_.size()) {
     return;
   }
-  auto& node = view.nodes_[idx];
-  ReleaseTexture(node.texture_id_);
-  node.texture_id_ = 0;
-  node.image_png_base64_ = png_base64;
-  if (!png_base64.empty()) {
-    const std::string png_bytes = mind_map::core::Base64Decode(node.image_png_base64_);
-    if (png_bytes.empty()) {
-      LOG_WARNING_BUILD("SetNodeImage: base64 decode produced empty PNG for node " << node.id_);
-    }
-    node.texture_id_ = UploadPngTexture(png_bytes, "node " + node.id_);
-  }
+  ApplyImageToCanvasNode(view.nodes_[idx], png_base64);
 }
 
 const std::string& GetNodeImageBase64(const MindMapCanvasView& view, size_t idx) {

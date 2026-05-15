@@ -24,9 +24,9 @@
 
 namespace mind_map::ui {
 
-ImTextureID UploadPngTexture(std::string_view png_bytes, const std::string_view context) {
+PngTextureUpload UploadPngTexture(std::string_view png_bytes, const std::string_view context) {
   if (png_bytes.empty()) {
-    return 0;
+    return {};
   }
   int width = 0;
   int height = 0;
@@ -44,7 +44,7 @@ ImTextureID UploadPngTexture(std::string_view png_bytes, const std::string_view 
       LOG_WARNING_BUILD("UploadPngTexture: PNG decode failed for " << context << " ("
                       << png_bytes.size() << " bytes)");
     }
-    return 0;
+    return {};
   }
   GLuint tex = 0U;
   glGenTextures(1, &tex);
@@ -55,7 +55,7 @@ ImTextureID UploadPngTexture(std::string_view png_bytes, const std::string_view 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
   stbi_image_free(pixels);
-  return static_cast<ImTextureID>(tex);
+  return {static_cast<ImTextureID>(tex), width, height};
 }
 
 void ReleaseTexture(ImTextureID tex_id) {

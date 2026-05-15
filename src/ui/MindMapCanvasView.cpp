@@ -1,6 +1,5 @@
 #include "ui/MindMapCanvasView.h"
 
-#include "core/Base64.h"
 #include "core/mindmap/UuidGenerator.h"
 #include "platform/PlatformBootstrap.h"
 #include "ui/branch/BranchRenderContext.h"
@@ -11,6 +10,7 @@
 #include "ui/canvas/CanvasMath.h"
 #include "ui/canvas/InlineMarkup.h"
 #include "ui/canvas/InlineMarkupRenderer.h"
+#include "ui/canvas/MindMapCanvasNodeMutators.h"
 #include "ui/canvas/NodeExtent.h"
 #include "ui/canvas/NodeGeometry.h"
 #include "ui/canvas/NodeTextureUtils.h"
@@ -54,12 +54,7 @@ void ApplyDocumentNodeImage(CanvasNode& node, const mind_map::core::MindMapNode&
   if (source.image_png_base64_.empty()) {
     return;
   }
-  node.image_png_base64_ = source.image_png_base64_;
-  const std::string png_bytes = mind_map::core::Base64Decode(node.image_png_base64_);
-  if (png_bytes.empty()) {
-    LOG_WARNING_BUILD("LoadFrom: base64 decode produced empty PNG for node " << node.id_);
-  }
-  node.texture_id_ = UploadPngTexture(png_bytes, "node " + node.id_);
+  canvas::ApplyImageToCanvasNode(node, source.image_png_base64_);
 }
 
 [[nodiscard]] branch::BranchStyle FirstActiveChildEdgeStyle(const std::vector<CanvasNode>& nodes) {

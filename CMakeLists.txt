@@ -455,4 +455,11 @@ if(BM_ENABLE_TESTS)
   )
   add_test(NAME mindmap_helper_help_doc_test COMMAND mindmap_helper_help_doc_test)
 
+  add_executable(mindmap_helper_node_image_extent_test
+    tests/NodeImageExtentTest.cpp
+  )
+  bm_target_use_src_includes(mindmap_helper_node_image_extent_test)
+  bm_target_use_imgui_includes(mindmap_helper_node_image_extent_test)
+  add_test(NAME mindmap_helper_node_image_extent_test COMMAND mindmap_helper_node_image_extent_test)
+
 endif()
