@@ -2,6 +2,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <array>
 #include <climits>
 #include <string>
 #include <vector>
