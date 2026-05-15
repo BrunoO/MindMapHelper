@@ -89,6 +89,8 @@ struct StartupCli {
     mind_map::core::MindMapDocument doc;
     if (session.OpenFromPath(cli.path_, doc, import_service)) {
       deferred_startup_document = std::move(doc);
+    } else {
+      LOG_WARNING_BUILD("RunApp: failed to open startup document '" << cli.path_ << '\'');
     }
   } else {
     mind_map::core::MindMapDocument doc;
@@ -100,6 +102,7 @@ struct StartupCli {
       cli.help_map_ ? "Help — MindMap Helper" : WindowTitleForPath(session.GetCurrentPath());
   GLFWwindow* const window = mind_map::platform::CreateMainWindow(1280, 720, initial_title.c_str());
   if (window == nullptr) {
+    LOG_ERROR("RunApp: failed to create main window");
     return 1;
   }
 
@@ -130,10 +133,8 @@ struct StartupCli {
   if (const ImFont* const loaded_font =
           io.Fonts->AddFontFromFileTTF("assets/fonts/Inter-Regular.ttf", font_size, nullptr, kGlyphRanges.data());
       loaded_font == nullptr) {
-    (void)fprintf(stderr,
-                  "[AppMain] failed to load 'assets/fonts/Inter-Regular.ttf' "
-                  "(size %.0fpx) — falling back to ImGui built-in font\n",
-                  font_size);
+    LOG_WARNING_BUILD("RunApp: failed to load 'assets/fonts/Inter-Regular.ttf' (size "
+                      << font_size << "px) — using ImGui default font");
     io.Fonts->AddFontDefault();
     io.FontGlobalScale = 1.0F;
     // No styled variants available; markup degrades to regular font for bold/italic.

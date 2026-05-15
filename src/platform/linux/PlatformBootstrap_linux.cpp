@@ -1,9 +1,13 @@
 #include "platform/PlatformBootstrap.h"
 
+#include "utils/LogFormatUtils.h"
+#include "utils/Logger.h"
+
 #include <GLFW/glfw3.h>
 
 #include <array>
 #include <climits>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -30,7 +34,10 @@ void ConfigurePlatformGlContextHints() {
 void LaunchNewWindow(std::string_view path) {
   std::array<char, PATH_MAX> buf{};
   const ssize_t len = readlink("/proc/self/exe", buf.data(), buf.size() - 1U);
-  if (len <= 0) { return; }
+  if (len <= 0) {
+    LOG_ERROR("LaunchNewWindow: readlink /proc/self/exe failed");
+    return;
+  }
   buf[static_cast<size_t>(len)] = '\0';
 
   std::string exe(buf.data());
@@ -42,7 +49,11 @@ void LaunchNewWindow(std::string_view path) {
   argv.push_back(nullptr);
 
   pid_t pid = 0;
-  (void)posix_spawn(&pid, exe.c_str(), nullptr, nullptr, argv.data(), environ);
+  if (const int spawn_err = posix_spawn(&pid, exe.c_str(), nullptr, nullptr, argv.data(), nullptr);
+      spawn_err != 0) {
+    LOG_ERROR_BUILD("LaunchNewWindow: posix_spawn failed for '" << path << "': "
+                    << ThreadSafeStrerror(spawn_err));
+  }
 }
 
 }  // namespace mind_map::platform

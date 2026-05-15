@@ -36,6 +36,14 @@ int main() {
   assert(doc.nodes_.size() >= kMinHelpNodeCount);
   assert(doc.edges_.size() + 1U == doc.nodes_.size());
   assert(doc.nodes_[0].label_.find("guide") != std::string::npos);
+  bool has_log_help = false;
+  for (const auto& node : doc.nodes_) {
+    if (node.label_.find("Session log") != std::string::npos) {
+      has_log_help = true;
+      break;
+    }
+  }
+  assert(has_log_help);
   assert(doc.layouts_.size() == doc.nodes_.size());
   assert(doc.viewport_.pan_.x_ == kExpectedViewportPanX && doc.viewport_.pan_.y_ == kExpectedViewportPanY);
   assert(doc.viewport_.zoom_ == kExpectedViewportZoom);

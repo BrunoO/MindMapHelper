@@ -1,5 +1,8 @@
 #include "platform/PlatformBootstrap.h"
 
+#include "utils/Logger.h"
+#include "utils/LoggingUtils.h"
+
 #include <GLFW/glfw3.h>
 
 #include <array>
@@ -24,7 +27,10 @@ void ConfigurePlatformGlContextHints() {
 
 void LaunchNewWindow(std::string_view path) {
   std::array<char, MAX_PATH> exe_buf{};
-  if (GetModuleFileNameA(nullptr, exe_buf.data(), MAX_PATH) == 0) { return; }
+  if (GetModuleFileNameA(nullptr, exe_buf.data(), MAX_PATH) == 0) {
+    logging_utils::LogWindowsApiError("GetModuleFileNameA", "", GetLastError());
+    return;
+  }
 
   std::string cmd = "\"";
   cmd += exe_buf.data();
@@ -41,6 +47,8 @@ void LaunchNewWindow(std::string_view path) {
   if (CreateProcessA(nullptr, cmd.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi) != 0) {
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
+  } else {
+    logging_utils::LogWindowsApiError("CreateProcessA", path, GetLastError());
   }
 }
 

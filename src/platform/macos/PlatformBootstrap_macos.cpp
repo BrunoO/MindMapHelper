@@ -1,10 +1,14 @@
 #include "platform/PlatformBootstrap.h"
 
+#include "utils/LogFormatUtils.h"
+#include "utils/Logger.h"
+
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
 #include <array>
 #include <climits>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -35,6 +39,7 @@ void LaunchNewWindow(std::string_view path) {
   constexpr uint32_t kBufSize = PATH_MAX;
   std::array<char, kBufSize> buf{};
   if (uint32_t size = kBufSize; _NSGetExecutablePath(buf.data(), &size) != 0) {
+    LOG_ERROR("LaunchNewWindow: _NSGetExecutablePath failed");
     return;
   }
 
@@ -47,7 +52,11 @@ void LaunchNewWindow(std::string_view path) {
   argv.push_back(nullptr);
 
   pid_t pid = 0;
-  (void)posix_spawn(&pid, exe.c_str(), nullptr, nullptr, argv.data(), *_NSGetEnviron());
+  if (const int spawn_err = posix_spawn(&pid, exe.c_str(), nullptr, nullptr, argv.data(), *_NSGetEnviron());
+      spawn_err != 0) {
+    LOG_ERROR_BUILD("LaunchNewWindow: posix_spawn failed for '" << path << "': "
+                    << ThreadSafeStrerror(spawn_err));
+  }
 }
 
 }  // namespace mind_map::platform

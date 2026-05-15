@@ -1,6 +1,7 @@
 #include "app/HelpMindMapDocument.h"
 
 #include "core/mindmap/UuidGenerator.h"
+#include "utils/Logger.h"
 
 #include <string>
 #include <string_view>
@@ -109,6 +110,18 @@ mind_map::core::MindMapDocument BuildHelpMindMapDocument() {
   b.AddLeaf(file_menu, "New Window (blank map); Open in New Window… (pick a file).", {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
   b.AddLeaf(file_menu, "Reset layout: restore saved initial positions. Reset view: default pan/zoom.", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  if (const std::string log_path = Logger::Instance().GetLogFilePath(); !log_path.empty()) {
+    b.AddLeaf(file_menu, "Session log file: " + log_path, {kHelpLeafX, leaf_y});
+  } else {
+    b.AddLeaf(file_menu,
+              "Session log file: MindMapHelper.log in ~/.cache or $XDG_CACHE_HOME (macOS/Linux), or %TEMP% (Windows).",
+              {kHelpLeafX, leaf_y});
+  }
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(file_menu,
+            "The session log records import/save errors, GLFW issues, and other diagnostics for this run.",
+            {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
 
   const std::string edit_view = b.AddChild(root, "Edit, view & clipboard", {kHelpHubX, kHelpEditHubY});

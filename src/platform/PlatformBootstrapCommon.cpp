@@ -18,6 +18,7 @@ namespace mind_map::platform {
 GLFWwindow* CreateMainWindow(int width, int height, const char* title) {
   glfwSetErrorCallback(GlfwErrorCallback);
   if (glfwInit() == 0) {
+    LOG_ERROR("CreateMainWindow: glfwInit failed");
     return nullptr;
   }
 
@@ -25,6 +26,7 @@ GLFWwindow* CreateMainWindow(int width, int height, const char* title) {
 
   GLFWwindow* const window = glfwCreateWindow(width, height, title, nullptr, nullptr);
   if (window == nullptr) {
+    LOG_ERROR("CreateMainWindow: glfwCreateWindow failed");
     glfwTerminate();
     return nullptr;
   }

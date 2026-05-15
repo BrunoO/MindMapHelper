@@ -446,7 +446,10 @@ if(BM_ENABLE_TESTS)
     src/app/HelpMindMapDocument.cpp
   )
   bm_target_use_src_includes(mindmap_helper_help_doc_test)
-  target_link_libraries(mindmap_helper_help_doc_test PRIVATE mindmap_helper_core)
+  target_link_libraries(mindmap_helper_help_doc_test PRIVATE
+    mindmap_helper_core
+    mindmap_helper_utils
+  )
   add_test(NAME mindmap_helper_help_doc_test COMMAND mindmap_helper_help_doc_test)
 
 endif()

@@ -1,10 +1,14 @@
 #include "core/imx/ImxMindMapLoader.h"
 
+#include "utils/LogFormatUtils.h"
+#include "utils/Logger.h"
+
 #include <pugixml.hpp>
 #include <zip.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cerrno>
 #include <cstring>
 #include <deque>
 #include <optional>
@@ -280,15 +284,18 @@ void ApplyImageAssetId(ImxNode& node,
   if (const pugi::xml_parse_result parse_result =
           doc.load_buffer(data_xml.data(), data_xml.size(), pugi::parse_default, pugi::encoding_utf8);
       parse_result.status != pugi::status_ok) {
+    LOG_ERROR_BUILD("ImxMindMapLoader: data.xml parse failed: " << parse_result.description());
     return std::nullopt;
   }
 
   const pugi::xml_node floating = FindFirstElementByName(doc.document_element(), "floatingIdea");
   if (!floating) {
+    LOG_ERROR("ImxMindMapLoader: data.xml missing floatingIdea element");
     return std::nullopt;
   }
   const std::string root_id = AttrOrEmpty(floating, "id");
   if (root_id.empty()) {
+    LOG_ERROR("ImxMindMapLoader: data.xml floatingIdea has empty id");
     return std::nullopt;
   }
 
@@ -425,15 +432,23 @@ struct ZipArchiveCloser {
 }
 
 [[nodiscard]] std::optional<std::string> ReadZipEntryUncompressed(zip_t* archive, zip_uint64_t index) {
+  const char* const entry_name = zip_get_name(archive, index, 0);
+  const std::string_view entry_label = entry_name != nullptr ? std::string_view{entry_name} : "unknown";
+
   zip_stat_t stat{};
   if (zip_stat_index(archive, index, 0, &stat) != 0) {
+    LOG_ERROR_BUILD("ImxMindMapLoader: zip_stat_index failed for '" << entry_label << "': "
+                    << zip_error_strerror(zip_get_error(archive)));
     return std::nullopt;
   }
   if ((stat.valid & ZIP_STAT_SIZE) == 0) {
+    LOG_ERROR_BUILD("ImxMindMapLoader: zip entry '" << entry_label << "' has no size in archive");
     return std::nullopt;
   }
   zip_file_t* file = zip_fopen_index(archive, index, 0);
   if (file == nullptr) {
+    LOG_ERROR_BUILD("ImxMindMapLoader: zip_fopen_index failed for '" << entry_label << "': "
+                    << zip_error_strerror(zip_get_error(archive)));
     return std::nullopt;
   }
   std::string buffer(static_cast<size_t>(stat.size), '\0');
@@ -443,6 +458,8 @@ struct ZipArchiveCloser {
         zip_fread(file, buffer.data() + read_total, stat.size - read_total);
     if (chunk <= 0) {
       zip_fclose(file);
+      LOG_ERROR_BUILD("ImxMindMapLoader: zip_fread failed for '" << entry_label << "' at offset "
+                      << read_total);
       return std::nullopt;
     }
     read_total += static_cast<zip_uint64_t>(chunk);
@@ -477,12 +494,19 @@ std::optional<ImxMindMapModel> LoadImxMindMapModelFromFile(const std::string_vie
   zip_t* raw = zip_open(path.c_str(), ZIP_RDONLY, &zip_error);
   const ZipArchiveCloser closer{raw};
   if (raw == nullptr) {
+    LOG_ERROR_BUILD("ImxMindMapLoader: zip_open failed for '" << path << "': zip_error=" << zip_error
+                    << " errno=" << errno << " (" << ThreadSafeStrerror(errno) << ')');
     return std::nullopt;
   }
 
   const zip_int64_t data_index = LocateEntryByBasename(raw, "data.xml");
   const zip_int64_t meta_index = LocateEntryByBasename(raw, "mapmeta.xml");
-  if (data_index < 0 || meta_index < 0) {
+  if (data_index < 0) {
+    LOG_ERROR_BUILD("ImxMindMapLoader: '" << path << "' missing data.xml");
+    return std::nullopt;
+  }
+  if (meta_index < 0) {
+    LOG_ERROR_BUILD("ImxMindMapLoader: '" << path << "' missing mapmeta.xml");
     return std::nullopt;
   }
 
@@ -495,6 +519,7 @@ std::optional<ImxMindMapModel> LoadImxMindMapModelFromFile(const std::string_vie
 
   std::optional<ImxMindMapModel> model = LoadImxMindMapModelFromXml(*data_xml, *mapmeta_xml);
   if (!model) {
+    LOG_ERROR_BUILD("ImxMindMapLoader: failed to parse IMX content in '" << path << '\'');
     return std::nullopt;
   }
 
@@ -504,6 +529,8 @@ std::optional<ImxMindMapModel> LoadImxMindMapModelFromFile(const std::string_vie
     }
     const zip_int64_t img_index = LocateImageEntry(raw, node.image_asset_id_);
     if (img_index < 0) {
+      LOG_DEBUG_BUILD("ImxMindMapLoader: embedded image not found for node " << node.id_ << " asset '"
+                      << node.image_asset_id_ << '\'');
       continue;
     }
     if (auto bytes = ReadZipEntryUncompressed(raw, static_cast<zip_uint64_t>(img_index))) {
