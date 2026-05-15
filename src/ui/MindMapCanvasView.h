@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -108,6 +109,15 @@ class MindMapCanvasView {
   void SelectNode(std::optional<size_t> idx);
   [[nodiscard]] ImVec2 GetNodeWorldPos(size_t idx) const;
 
+  // Inline label editing — state machine for the edit overlay (Option B: overlay in MindMapUi).
+  // BeginEditing selects the node and arms the editor. The overlay calls GetEditBuffer() each
+  // frame to drive InputTextMultiline, then calls CancelEditing or commits via RenameNodeCommand.
+  void BeginEditing(size_t idx);
+  void CancelEditing();
+  [[nodiscard]] bool IsEditing() const { return editing_node_.has_value(); }
+  [[nodiscard]] std::optional<size_t> GetEditingNode() const { return editing_node_; }
+  [[nodiscard]] std::string& GetEditBuffer() { return edit_buffer_; }
+
  private:
   friend std::optional<size_t> canvas::GetParentOf(const MindMapCanvasView& view, size_t idx);
   friend std::optional<size_t> canvas::GetFirstActiveChildOf(const MindMapCanvasView& view, size_t idx);
@@ -136,6 +146,11 @@ class MindMapCanvasView {
   std::unordered_map<size_t, std::vector<size_t>> collapse_affected_;
   // Set by OnPrimaryDown when a collapse triangle is clicked; consumed by MindMapUi.
   std::optional<size_t> collapse_toggle_target_;
+
+  // Inline-editing state; nullopt when not editing.
+  std::optional<size_t> editing_node_;
+  std::string edit_buffer_;
+  std::string edit_original_;
 };
 
 }  // namespace mind_map::ui

@@ -211,6 +211,7 @@ set(IMGUI_SOURCES
   ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
   ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
   ${IMGUI_DIR}/misc/freetype/imgui_freetype.cpp
+  ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
 set(BM_UI_SOURCES
@@ -230,6 +231,8 @@ set(BM_UI_SOURCES
   src/ui/canvas/MindMapCanvasNodeMutators.cpp
   src/ui/commands/PasteImageCommand.cpp
   src/ui/commands/PasteTextCommand.cpp
+  src/ui/commands/RenameNodeCommand.cpp
+  src/ui/NodeEditOverlay.cpp
 )
 
 set(BM_CORE_SOURCES

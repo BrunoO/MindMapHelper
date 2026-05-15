@@ -27,6 +27,7 @@ enum class ShortcutAction : std::uint8_t {
   NavigateFirstChild,
   NavigatePrevSibling,
   NavigateNextSibling,
+  RenameNode,
   Count
 };
 
@@ -59,6 +60,7 @@ inline constexpr std::array<ShortcutDef, static_cast<size_t>(ShortcutAction::Cou
   /* NavigateFirstChild*/ {ImGuiKey_RightArrow, false, false, false, "→",     "Select first child node",               UiCommandId::NavigateFirstChild,  ImGuiKey_None, nullptr, true},
   /* NavigatePrevSib   */ {ImGuiKey_UpArrow,    false, false, false, "↑",     "Select previous sibling node",          UiCommandId::NavigatePrevSibling, ImGuiKey_None, nullptr, true},
   /* NavigateNextSib   */ {ImGuiKey_DownArrow,  false, false, false, "↓",     "Select next sibling node",              UiCommandId::NavigateNextSibling, ImGuiKey_None, nullptr, true},
+  /* RenameNode        */ {ImGuiKey_F2,         false, false, false, "F2",    "Edit selected node label",              UiCommandId::RenameNode},
 }};
 // clang-format on
 

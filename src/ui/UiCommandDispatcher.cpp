@@ -39,6 +39,22 @@ void NavigateTo(UiState& state, std::optional<size_t> target) {
   CenterCanvasOnNode(state, *target);
 }
 
+// Handles the five commands that all require a current selection: the four
+// navigation directions and RenameNode. Extracted to keep Dispatch under the
+// cognitive-complexity threshold.
+void DispatchSelectionCommand(UiCommandId command, UiState& state) {
+  const auto sel = state.canvas_.GetSelectedNode();
+  if (!sel) { return; }
+  switch (command) {  // NOSONAR(cpp:S6177)
+    case UiCommandId::NavigateParent:      NavigateTo(state, canvas::GetParentOf(state.canvas_, *sel));           return;
+    case UiCommandId::NavigateFirstChild:  NavigateTo(state, canvas::GetFirstActiveChildOf(state.canvas_, *sel)); return;
+    case UiCommandId::NavigatePrevSibling: NavigateTo(state, canvas::GetPrevSiblingOf(state.canvas_, *sel));      return;
+    case UiCommandId::NavigateNextSibling: NavigateTo(state, canvas::GetNextSiblingOf(state.canvas_, *sel));      return;
+    case UiCommandId::RenameNode:          state.canvas_.BeginEditing(*sel);                                      return;
+    default: return;
+  }
+}
+
 }  // namespace
 
 UiCommandDispatcher::UiCommandDispatcher(commands::CommandHistory& history) : history_(history) {}
@@ -109,30 +125,13 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       session.MarkDirty();
       return;
     }
-    case UiCommandId::NavigateParent: {
-      if (const auto sel = state.canvas_.GetSelectedNode(); sel.has_value()) {
-        NavigateTo(state, canvas::GetParentOf(state.canvas_, *sel));
-      }
+    case UiCommandId::NavigateParent:
+    case UiCommandId::NavigateFirstChild:
+    case UiCommandId::NavigatePrevSibling:
+    case UiCommandId::NavigateNextSibling:
+    case UiCommandId::RenameNode:
+      DispatchSelectionCommand(command, state);
       return;
-    }
-    case UiCommandId::NavigateFirstChild: {
-      if (const auto sel = state.canvas_.GetSelectedNode(); sel.has_value()) {
-        NavigateTo(state, canvas::GetFirstActiveChildOf(state.canvas_, *sel));
-      }
-      return;
-    }
-    case UiCommandId::NavigatePrevSibling: {
-      if (const auto sel = state.canvas_.GetSelectedNode(); sel.has_value()) {
-        NavigateTo(state, canvas::GetPrevSiblingOf(state.canvas_, *sel));
-      }
-      return;
-    }
-    case UiCommandId::NavigateNextSibling: {
-      if (const auto sel = state.canvas_.GetSelectedNode(); sel.has_value()) {
-        NavigateTo(state, canvas::GetNextSiblingOf(state.canvas_, *sel));
-      }
-      return;
-    }
   }
 }
 

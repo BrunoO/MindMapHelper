@@ -3,6 +3,7 @@
 #include "app/DocumentSessionService.h"
 #include "core/ImportService.h"
 #include "ui/MindMapCanvasView.h"
+#include "ui/NodeEditOverlay.h"
 #include "ui/ShortcutRegistry.h"
 #include "ui/UiCommandDispatcher.h"
 #include "ui/branch/BranchStyle.h"
@@ -307,6 +308,12 @@ void HandleCanvasPointerInput(bool canvas_item_active, const ImGuiIO& io,
     }
   }
 
+  if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && pointer_state.canvas_hovered_) {
+    if (const auto sel = canvas.GetSelectedNode(); sel.has_value()) {
+      canvas.BeginEditing(*sel);
+    }
+  }
+
   if (canvas_item_active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
     if (canvas.IsDraggingContent()) {
       canvas.OnPrimaryDrag(pointer_state);
@@ -359,6 +366,8 @@ void RenderCanvas(UiState& state, mind_map::app::DocumentSessionService& session
   render_context.draw_list_->PushClipRect(canvas_p0, canvas_p1, true);
   state.canvas_.Render(render_context);
   render_context.draw_list_->PopClipRect();
+
+  RenderNodeEditOverlay(render_context, state.canvas_, session, history);
 }
 
 void RenderStatusBar(const UiState& state) {

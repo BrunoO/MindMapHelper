@@ -11,6 +11,7 @@
 namespace mind_map::canvas {
 
 inline constexpr float kNodePad = 10.0F;
+inline constexpr float kNodeMaxLabelWidth = 320.0F;
 inline constexpr float kNodeCornerRadiusWorld = 6.0F;
 inline constexpr float kCornerRadiusClampFactor = 0.98F;
 inline constexpr float kDefaultHorizontalStickiness = 1.12F;
@@ -18,10 +19,15 @@ inline constexpr float kDefaultBlendFromNormalized = 0.22F;
 inline constexpr float kDefaultBlendToNormalized = 0.62F;
 
 /// Returns the label-fitted half-extents for a node box (ImGui text size + kNodePad padding).
+/// Long labels wrap at kNodeMaxLabelWidth and grow the node downward.
 [[nodiscard]] inline ImVec2 NodeHalfExtentForLabel(const char* label) {
   assert(label != nullptr);
-  const ImVec2 text_sz = ImGui::CalcTextSize(label);
-  return {text_sz.x * 0.5F + kNodePad, text_sz.y * 0.5F + kNodePad};
+  const ImVec2 single = ImGui::CalcTextSize(label);
+  if (single.x <= kNodeMaxLabelWidth) {
+    return {single.x * 0.5F + kNodePad, single.y * 0.5F + kNodePad};
+  }
+  const ImVec2 wrapped = ImGui::CalcTextSize(label, nullptr, false, kNodeMaxLabelWidth);
+  return {kNodeMaxLabelWidth * 0.5F + kNodePad, wrapped.y * 0.5F + kNodePad};
 }
 
 [[nodiscard]] inline float NodeRadiusWorld(const char* label) {

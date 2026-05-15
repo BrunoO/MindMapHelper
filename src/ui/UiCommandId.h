@@ -21,6 +21,7 @@ enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   NavigateFirstChild,
   NavigatePrevSibling,
   NavigateNextSibling,
+  RenameNode,
 };
 
 }  // namespace mind_map::ui

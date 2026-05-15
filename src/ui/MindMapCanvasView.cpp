@@ -150,6 +150,7 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx,
                       std::optional<size_t> dragging_node,
                       std::optional<size_t> selected_node,
                       std::optional<size_t> selected_child_for_edge,
+                      std::optional<size_t> editing_node,
                       const std::vector<CanvasNode>& nodes) {
   assert(ctx.draw_list_ != nullptr);
   const std::optional<size_t> hot_node = ctx.canvas_hovered_
@@ -187,20 +188,26 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx,
     }
     ctx.draw_list_->AddRect(rmin, rmax, border, mind_map::canvas::kNodeCornerRadiusWorld, 0, kNodeBorderThickness);
 
-    ImFont* const font = ImGui::GetFont();
-    const float font_size = ImGui::GetFontSize() * ctx.zoom_;
-    const ImVec2 text_sz_base = ImGui::CalcTextSize(label);
-    const ImVec2 text_sz = {text_sz_base.x * ctx.zoom_, text_sz_base.y * ctx.zoom_};
-    const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F, (rmin.y + rmax.y - text_sz.y) * 0.5F};
-    if (node.texture_id_ != 0) {
-      // 4-direction dark outline so white text stays legible on any image.
-      constexpr ImU32 kColorTextOutline = IM_COL32(0, 0, 0, 200);  // NOLINT(hicpp-signed-bitwise)
-      ctx.draw_list_->AddText(font, font_size, {text_pos.x - 1.0F, text_pos.y},         kColorTextOutline, label);
-      ctx.draw_list_->AddText(font, font_size, {text_pos.x + 1.0F, text_pos.y},         kColorTextOutline, label);
-      ctx.draw_list_->AddText(font, font_size, {text_pos.x,         text_pos.y - 1.0F}, kColorTextOutline, label);
-      ctx.draw_list_->AddText(font, font_size, {text_pos.x,         text_pos.y + 1.0F}, kColorTextOutline, label);
+    if (editing_node != i) {
+      ImFont* const font = ImGui::GetFont();
+      const float font_size = ImGui::GetFontSize() * ctx.zoom_;
+      const float node_w_world = half.x * 2.0F - mind_map::canvas::kNodePad * 2.0F;
+      const float wrap_world = (std::min)(node_w_world, mind_map::canvas::kNodeMaxLabelWidth);
+      const float wrap_screen = wrap_world * ctx.zoom_;
+      const ImVec2 text_sz_base = ImGui::CalcTextSize(label, nullptr, false, wrap_world);
+      const ImVec2 text_sz = {text_sz_base.x * ctx.zoom_, text_sz_base.y * ctx.zoom_};
+      const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F, (rmin.y + rmax.y - text_sz.y) * 0.5F};
+      constexpr ImU32 kColorText = IM_COL32(235, 235, 245, 255);  // NOLINT(hicpp-signed-bitwise)
+      if (node.texture_id_ != 0) {
+        // 4-direction dark outline so white text stays legible on any image.
+        constexpr ImU32 kColorTextOutline = IM_COL32(0, 0, 0, 200);  // NOLINT(hicpp-signed-bitwise)
+        ctx.draw_list_->AddText(font, font_size, {text_pos.x - 1.0F, text_pos.y},         kColorTextOutline, label, nullptr, wrap_screen);
+        ctx.draw_list_->AddText(font, font_size, {text_pos.x + 1.0F, text_pos.y},         kColorTextOutline, label, nullptr, wrap_screen);
+        ctx.draw_list_->AddText(font, font_size, {text_pos.x,         text_pos.y - 1.0F}, kColorTextOutline, label, nullptr, wrap_screen);
+        ctx.draw_list_->AddText(font, font_size, {text_pos.x,         text_pos.y + 1.0F}, kColorTextOutline, label, nullptr, wrap_screen);
+      }
+      ctx.draw_list_->AddText(font, font_size, text_pos, kColorText, label, nullptr, wrap_screen);
     }
-    ctx.draw_list_->AddText(font, font_size, text_pos, IM_COL32(235, 235, 245, 255), label);  // NOLINT(hicpp-signed-bitwise)
 
     const ImVec2 left = mind_map::canvas::WorldToScreen({c.x - half.x, c.y}, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
     const ImVec2 right = mind_map::canvas::WorldToScreen({c.x + half.x, c.y}, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
@@ -537,7 +544,7 @@ void MindMapCanvasView::Render(const MindMapCanvasRenderContext& ctx) {
     }
   }
 
-  DrawMindMapNodes(ctx, dragging_node_, selected_node_, selected_child_for_edge_style_, nodes_);
+  DrawMindMapNodes(ctx, dragging_node_, selected_node_, selected_child_for_edge_style_, editing_node_, nodes_);
 }
 
 void MindMapCanvasView::SetNodeActive(size_t idx, bool active) {
@@ -665,6 +672,20 @@ void MindMapCanvasView::SelectNode(std::optional<size_t> idx) {
 ImVec2 MindMapCanvasView::GetNodeWorldPos(size_t idx) const {
   assert(idx < nodes_.size());
   return nodes_[idx].pos_world_;
+}
+
+void MindMapCanvasView::BeginEditing(size_t idx) {
+  assert(idx < nodes_.size());
+  editing_node_ = idx;
+  edit_original_ = nodes_[idx].label_;
+  edit_buffer_   = nodes_[idx].label_;
+  SelectNode(idx);
+}
+
+void MindMapCanvasView::CancelEditing() {
+  editing_node_ = std::nullopt;
+  edit_buffer_.clear();
+  edit_original_.clear();
 }
 
 }  // namespace mind_map::ui
