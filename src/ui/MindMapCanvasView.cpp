@@ -8,6 +8,8 @@
 #include "ui/branch/DrawBranchesOrganicTaper.h"
 #include "ui/branch/DrawBranchesOrthogonal.h"
 #include "ui/canvas/CanvasMath.h"
+#include "ui/canvas/InlineMarkup.h"
+#include "ui/canvas/InlineMarkupRenderer.h"
 #include "ui/canvas/NodeExtent.h"
 #include "ui/canvas/NodeGeometry.h"
 #include "ui/canvas/NodeTextureUtils.h"
@@ -146,6 +148,37 @@ void DrawCollapseTriangle(ImDrawList* draw_list, ImVec2 rmax, ImVec2 rmin, bool 
   }
 }
 
+void DrawNodeLabel(ImDrawList* draw_list, const char* label, bool has_texture,
+                   ImVec2 rmin, ImVec2 rmax, ImVec2 half, float zoom) {
+  constexpr ImU32 kColorText = IM_COL32(235, 235, 245, 255);  // NOLINT(hicpp-signed-bitwise)
+  const float font_size    = ImGui::GetFontSize() * zoom;
+  const float node_w_world = half.x * 2.0F - mind_map::canvas::kNodePad * 2.0F;
+  const float wrap_world   = (std::min)(node_w_world, mind_map::canvas::kNodeMaxLabelWidth);
+  const float wrap_screen  = wrap_world * zoom;
+  if (canvas::ContainsMarkup(label)) {
+    const std::vector<canvas::MarkupSpan> spans = canvas::ParseMarkup(label);
+    const ImVec2 text_sz_w = canvas::MeasureMarkup(spans, wrap_world);
+    const ImVec2 text_sz   = {text_sz_w.x * zoom, text_sz_w.y * zoom};
+    const ImVec2 text_pos  = {(rmin.x + rmax.x - text_sz.x) * 0.5F,
+                               (rmin.y + rmax.y - text_sz.y) * 0.5F};
+    canvas::DrawMarkup(draw_list, text_pos, font_size, wrap_screen, kColorText, spans);
+  } else {
+    ImFont* const font = ImGui::GetFont();
+    const ImVec2 text_sz_base = ImGui::CalcTextSize(label, nullptr, false, wrap_world);
+    const ImVec2 text_sz  = {text_sz_base.x * zoom, text_sz_base.y * zoom};
+    const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F,
+                              (rmin.y + rmax.y - text_sz.y) * 0.5F};
+    if (has_texture) {
+      constexpr ImU32 kColorTextOutline = IM_COL32(0, 0, 0, 200);  // NOLINT(hicpp-signed-bitwise)
+      draw_list->AddText(font, font_size, {text_pos.x - 1.0F, text_pos.y},         kColorTextOutline, label, nullptr, wrap_screen);
+      draw_list->AddText(font, font_size, {text_pos.x + 1.0F, text_pos.y},         kColorTextOutline, label, nullptr, wrap_screen);
+      draw_list->AddText(font, font_size, {text_pos.x,         text_pos.y - 1.0F}, kColorTextOutline, label, nullptr, wrap_screen);
+      draw_list->AddText(font, font_size, {text_pos.x,         text_pos.y + 1.0F}, kColorTextOutline, label, nullptr, wrap_screen);
+    }
+    draw_list->AddText(font, font_size, text_pos, kColorText, label, nullptr, wrap_screen);
+  }
+}
+
 void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx,
                       std::optional<size_t> dragging_node,
                       std::optional<size_t> selected_node,
@@ -189,24 +222,7 @@ void DrawMindMapNodes(const MindMapCanvasRenderContext& ctx,
     ctx.draw_list_->AddRect(rmin, rmax, border, mind_map::canvas::kNodeCornerRadiusWorld, 0, kNodeBorderThickness);
 
     if (editing_node != i) {
-      ImFont* const font = ImGui::GetFont();
-      const float font_size = ImGui::GetFontSize() * ctx.zoom_;
-      const float node_w_world = half.x * 2.0F - mind_map::canvas::kNodePad * 2.0F;
-      const float wrap_world = (std::min)(node_w_world, mind_map::canvas::kNodeMaxLabelWidth);
-      const float wrap_screen = wrap_world * ctx.zoom_;
-      const ImVec2 text_sz_base = ImGui::CalcTextSize(label, nullptr, false, wrap_world);
-      const ImVec2 text_sz = {text_sz_base.x * ctx.zoom_, text_sz_base.y * ctx.zoom_};
-      const ImVec2 text_pos = {(rmin.x + rmax.x - text_sz.x) * 0.5F, (rmin.y + rmax.y - text_sz.y) * 0.5F};
-      constexpr ImU32 kColorText = IM_COL32(235, 235, 245, 255);  // NOLINT(hicpp-signed-bitwise)
-      if (node.texture_id_ != 0) {
-        // 4-direction dark outline so white text stays legible on any image.
-        constexpr ImU32 kColorTextOutline = IM_COL32(0, 0, 0, 200);  // NOLINT(hicpp-signed-bitwise)
-        ctx.draw_list_->AddText(font, font_size, {text_pos.x - 1.0F, text_pos.y},         kColorTextOutline, label, nullptr, wrap_screen);
-        ctx.draw_list_->AddText(font, font_size, {text_pos.x + 1.0F, text_pos.y},         kColorTextOutline, label, nullptr, wrap_screen);
-        ctx.draw_list_->AddText(font, font_size, {text_pos.x,         text_pos.y - 1.0F}, kColorTextOutline, label, nullptr, wrap_screen);
-        ctx.draw_list_->AddText(font, font_size, {text_pos.x,         text_pos.y + 1.0F}, kColorTextOutline, label, nullptr, wrap_screen);
-      }
-      ctx.draw_list_->AddText(font, font_size, text_pos, kColorText, label, nullptr, wrap_screen);
+      DrawNodeLabel(ctx.draw_list_, label, node.texture_id_ != 0, rmin, rmax, half, ctx.zoom_);
     }
 
     const ImVec2 left = mind_map::canvas::WorldToScreen({c.x - half.x, c.y}, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);

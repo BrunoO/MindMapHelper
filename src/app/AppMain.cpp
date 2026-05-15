@@ -9,9 +9,12 @@
 #include "ui/UiState.h"
 #include "ui/commands/CommandHistory.h"
 
+#include "ui/canvas/InlineMarkup.h"
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "misc/freetype/imgui_freetype.h"
 
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
@@ -130,6 +133,25 @@ int RunApp(int argc, char** argv) {
     io.Fonts->AddFontDefault();
     io.FontGlobalScale = 1.0F;
   } else {
+    // Load FreeType synthetic bold, italic, and bold-italic from the same Inter-Regular.ttf.
+    // No extra font files needed; ImGuiFreeTypeBuilderFlags synthesises the variants.
+    ImFontConfig bold_cfg;
+    bold_cfg.FontBuilderFlags = static_cast<unsigned int>(ImGuiFreeTypeBuilderFlags_Bold);
+    ImFont* const bold_font = io.Fonts->AddFontFromFileTTF(
+        "assets/fonts/Inter-Regular.ttf", font_size, &bold_cfg, kGlyphRanges.data());
+
+    ImFontConfig italic_cfg;
+    italic_cfg.FontBuilderFlags = static_cast<unsigned int>(ImGuiFreeTypeBuilderFlags_Oblique);
+    ImFont* const italic_font = io.Fonts->AddFontFromFileTTF(
+        "assets/fonts/Inter-Regular.ttf", font_size, &italic_cfg, kGlyphRanges.data());
+
+    ImFontConfig bold_italic_cfg;
+    bold_italic_cfg.FontBuilderFlags = static_cast<unsigned int>(
+        ImGuiFreeTypeBuilderFlags_Bold | ImGuiFreeTypeBuilderFlags_Oblique);
+    ImFont* const bold_italic_font = io.Fonts->AddFontFromFileTTF(
+        "assets/fonts/Inter-Regular.ttf", font_size, &bold_italic_cfg, kGlyphRanges.data());
+
+    mind_map::ui::canvas::InitInlineMarkupFonts({bold_font, italic_font, bold_italic_font});
     io.FontGlobalScale = 1.0F / xscale;  // undo pixel scaling so layout sizes stay in logical px
   }
 
