@@ -27,6 +27,8 @@ struct UiState {
   MindMapCanvasView canvas_;
   ImVec2 pan_px_ = {kInitialPanX, kInitialPanY};
   float zoom_ = 1.0F;
+  ImVec2 canvas_p0_;
+  ImVec2 canvas_sz_;
   bool show_status_bar_ = true;
   PendingNavAction pending_nav_ = PendingNavAction::None;
   SaveAsResumingContext save_as_context_ = SaveAsResumingContext::None;

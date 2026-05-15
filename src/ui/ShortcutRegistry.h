@@ -23,6 +23,10 @@ enum class ShortcutAction : std::uint8_t {
   Redo,
   Paste,
   CollapseNode,
+  NavigateParent,
+  NavigateFirstChild,
+  NavigatePrevSibling,
+  NavigateNextSibling,
   Count
 };
 
@@ -37,19 +41,24 @@ struct ShortcutDef {
   UiCommandId command_id_ = UiCommandId::ResetLayout;  // command dispatched when triggered
   ImGuiKey alt_key_ = ImGuiKey_None;        // optional second key; same modifier rules apply
   const char* alt_key_label_ = nullptr;
+  bool repeat_ = false;                     // fires repeatedly while the key is held
 };
 
 // clang-format off
 inline constexpr std::array<ShortcutDef, static_cast<size_t>(ShortcutAction::Count)> kShortcuts = {{
-  /* ZoomIn         */ {ImGuiKey_Equal,  true,  false, false, "=",      "Zoom In",                          UiCommandId::ZoomIn},
-  /* ZoomOut        */ {ImGuiKey_Minus,  true,  false, false, "-",      "Zoom Out",                         UiCommandId::ZoomOut},
-  /* ResetView      */ {ImGuiKey_0,      true,  false, false, "0",      "Reset View",                       UiCommandId::ResetView},
-  /* DeleteNode     */ {ImGuiKey_Delete, false, false, false, "Delete", "Delete selected node",             UiCommandId::DeleteNode},
-  /* InsertChildNode*/ {ImGuiKey_Tab,    false, false, false, "Tab",    "Insert child node",                UiCommandId::InsertChildNode, ImGuiKey_Insert, "Insert"},
-  /* Undo           */ {ImGuiKey_Z,      true,  false, true,  "Z",      "Undo",                             UiCommandId::Undo},
-  /* Redo           */ {ImGuiKey_Z,      true,  true,  true,  "Z",      "Redo",                             UiCommandId::Redo},
-  /* Paste          */ {ImGuiKey_V,      true,  false, false, "V",      "Paste image or text into selected node", UiCommandId::Paste},
-  /* CollapseNode   */ {ImGuiKey_Space,  false, false, false, "Space",  "Collapse/expand selected node",    UiCommandId::ToggleCollapsed},
+  /* ZoomIn            */ {ImGuiKey_Equal,      true,  false, false, "=",      "Zoom In",                               UiCommandId::ZoomIn},
+  /* ZoomOut           */ {ImGuiKey_Minus,      true,  false, false, "-",      "Zoom Out",                              UiCommandId::ZoomOut},
+  /* ResetView         */ {ImGuiKey_0,          true,  false, false, "0",      "Reset View",                            UiCommandId::ResetView},
+  /* DeleteNode        */ {ImGuiKey_Delete,     false, false, false, "Delete", "Delete selected node",                  UiCommandId::DeleteNode},
+  /* InsertChildNode   */ {ImGuiKey_Tab,        false, false, false, "Tab",    "Insert child node",                     UiCommandId::InsertChildNode, ImGuiKey_Insert, "Insert"},
+  /* Undo              */ {ImGuiKey_Z,          true,  false, true,  "Z",      "Undo",                                  UiCommandId::Undo},
+  /* Redo              */ {ImGuiKey_Z,          true,  true,  true,  "Z",      "Redo",                                  UiCommandId::Redo},
+  /* Paste             */ {ImGuiKey_V,          true,  false, false, "V",      "Paste image or text into selected node", UiCommandId::Paste},
+  /* CollapseNode      */ {ImGuiKey_Space,      false, false, false, "Space",  "Collapse/expand selected node",         UiCommandId::ToggleCollapsed},
+  /* NavigateParent    */ {ImGuiKey_LeftArrow,  false, false, false, "←",     "Select parent node",                    UiCommandId::NavigateParent,      ImGuiKey_None, nullptr, true},
+  /* NavigateFirstChild*/ {ImGuiKey_RightArrow, false, false, false, "→",     "Select first child node",               UiCommandId::NavigateFirstChild,  ImGuiKey_None, nullptr, true},
+  /* NavigatePrevSib   */ {ImGuiKey_UpArrow,    false, false, false, "↑",     "Select previous sibling node",          UiCommandId::NavigatePrevSibling, ImGuiKey_None, nullptr, true},
+  /* NavigateNextSib   */ {ImGuiKey_DownArrow,  false, false, false, "↓",     "Select next sibling node",              UiCommandId::NavigateNextSibling, ImGuiKey_None, nullptr, true},
 }};
 // clang-format on
 
@@ -71,10 +80,10 @@ static_assert(std::size(kShortcuts) == static_cast<size_t>(ShortcutAction::Count
   if (def.primary_modifier_ && (def.shift_ != io.KeyShift)) {
     return false;  // shift must match when a primary modifier is used
   }
-  if (ImGui::IsKeyPressed(def.key_, /*repeat=*/false)) {
+  if (ImGui::IsKeyPressed(def.key_, def.repeat_)) {
     return true;
   }
-  return def.alt_key_ != ImGuiKey_None && ImGui::IsKeyPressed(def.alt_key_, /*repeat=*/false);
+  return def.alt_key_ != ImGuiKey_None && ImGui::IsKeyPressed(def.alt_key_, def.repeat_);
 }
 
 [[nodiscard]] inline std::string FormatLabel(const ShortcutDef& def) {

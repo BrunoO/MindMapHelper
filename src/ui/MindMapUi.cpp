@@ -328,6 +328,8 @@ void RenderCanvas(UiState& state, mind_map::app::DocumentSessionService& session
   const ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
   const ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
   const ImVec2 canvas_p1 = {canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y};
+  state.canvas_p0_ = canvas_p0;
+  state.canvas_sz_ = canvas_sz;
 
   ImGui::InvisibleButton("mind_map_canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft);
   const bool canvas_hovered = ImGui::IsItemHovered();

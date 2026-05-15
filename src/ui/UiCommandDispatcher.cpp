@@ -24,6 +24,20 @@ constexpr float kMinZoom = 0.35F;
 constexpr float kMaxZoom = 3.0F;
 constexpr float kZoomStep = 0.1F;
 
+void CenterCanvasOnNode(UiState& state, size_t idx) {
+  const ImVec2 world = state.canvas_.GetNodeWorldPos(idx);
+  state.pan_px_ = {
+      state.canvas_sz_.x * 0.5F - world.x * state.zoom_,
+      state.canvas_sz_.y * 0.5F - world.y * state.zoom_,
+  };
+}
+
+void NavigateTo(UiState& state, std::optional<size_t> target) {
+  if (!target.has_value()) { return; }
+  state.canvas_.SelectNode(target);
+  CenterCanvasOnNode(state, *target);
+}
+
 }  // namespace
 
 UiCommandDispatcher::UiCommandDispatcher(commands::CommandHistory& history) : history_(history) {}
@@ -92,6 +106,26 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       const bool collapsing = !state.canvas_.IsCollapsed(*sel);
       history_.Push(std::make_unique<commands::CollapseNodeCommand>(state.canvas_, *sel, collapsing));
       session.MarkDirty();
+      return;
+    }
+    case UiCommandId::NavigateParent: {
+      const auto sel = state.canvas_.GetSelectedNode();
+      if (sel) { NavigateTo(state, state.canvas_.GetParentOf(*sel)); }
+      return;
+    }
+    case UiCommandId::NavigateFirstChild: {
+      const auto sel = state.canvas_.GetSelectedNode();
+      if (sel) { NavigateTo(state, state.canvas_.GetFirstActiveChildOf(*sel)); }
+      return;
+    }
+    case UiCommandId::NavigatePrevSibling: {
+      const auto sel = state.canvas_.GetSelectedNode();
+      if (sel) { NavigateTo(state, state.canvas_.GetPrevSiblingOf(*sel)); }
+      return;
+    }
+    case UiCommandId::NavigateNextSibling: {
+      const auto sel = state.canvas_.GetSelectedNode();
+      if (sel) { NavigateTo(state, state.canvas_.GetNextSiblingOf(*sel)); }
       return;
     }
   }

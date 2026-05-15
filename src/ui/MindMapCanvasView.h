@@ -101,6 +101,16 @@ class MindMapCanvasView {
   // The node is appended to nodes_ and initial_pos_world_; undo toggles active_ only.
   size_t InsertChildNode(size_t parent_idx);
 
+  // Programmatic selection — mirrors the logic in OnPrimaryDown.
+  void SelectNode(std::optional<size_t> idx);
+  [[nodiscard]] ImVec2 GetNodeWorldPos(size_t idx) const;
+
+  // Tree navigation helpers used by keyboard navigation commands.
+  [[nodiscard]] std::optional<size_t> GetParentOf(size_t idx) const;
+  [[nodiscard]] std::optional<size_t> GetFirstActiveChildOf(size_t idx) const;
+  [[nodiscard]] std::optional<size_t> GetPrevSiblingOf(size_t idx) const;
+  [[nodiscard]] std::optional<size_t> GetNextSiblingOf(size_t idx) const;
+
   // Sets (or clears when png_base64 is empty) the image on the node at idx.
   // Releases the previous GL texture and uploads a new one if png_base64 is non-empty.
   void SetNodeImage(size_t idx, std::string_view png_base64);

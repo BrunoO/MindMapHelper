@@ -685,4 +685,51 @@ size_t MindMapCanvasView::InsertChildNode(size_t parent_idx) {
   return new_idx;
 }
 
+void MindMapCanvasView::SelectNode(std::optional<size_t> idx) {
+  selected_node_ = idx;
+  selected_child_for_edge_style_ =
+      (idx && nodes_[*idx].parent_idx_.has_value()) ? idx : std::nullopt;
+}
+
+ImVec2 MindMapCanvasView::GetNodeWorldPos(size_t idx) const {
+  assert(idx < nodes_.size());
+  return nodes_[idx].pos_world_;
+}
+
+std::optional<size_t> MindMapCanvasView::GetParentOf(size_t idx) const {
+  assert(idx < nodes_.size());
+  return nodes_[idx].parent_idx_;
+}
+
+std::optional<size_t> MindMapCanvasView::GetFirstActiveChildOf(size_t idx) const {
+  for (size_t i = 0; i < nodes_.size(); ++i) {
+    if (nodes_[i].active_ && nodes_[i].parent_idx_ == idx) { return i; }
+  }
+  return std::nullopt;
+}
+
+std::optional<size_t> MindMapCanvasView::GetPrevSiblingOf(size_t idx) const {
+  assert(idx < nodes_.size());
+  const auto parent = nodes_[idx].parent_idx_;
+  std::optional<size_t> prev;
+  for (size_t i = 0; i < nodes_.size(); ++i) {
+    if (!nodes_[i].active_ || nodes_[i].parent_idx_ != parent) { continue; }
+    if (i == idx) { return prev; }
+    prev = i;
+  }
+  return std::nullopt;
+}
+
+std::optional<size_t> MindMapCanvasView::GetNextSiblingOf(size_t idx) const {
+  assert(idx < nodes_.size());
+  const auto parent = nodes_[idx].parent_idx_;
+  bool found = false;
+  for (size_t i = 0; i < nodes_.size(); ++i) {
+    if (!nodes_[i].active_ || nodes_[i].parent_idx_ != parent) { continue; }
+    if (found) { return i; }
+    if (i == idx) { found = true; }
+  }
+  return std::nullopt;
+}
+
 }  // namespace mind_map::ui

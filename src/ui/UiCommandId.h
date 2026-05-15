@@ -16,7 +16,11 @@ enum class UiCommandId : std::uint8_t {  // NOLINT(performance-enum-size)
   Undo,
   Redo,
   Paste,
-  ToggleCollapsed
+  ToggleCollapsed,
+  NavigateParent,
+  NavigateFirstChild,
+  NavigatePrevSibling,
+  NavigateNextSibling,
 };
 
 }  // namespace mind_map::ui
