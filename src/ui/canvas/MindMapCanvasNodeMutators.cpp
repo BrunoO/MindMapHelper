@@ -4,9 +4,12 @@
 #include "ui/MindMapCanvasView.h"
 #include "ui/canvas/NodeTextureUtils.h"
 
+#include <cassert>
+
 namespace mind_map::ui::canvas {
 
 void SetNodeImage(MindMapCanvasView& view, size_t idx, std::string_view png_base64) {
+  assert(idx < view.nodes_.size());
   if (idx >= view.nodes_.size()) {
     return;
   }
@@ -21,6 +24,7 @@ void SetNodeImage(MindMapCanvasView& view, size_t idx, std::string_view png_base
 
 const std::string& GetNodeImageBase64(const MindMapCanvasView& view, size_t idx) {
   static const std::string kEmpty;
+  assert(idx < view.nodes_.size());
   if (idx >= view.nodes_.size()) {
     return kEmpty;
   }
@@ -28,6 +32,7 @@ const std::string& GetNodeImageBase64(const MindMapCanvasView& view, size_t idx)
 }
 
 void SetNodeLabel(MindMapCanvasView& view, size_t idx, std::string_view label) {
+  assert(idx < view.nodes_.size());
   if (idx >= view.nodes_.size()) {
     return;
   }
@@ -36,6 +41,7 @@ void SetNodeLabel(MindMapCanvasView& view, size_t idx, std::string_view label) {
 
 const std::string& GetNodeLabel(const MindMapCanvasView& view, size_t idx) {
   static const std::string kEmpty;
+  assert(idx < view.nodes_.size());
   if (idx >= view.nodes_.size()) {
     return kEmpty;
   }
@@ -43,6 +49,7 @@ const std::string& GetNodeLabel(const MindMapCanvasView& view, size_t idx) {
 }
 
 void SetEdgeLabel(MindMapCanvasView& view, size_t idx, std::string_view label) {
+  assert(idx < view.nodes_.size());
   if (idx >= view.nodes_.size()) {
     return;
   }
@@ -51,6 +58,7 @@ void SetEdgeLabel(MindMapCanvasView& view, size_t idx, std::string_view label) {
 
 const std::string& GetEdgeLabel(const MindMapCanvasView& view, size_t idx) {
   static const std::string kEmpty;
+  assert(idx < view.nodes_.size());
   if (idx >= view.nodes_.size()) {
     return kEmpty;
   }
