@@ -153,7 +153,7 @@ void DrawNodeLabel(ImDrawList* draw_list, const char* label, bool has_texture,
   constexpr ImU32 kColorText = IM_COL32(235, 235, 245, 255);  // NOLINT(hicpp-signed-bitwise)
   const float font_size    = ImGui::GetFontSize() * zoom;
   const float node_w_world = half.x * 2.0F - mind_map::canvas::kNodePad * 2.0F;
-  const float wrap_world   = (std::min)(node_w_world, mind_map::canvas::kNodeMaxLabelWidth);
+  const float wrap_world   = node_w_world;
   const float wrap_screen  = wrap_world * zoom;
   if (canvas::ContainsMarkup(label)) {
     const std::vector<canvas::MarkupSpan> spans = canvas::ParseMarkup(label);
@@ -161,7 +161,9 @@ void DrawNodeLabel(ImDrawList* draw_list, const char* label, bool has_texture,
     const ImVec2 text_sz   = {text_sz_w.x * zoom, text_sz_w.y * zoom};
     const ImVec2 text_pos  = {(rmin.x + rmax.x - text_sz.x) * 0.5F,
                                (rmin.y + rmax.y - text_sz.y) * 0.5F};
+    draw_list->PushClipRect(rmin, rmax, true);
     canvas::DrawMarkup(draw_list, text_pos, font_size, wrap_screen, kColorText, spans);
+    draw_list->PopClipRect();
   } else {
     ImFont* const font = ImGui::GetFont();
     const ImVec2 text_sz_base = ImGui::CalcTextSize(label, nullptr, false, wrap_world);
