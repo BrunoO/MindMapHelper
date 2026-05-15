@@ -89,6 +89,7 @@ struct StartupCli {
     mind_map::core::MindMapDocument doc;
     if (session.OpenFromPath(cli.path_, doc, import_service)) {
       deferred_startup_document = std::move(doc);
+      LOG_INFO_BUILD("RunApp: opened startup document '" << cli.path_ << '\'');
     } else {
       LOG_WARNING_BUILD("RunApp: failed to open startup document '" << cli.path_ << '\'');
     }
@@ -232,6 +233,7 @@ struct StartupCli {
   ImGui::DestroyContext();
 
   mind_map::platform::DestroyMainWindow(window);
+  LOG_IMPORTANT_BUILD("MindMap Helper exiting normally");
   return 0;
 }
 

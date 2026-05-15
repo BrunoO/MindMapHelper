@@ -1,5 +1,7 @@
 #include "core/imx/ImxImportAdapter.h"
 
+#include "utils/Logger.h"
+
 #include "core/Base64.h"
 #include "core/imx/ImxMindMapLoader.h"
 #include "core/imx/ImxMindMapModel.h"
@@ -167,6 +169,7 @@ constexpr const char* kDefaultEdgeStyle = "bezier";
 std::optional<MindMapDocument> ImxImportAdapter::Import(std::string_view path) const {
   const std::optional<ImxMindMapModel> model = LoadImxMindMapModelFromFile(path);
   if (!model) {
+    LOG_ERROR_BUILD("ImxImportAdapter::Import: failed for '" << path << '\'');
     return std::nullopt;
   }
   return ImxModelToDocument(*model);
@@ -176,6 +179,7 @@ std::optional<MindMapDocument> ImxImportAdapter::ImportFromXml(std::string_view 
                                                                 std::string_view mapmeta_xml) const {
   const std::optional<ImxMindMapModel> model = LoadImxMindMapModelFromXml(data_xml, mapmeta_xml);
   if (!model) {
+    LOG_ERROR("ImxImportAdapter::ImportFromXml: parse failed");
     return std::nullopt;
   }
   return ImxModelToDocument(*model);

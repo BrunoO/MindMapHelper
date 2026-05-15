@@ -13,6 +13,7 @@
 #include "ui/canvas/NodeExtent.h"
 #include "ui/canvas/NodeGeometry.h"
 #include "ui/canvas/NodeTextureUtils.h"
+#include "utils/Logger.h"
 
 #include "imgui.h"
 
@@ -46,6 +47,18 @@ namespace {
   if (s == "orthogonal")    { return BranchStyle::Orthogonal; }
   if (s == "organic_taper") { return BranchStyle::OrganicTaper; }
   return BranchStyle::Bezier;
+}
+
+void ApplyDocumentNodeImage(CanvasNode& node, const mind_map::core::MindMapNode& source) {
+  if (source.image_png_base64_.empty()) {
+    return;
+  }
+  node.image_png_base64_ = source.image_png_base64_;
+  const std::string png_bytes = mind_map::core::Base64Decode(node.image_png_base64_);
+  if (png_bytes.empty()) {
+    LOG_WARNING_BUILD("LoadFrom: base64 decode produced empty PNG for node " << node.id_);
+  }
+  node.texture_id_ = UploadPngTexture(png_bytes, "node " + node.id_);
 }
 
 [[nodiscard]] branch::BranchStyle FirstActiveChildEdgeStyle(const std::vector<CanvasNode>& nodes) {
@@ -311,11 +324,7 @@ void MindMapCanvasView::LoadFrom(const mind_map::core::MindMapDocument& doc) {
     node.label_ = n.label_;
     node.active_ = true;
     node.collapsed_ = n.collapsed_;
-    if (!n.image_png_base64_.empty()) {
-      node.image_png_base64_ = n.image_png_base64_;
-      node.texture_id_ =
-          UploadPngTexture(mind_map::core::Base64Decode(n.image_png_base64_), "node " + n.id_);
-    }
+    ApplyDocumentNodeImage(node, n);
     nodes_.push_back(std::move(node));
   }
 

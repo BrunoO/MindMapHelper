@@ -55,6 +55,7 @@ bool DocumentSessionService::OpenNative(const std::string_view path,
   }
   doc_out = std::move(*result);
   SetNativeSessionAfterOpen_(path);
+  LOG_INFO_BUILD("DocumentSessionService::OpenNative: opened '" << path << '\'');
   return true;
 }
 
@@ -69,8 +70,10 @@ bool DocumentSessionService::OpenFromPath(const std::string_view path,
   doc_out = std::move(loaded.doc_);
   if (loaded.outcome_ == mind_map::core::DocumentPathLoadOutcome::NativeAtPath) {
     SetNativeSessionAfterOpen_(path);
+    LOG_INFO_BUILD("DocumentSessionService::OpenFromPath: opened native '" << path << '\'');
   } else {
     SetImportedSessionAfterOpen_();
+    LOG_INFO_BUILD("DocumentSessionService::OpenFromPath: imported '" << path << '\'');
   }
   return true;
 }
@@ -86,6 +89,7 @@ bool DocumentSessionService::Save(const mind_map::core::MindMapDocument& doc) {
     return false;
   }
   dirty_ = false;
+  LOG_INFO_BUILD("DocumentSessionService::Save: saved '" << current_path_ << '\'');
   return true;
 }
 
@@ -96,6 +100,7 @@ bool DocumentSessionService::SaveAs(const std::string_view path,
   }
   current_path_ = std::string{path};
   dirty_ = false;
+  LOG_INFO_BUILD("DocumentSessionService::SaveAs: saved '" << path << '\'');
   return true;
 }
 

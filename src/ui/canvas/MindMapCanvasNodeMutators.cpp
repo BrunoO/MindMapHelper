@@ -3,6 +3,7 @@
 #include "core/Base64.h"
 #include "ui/MindMapCanvasView.h"
 #include "ui/canvas/NodeTextureUtils.h"
+#include "utils/Logger.h"
 
 #include <cassert>
 
@@ -18,8 +19,11 @@ void SetNodeImage(MindMapCanvasView& view, size_t idx, std::string_view png_base
   node.texture_id_ = 0;
   node.image_png_base64_ = png_base64;
   if (!png_base64.empty()) {
-    node.texture_id_ =
-        UploadPngTexture(mind_map::core::Base64Decode(node.image_png_base64_), "node " + node.id_);
+    const std::string png_bytes = mind_map::core::Base64Decode(node.image_png_base64_);
+    if (png_bytes.empty()) {
+      LOG_WARNING_BUILD("SetNodeImage: base64 decode produced empty PNG for node " << node.id_);
+    }
+    node.texture_id_ = UploadPngTexture(png_bytes, "node " + node.id_);
   }
 }
 

@@ -30,7 +30,7 @@ int main() {
   constexpr float kExpectedViewportPanY = 120.0F;
   constexpr float kExpectedViewportZoom   = 1.0F;
 
-  constexpr std::size_t kMinHelpNodeCount = 20U;
+  constexpr std::size_t kMinHelpNodeCount = 21U;
 
   const mind_map::core::MindMapDocument doc = mind_map::app::BuildHelpMindMapDocument();
   assert(doc.nodes_.size() >= kMinHelpNodeCount);

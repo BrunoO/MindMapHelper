@@ -123,6 +123,9 @@ mind_map::core::MindMapDocument BuildHelpMindMapDocument() {
             "The session log records import/save errors, GLFW issues, and other diagnostics for this run.",
             {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
+  b.AddLeaf(file_menu, "Help menu → Copy session log path: copy the log path to the clipboard.",
+            {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
 
   const std::string edit_view = b.AddChild(root, "Edit, view & clipboard", {kHelpHubX, kHelpEditHubY});
   b.AddLeaf(edit_view, "Undo / Redo; Insert child (Tab or Insert); Delete node (Delete, not root).", {kHelpLeafX, leaf_y});

@@ -233,6 +233,35 @@ void HandleSaveMenuItem(const UiState& state, mind_map::app::DocumentSessionServ
   }
 }
 
+void RenderHelpMenu() {
+  ImGui::MenuItem("Guide map: run MindMapHelper with --help (command line).", nullptr, false, false);
+  ImGui::Separator();
+  if (const std::string log_path = Logger::Instance().GetLogFilePath(); !log_path.empty()) {
+    if (ImGui::MenuItem("Copy session log path")) {
+      ImGui::SetClipboardText(log_path.c_str());
+      LOG_INFO_BUILD("Copied session log path to clipboard");
+    }
+    ImGui::MenuItem(log_path.c_str(), nullptr, false, false);
+  } else {
+    ImGui::MenuItem("Session log unavailable", nullptr, false, false);
+  }
+  ImGui::Separator();
+  ImGui::MenuItem("Non-root node: select to edit incoming edge style; root clears selection.", nullptr,
+                  false, false);
+}
+
+[[nodiscard]] bool TrySaveFromGuardModal(const UiState& state,
+                                         mind_map::app::DocumentSessionService& session) {
+  const auto doc = state.canvas_.ToDocument(state.ToViewport());
+  if (session.Save(doc)) {
+    return true;
+  }
+  if (session.HasPath()) {
+    LOG_WARNING_BUILD("Unsaved-changes dialog: Save failed for '" << session.GetCurrentPath() << '\'');
+  }
+  return false;
+}
+
 void RenderFileMenu(const UiCommandDispatcher& dispatcher, UiState& state,
                     mind_map::app::DocumentSessionService& session,
                     commands::CommandHistory& history) {
@@ -312,8 +341,7 @@ void RenderMainMenuBar(const UiCommandDispatcher& dispatcher, UiState& state,
   }
 
   if (ImGui::BeginMenu("Help")) {
-    ImGui::MenuItem("Guide map: run MindMapHelper with --help (command line).", nullptr, false, false);
-    ImGui::MenuItem("Non-root node: select to edit incoming edge style; root clears selection.", nullptr, false, false);
+    RenderHelpMenu();
     ImGui::EndMenu();
   }
 
@@ -444,8 +472,7 @@ void RenderNavGuardModal(UiState& state, mind_map::app::DocumentSessionService& 
   bool proceed = false;
   if (session.HasPath()) {
     if (ImGui::Button("Save")) {
-      const auto doc = state.canvas_.ToDocument(state.ToViewport());
-      if (session.Save(doc)) {
+      if (TrySaveFromGuardModal(state, session)) {
         proceed = true;
         ImGui::CloseCurrentPopup();
       }
@@ -491,8 +518,7 @@ void RenderCloseGuardModal(UiState& state, mind_map::app::DocumentSessionService
 
   if (session.HasPath()) {
     if (ImGui::Button("Save")) {
-      const auto doc = state.canvas_.ToDocument(state.ToViewport());
-      if (session.Save(doc)) {
+      if (TrySaveFromGuardModal(state, session)) {
         session.ConfirmClose();
         session.CancelClose();
         ImGui::CloseCurrentPopup();
@@ -545,6 +571,7 @@ void HandleImportDialogOk(const std::string& path, const mind_map::core::ImportS
   if (auto doc = import_service.ImportFile(path)) {
     session.ApplyImportedDocument();
     LoadDocumentIntoCanvas(state, history, *doc);
+    LOG_INFO_BUILD("Imported '" << path << '\'');
     return;
   }
   LOG_WARNING_BUILD("Import failed for '" << path << "' (see session log for details)");
