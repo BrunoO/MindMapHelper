@@ -1,13 +1,16 @@
 #include "ui/canvas/InlineMarkup.h"
 
 #include <algorithm>
+#include <cassert>
+#include <cstdlib>
+#include <optional>
 
 namespace mind_map::ui::canvas {
 
 namespace {
 
-InlineMarkupFonts& FontRegistry() {
-  static InlineMarkupFonts instance;
+std::optional<InlineMarkupFonts>& FontRegistry() {
+  static std::optional<InlineMarkupFonts> instance;
   return instance;
 }
 
@@ -25,7 +28,15 @@ void ReconcileUnmatched(std::vector<MarkupSpan>& spans, std::string_view label, 
 }  // namespace
 
 void InitInlineMarkupFonts(InlineMarkupFonts fonts) { FontRegistry() = fonts; }
-const InlineMarkupFonts& GetInlineMarkupFonts()     { return FontRegistry(); }
+
+const InlineMarkupFonts& GetInlineMarkupFonts() {
+  auto& reg = FontRegistry();
+  if (!reg.has_value()) {
+    assert(false && "InitInlineMarkupFonts must be called before rendering markup");
+    std::abort();
+  }
+  return *reg;
+}
 
 bool ContainsMarkup(std::string_view label) {
   return std::any_of(label.begin(), label.end(), [](char c) {  // NOLINT(llvm-use-ranges)
