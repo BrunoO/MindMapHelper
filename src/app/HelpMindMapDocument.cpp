@@ -115,7 +115,7 @@ mind_map::core::MindMapDocument BuildHelpMindMapDocument() {
   leaf_y += kHelpLeafDy;
   b.AddLeaf(edit_view, "Collapse / expand subtree: ▶/▼ on node or Space when a parent is selected.", {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
-  b.AddLeaf(edit_view, "Edit node label: double-click the node or F2 while selected.", {kHelpLeafX, leaf_y});
+  b.AddLeaf(edit_view, "Edit node label: double-click, Enter, or F2 (Fn+F2 on Mac) while selected.", {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
   b.AddLeaf(edit_view, "In edit mode: Enter = newline; Shift+Enter confirms; Escape cancels; click away confirms.", {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
