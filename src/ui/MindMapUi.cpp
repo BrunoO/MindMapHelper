@@ -152,13 +152,16 @@ void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas,
     ImGui::EndCombo();
   }
 
-  // Edge label text field — synced from the canvas whenever the selection changes.
+  // Edge label text field — synced from the canvas whenever the canvas instance or
+  // selected edge changes. Keyed on (&canvas, edge_idx) so switching windows cannot
+  // carry over a stale buffer from a different canvas instance.
+  using SyncKey = std::pair<const MindMapCanvasView*, std::optional<size_t>>;
   static std::string s_edge_label_buf;
-  static std::optional<size_t> s_last_edge_idx;
+  static SyncKey s_last_sync_key{nullptr, std::nullopt};
   const std::optional<size_t> edge_idx = canvas.GetSelectedChildForBranchStyle();
-  if (s_last_edge_idx != edge_idx) {
+  if (const SyncKey key{&canvas, edge_idx}; s_last_sync_key != key) {
     s_edge_label_buf = edge_idx.has_value() ? canvas::GetEdgeLabel(canvas, *edge_idx) : std::string{};
-    s_last_edge_idx = edge_idx;
+    s_last_sync_key = key;
   }
   ImGui::SameLine();
   ImGui::TextUnformatted("Label:");
