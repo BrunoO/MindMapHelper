@@ -79,12 +79,10 @@ void RenderNodeEditOverlay(const MindMapCanvasRenderContext& ctx,
   ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(pad_screen, pad_screen));
 
-  constexpr ImGuiInputTextFlags kFlags =
-      ImGuiInputTextFlags_AutoSelectAll |
-      ImGuiInputTextFlags_EnterReturnsTrue;
+  // Enter inserts a newline (multiline default); Shift+Enter confirms and exits.
+  constexpr ImGuiInputTextFlags kFlags = ImGuiInputTextFlags_AutoSelectAll;
 
-  const bool confirmed = ImGui::InputTextMultiline(
-      "##node_edit", &buf, ImVec2(box_w, box_h), kFlags);
+  ImGui::InputTextMultiline("##node_edit", &buf, ImVec2(box_w, box_h), kFlags);
 
   ImGui::PopStyleVar();
   ImGui::PopStyleColor(3);
@@ -94,13 +92,18 @@ void RenderNodeEditOverlay(const MindMapCanvasRenderContext& ctx,
     ImGui::SetKeyboardFocusHere(-1);
   }
 
-  if (confirmed) {
-    CommitEdit(canvas, session, history);
+  if (ImGui::IsKeyPressed(ImGuiKey_Escape, /*repeat=*/false)) {
+    canvas.CancelEditing();
     return;
   }
 
-  if (ImGui::IsKeyPressed(ImGuiKey_Escape, /*repeat=*/false)) {
-    canvas.CancelEditing();
+  // Shift+Enter confirms. The widget already inserted a '\n' for the Enter key,
+  // so strip it from the buffer before committing.
+  const bool shift_enter = ImGui::IsKeyPressed(ImGuiKey_Enter, /*repeat=*/false)
+                           && ImGui::GetIO().KeyShift;
+  if (shift_enter) {
+    if (!buf.empty() && buf.back() == '\n') { buf.pop_back(); }
+    CommitEdit(canvas, session, history);
     return;
   }
 

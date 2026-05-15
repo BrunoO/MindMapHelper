@@ -88,6 +88,9 @@ mind_map::core::MindMapDocument BuildHelpMindMapDocument() {
   b.AddLeaf(canvas, "Click a node to select; click empty space or root to clear incoming-edge style target.",
               {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
+  b.AddLeaf(canvas, "Navigate: \xe2\x86\x90 parent  \xe2\x86\x92 first child  \xe2\x86\x91 prev sibling  \xe2\x86\x93 next sibling.",
+              {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
 
   const std::string branches = b.AddChild(root, "Branches & styles", {kHelpHubX, kHelpBranchesHubY});
   b.AddLeaf(branches, "Select a non-root node → toolbar combo edits that incoming edge.", {kHelpLeafX, leaf_y});
@@ -111,6 +114,10 @@ mind_map::core::MindMapDocument BuildHelpMindMapDocument() {
   b.AddLeaf(edit_view, "Undo / Redo; Insert child (Tab or Insert); Delete node (Delete, not root).", {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
   b.AddLeaf(edit_view, "Collapse / expand subtree: ▶/▼ on node or Space when a parent is selected.", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(edit_view, "Edit node label: double-click the node or F2 while selected.", {kHelpLeafX, leaf_y});
+  leaf_y += kHelpLeafDy;
+  b.AddLeaf(edit_view, "In edit mode: Enter = newline; Shift+Enter confirms; Escape cancels; click away confirms.", {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
   b.AddLeaf(edit_view, "Paste: Cmd/Ctrl+V with a node selected (image or text from clipboard).", {kHelpLeafX, leaf_y});
   leaf_y += kHelpLeafDy;
