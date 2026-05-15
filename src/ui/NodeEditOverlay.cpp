@@ -3,8 +3,8 @@
 #include "app/DocumentSessionService.h"
 #include "ui/MindMapCanvasView.h"
 #include "ui/canvas/CanvasMath.h"
+#include "ui/canvas/MindMapCanvasEditState.h"
 #include "ui/canvas/MindMapCanvasNodeMutators.h"
-#include "ui/canvas/NodeExtent.h"
 #include "ui/canvas/NodeGeometry.h"
 #include "ui/commands/CommandHistory.h"
 #include "ui/commands/RenameNodeCommand.h"
@@ -19,26 +19,20 @@ namespace mind_map::ui {
 
 namespace {
 
-constexpr ImU32 kEditFrameBg     = IM_COL32(42,  42,  55, 255);  // NOLINT(hicpp-signed-bitwise)
-constexpr ImU32 kEditBorderColor = IM_COL32(120, 180, 255, 200); // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32 kEditFrameBg     = IM_COL32(42,  42,  55, 255);   // NOLINT(hicpp-signed-bitwise)
+constexpr ImU32 kEditBorderColor = IM_COL32(120, 180, 255, 200);  // NOLINT(hicpp-signed-bitwise)
 constexpr float kEditBorderThick = 1.5F;
-constexpr float kMinBoxWidth     = 80.0F;   // screen pixels
-constexpr float kMinBoxHeight    = 28.0F;   // screen pixels
-
-// Measure the wrapped screen size of the given text at the current edit-box width.
-[[nodiscard]] ImVec2 MeasureEditText(const std::string& text, float inner_width_world, float zoom) {
-  const ImVec2 base = ImGui::CalcTextSize(text.c_str(), nullptr, false, inner_width_world);
-  return {base.x * zoom, base.y * zoom};
-}
+constexpr float kMinBoxWidth     = 80.0F;
+constexpr float kMinBoxHeight    = 28.0F;
 
 void CommitEdit(MindMapCanvasView& canvas,
                 mind_map::app::DocumentSessionService& session,
                 commands::CommandHistory& history) {
-  const auto editing = canvas.GetEditingNode();
+  const auto editing = canvas::GetEditingNode(canvas);
   if (!editing.has_value()) { return; }
-  const size_t idx   = *editing;
+  const size_t idx  = *editing;
   std::string old_label = canvas::GetNodeLabel(canvas, idx);
-  std::string new_label = canvas.GetEditBuffer();
+  std::string new_label = canvas::GetEditBuffer(canvas);
   canvas.CancelEditing();
   if (old_label != new_label) {
     history.Push(std::make_unique<commands::RenameNodeCommand>(
@@ -53,39 +47,36 @@ void RenderNodeEditOverlay(const MindMapCanvasRenderContext& ctx,
                            MindMapCanvasView& canvas,
                            mind_map::app::DocumentSessionService& session,
                            commands::CommandHistory& history) {
-  if (!canvas.IsEditing()) { return; }
+  if (!canvas::IsEditing(canvas)) { return; }
 
-  const auto editing = canvas.GetEditingNode();
+  const auto editing = canvas::GetEditingNode(canvas);
   if (!editing.has_value()) { return; }
   const size_t idx = *editing;
   const ImVec2 world_pos = canvas.GetNodeWorldPos(idx);
 
-  // Compute inner wrap width (world units) — capped at kNodeMaxLabelWidth.
-  const float inner_w_world = mind_map::canvas::kNodeMaxLabelWidth;
-  const float pad_screen    = mind_map::canvas::kNodePad * ctx.zoom_;
+  const float inner_w_world  = mind_map::canvas::kNodeMaxLabelWidth;
+  const float pad_screen     = mind_map::canvas::kNodePad * ctx.zoom_;
   const float inner_w_screen = inner_w_world * ctx.zoom_;
 
-  // Measure current buffer to determine box height.
-  const ImVec2 text_sz = MeasureEditText(canvas.GetEditBuffer(), inner_w_world, ctx.zoom_);
+  // Size the box to the current buffer text, growing downward.
+  std::string& buf = canvas::GetEditBuffer(canvas);
+  const ImVec2 text_sz_base = ImGui::CalcTextSize(buf.c_str(), nullptr, false, inner_w_world);
   const float box_w = (std::max)(inner_w_screen + 2.0F * pad_screen, kMinBoxWidth);
-  const float box_h = (std::max)(text_sz.y + 2.0F * pad_screen, kMinBoxHeight);
+  const float box_h = (std::max)(text_sz_base.y * ctx.zoom_ + 2.0F * pad_screen, kMinBoxHeight);
 
-  // Centre the box on the node's world position.
-  const ImVec2 centre_screen = mind_map::canvas::WorldToScreen(world_pos, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
-  const ImVec2 box_tl = {centre_screen.x - box_w * 0.5F, centre_screen.y - box_h * 0.5F};
+  const ImVec2 centre = mind_map::canvas::WorldToScreen(world_pos, ctx.canvas_p0_, ctx.pan_px_, ctx.zoom_);
+  const ImVec2 box_tl = {centre.x - box_w * 0.5F, centre.y - box_h * 0.5F};
 
-  // Draw a highlighted border behind the widget so the editing state is obvious.
   ctx.draw_list_->AddRectFilled(box_tl, {box_tl.x + box_w, box_tl.y + box_h},
                                 kEditFrameBg, mind_map::canvas::kNodeCornerRadiusWorld);
   ctx.draw_list_->AddRect(box_tl, {box_tl.x + box_w, box_tl.y + box_h},
                           kEditBorderColor, mind_map::canvas::kNodeCornerRadiusWorld,
                           0, kEditBorderThick);
 
-  // Place the InputTextMultiline widget over the node.
   ImGui::SetCursorScreenPos(box_tl);
-  ImGui::PushStyleColor(ImGuiCol_FrameBg,        ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
-  ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,  ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
-  ImGui::PushStyleColor(ImGuiCol_FrameBgActive,   ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
+  ImGui::PushStyleColor(ImGuiCol_FrameBg,       ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
+  ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
+  ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(pad_screen, pad_screen));
 
   constexpr ImGuiInputTextFlags kFlags =
@@ -93,16 +84,13 @@ void RenderNodeEditOverlay(const MindMapCanvasRenderContext& ctx,
       ImGuiInputTextFlags_EnterReturnsTrue;
 
   const bool confirmed = ImGui::InputTextMultiline(
-      "##node_edit",
-      &canvas.GetEditBuffer(),
-      ImVec2(box_w, box_h),
-      kFlags);
+      "##node_edit", &buf, ImVec2(box_w, box_h), kFlags);
 
   ImGui::PopStyleVar();
   ImGui::PopStyleColor(3);
 
-  // Focus the widget on the first frame it appears.
-  if (ImGui::IsWindowFocused() && !ImGui::IsItemActive()) {
+  // Request keyboard focus every frame until the widget is active.
+  if (!ImGui::IsItemActive()) {
     ImGui::SetKeyboardFocusHere(-1);
   }
 
@@ -111,14 +99,15 @@ void RenderNodeEditOverlay(const MindMapCanvasRenderContext& ctx,
     return;
   }
 
-  // Escape cancels without saving.
   if (ImGui::IsKeyPressed(ImGuiKey_Escape, /*repeat=*/false)) {
     canvas.CancelEditing();
     return;
   }
 
-  // Clicking outside the widget commits.
-  if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsItemHovered()) {
+  // Clicking outside commits — but not on the same double-click frame that opened editing,
+  // because IsMouseClicked fires on that frame too and IsItemHovered is not yet true.
+  const bool opened_this_frame = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+  if (!opened_this_frame && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsItemHovered()) {
     CommitEdit(canvas, session, history);
   }
 }

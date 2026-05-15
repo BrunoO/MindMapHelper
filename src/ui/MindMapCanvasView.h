@@ -6,6 +6,7 @@
 
 #include "imgui.h"
 
+#include "ui/canvas/MindMapCanvasEditState.h"
 #include "ui/canvas/MindMapCanvasNodeMutators.h"
 #include "ui/canvas/MindMapCanvasTreeNav.h"
 
@@ -110,15 +111,16 @@ class MindMapCanvasView {
   [[nodiscard]] ImVec2 GetNodeWorldPos(size_t idx) const;
 
   // Inline label editing — state machine for the edit overlay (Option B: overlay in MindMapUi).
-  // BeginEditing selects the node and arms the editor. The overlay calls GetEditBuffer() each
-  // frame to drive InputTextMultiline, then calls CancelEditing or commits via RenameNodeCommand.
+  // BeginEditing selects the node and arms the editor. The overlay uses the canvas::IsEditing /
+  // GetEditingNode / GetEditBuffer free functions (MindMapCanvasEditState.h) each frame to drive
+  // InputTextMultiline, then calls CancelEditing or commits via RenameNodeCommand.
   void BeginEditing(size_t idx);
   void CancelEditing();
-  [[nodiscard]] bool IsEditing() const { return editing_node_.has_value(); }
-  [[nodiscard]] std::optional<size_t> GetEditingNode() const { return editing_node_; }
-  [[nodiscard]] std::string& GetEditBuffer() { return edit_buffer_; }
 
  private:
+  friend bool canvas::IsEditing(const MindMapCanvasView& view);
+  friend std::optional<size_t> canvas::GetEditingNode(const MindMapCanvasView& view);
+  friend std::string& canvas::GetEditBuffer(MindMapCanvasView& view);
   friend std::optional<size_t> canvas::GetParentOf(const MindMapCanvasView& view, size_t idx);
   friend std::optional<size_t> canvas::GetFirstActiveChildOf(const MindMapCanvasView& view, size_t idx);
   friend std::optional<size_t> canvas::GetPrevSiblingOf(const MindMapCanvasView& view, size_t idx);

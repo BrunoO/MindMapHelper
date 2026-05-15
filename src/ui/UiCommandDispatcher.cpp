@@ -44,7 +44,7 @@ void NavigateTo(UiState& state, std::optional<size_t> target) {
 // cognitive-complexity threshold.
 void DispatchSelectionCommand(UiCommandId command, UiState& state) {
   const auto sel = state.canvas_.GetSelectedNode();
-  if (!sel) { return; }
+  if (!sel.has_value()) { return; }
   switch (command) {  // NOSONAR(cpp:S6177)
     case UiCommandId::NavigateParent:      NavigateTo(state, canvas::GetParentOf(state.canvas_, *sel));           return;
     case UiCommandId::NavigateFirstChild:  NavigateTo(state, canvas::GetFirstActiveChildOf(state.canvas_, *sel)); return;

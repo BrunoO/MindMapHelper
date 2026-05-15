@@ -229,6 +229,7 @@ set(BM_UI_SOURCES
   src/ui/canvas/NodeTextureUtils.cpp
   src/ui/canvas/MindMapCanvasTreeNav.cpp
   src/ui/canvas/MindMapCanvasNodeMutators.cpp
+  src/ui/canvas/MindMapCanvasEditState.cpp
   src/ui/commands/PasteImageCommand.cpp
   src/ui/commands/PasteTextCommand.cpp
   src/ui/commands/RenameNodeCommand.cpp

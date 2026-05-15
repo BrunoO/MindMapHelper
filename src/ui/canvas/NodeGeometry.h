@@ -22,8 +22,7 @@ inline constexpr float kDefaultBlendToNormalized = 0.62F;
 /// Long labels wrap at kNodeMaxLabelWidth and grow the node downward.
 [[nodiscard]] inline ImVec2 NodeHalfExtentForLabel(const char* label) {
   assert(label != nullptr);
-  const ImVec2 single = ImGui::CalcTextSize(label);
-  if (single.x <= kNodeMaxLabelWidth) {
+  if (const ImVec2 single = ImGui::CalcTextSize(label); single.x <= kNodeMaxLabelWidth) {
     return {single.x * 0.5F + kNodePad, single.y * 0.5F + kNodePad};
   }
   const ImVec2 wrapped = ImGui::CalcTextSize(label, nullptr, false, kNodeMaxLabelWidth);
