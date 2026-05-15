@@ -1,5 +1,7 @@
 #include "ui/commands/PasteImageCommand.h"
 
+#include "ui/canvas/MindMapCanvasNodeMutators.h"
+
 namespace mind_map::ui::commands {
 
 PasteImageCommand::PasteImageCommand(mind_map::ui::MindMapCanvasView& canvas, size_t node_idx,
@@ -8,14 +10,14 @@ PasteImageCommand::PasteImageCommand(mind_map::ui::MindMapCanvasView& canvas, si
 
 void PasteImageCommand::Execute() {
   if (!executed_) {
-    old_png_base64_ = canvas_.GetNodeImageBase64(node_idx_);
+    old_png_base64_ = canvas::GetNodeImageBase64(canvas_, node_idx_);
     executed_ = true;
   }
-  canvas_.SetNodeImage(node_idx_, new_png_base64_);
+  canvas::SetNodeImage(canvas_, node_idx_, new_png_base64_);
 }
 
 void PasteImageCommand::Undo() {
-  canvas_.SetNodeImage(node_idx_, old_png_base64_);
+  canvas::SetNodeImage(canvas_, node_idx_, old_png_base64_);
 }
 
 }  // namespace mind_map::ui::commands

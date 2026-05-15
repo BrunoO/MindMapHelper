@@ -4,6 +4,7 @@
 #include "core/Base64.h"
 #include "ui/UiState.h"
 #include "ui/canvas/ClipboardImage.h"
+#include "ui/canvas/MindMapCanvasTreeNav.h"
 #include "ui/commands/CollapseNodeCommand.h"
 #include "ui/commands/CommandHistory.h"
 #include "ui/commands/DeleteNodeCommand.h"
@@ -109,23 +110,27 @@ void UiCommandDispatcher::Dispatch(UiCommandId command, UiState& state,
       return;
     }
     case UiCommandId::NavigateParent: {
-      const auto sel = state.canvas_.GetSelectedNode();
-      if (sel) { NavigateTo(state, state.canvas_.GetParentOf(*sel)); }
+      if (const auto sel = state.canvas_.GetSelectedNode(); sel.has_value()) {
+        NavigateTo(state, canvas::GetParentOf(state.canvas_, *sel));
+      }
       return;
     }
     case UiCommandId::NavigateFirstChild: {
-      const auto sel = state.canvas_.GetSelectedNode();
-      if (sel) { NavigateTo(state, state.canvas_.GetFirstActiveChildOf(*sel)); }
+      if (const auto sel = state.canvas_.GetSelectedNode(); sel.has_value()) {
+        NavigateTo(state, canvas::GetFirstActiveChildOf(state.canvas_, *sel));
+      }
       return;
     }
     case UiCommandId::NavigatePrevSibling: {
-      const auto sel = state.canvas_.GetSelectedNode();
-      if (sel) { NavigateTo(state, state.canvas_.GetPrevSiblingOf(*sel)); }
+      if (const auto sel = state.canvas_.GetSelectedNode(); sel.has_value()) {
+        NavigateTo(state, canvas::GetPrevSiblingOf(state.canvas_, *sel));
+      }
       return;
     }
     case UiCommandId::NavigateNextSibling: {
-      const auto sel = state.canvas_.GetSelectedNode();
-      if (sel) { NavigateTo(state, state.canvas_.GetNextSiblingOf(*sel)); }
+      if (const auto sel = state.canvas_.GetSelectedNode(); sel.has_value()) {
+        NavigateTo(state, canvas::GetNextSiblingOf(state.canvas_, *sel));
+      }
       return;
     }
   }

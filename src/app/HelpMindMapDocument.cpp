@@ -3,6 +3,7 @@
 #include "core/mindmap/UuidGenerator.h"
 
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace mind_map::app {
@@ -42,7 +43,7 @@ class HelpDocBuilder {
     return id;
   }
 
-  void AddEdge(const std::string& parent_id, const std::string& child_id) {
+  void AddEdge(std::string_view parent_id, std::string_view child_id) {
     mind_map::core::MindMapEdge edge;
     edge.id_ = mind_map::core::mindmap::GenerateUuidV4();
     edge.parent_id_ = parent_id;

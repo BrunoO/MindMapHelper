@@ -6,6 +6,9 @@
 
 #include "imgui.h"
 
+#include "ui/canvas/MindMapCanvasNodeMutators.h"
+#include "ui/canvas/MindMapCanvasTreeNav.h"
+
 #include <cstddef>
 #include <optional>
 #include <string_view>
@@ -105,21 +108,15 @@ class MindMapCanvasView {
   void SelectNode(std::optional<size_t> idx);
   [[nodiscard]] ImVec2 GetNodeWorldPos(size_t idx) const;
 
-  // Tree navigation helpers used by keyboard navigation commands.
-  [[nodiscard]] std::optional<size_t> GetParentOf(size_t idx) const;
-  [[nodiscard]] std::optional<size_t> GetFirstActiveChildOf(size_t idx) const;
-  [[nodiscard]] std::optional<size_t> GetPrevSiblingOf(size_t idx) const;
-  [[nodiscard]] std::optional<size_t> GetNextSiblingOf(size_t idx) const;
-
-  // Sets (or clears when png_base64 is empty) the image on the node at idx.
-  // Releases the previous GL texture and uploads a new one if png_base64 is non-empty.
-  void SetNodeImage(size_t idx, std::string_view png_base64);
-  [[nodiscard]] const std::string& GetNodeImageBase64(size_t idx) const;
-
-  void SetNodeLabel(size_t idx, std::string_view label);
-  [[nodiscard]] const std::string& GetNodeLabel(size_t idx) const;
-
  private:
+  friend std::optional<size_t> canvas::GetParentOf(const MindMapCanvasView& view, size_t idx);
+  friend std::optional<size_t> canvas::GetFirstActiveChildOf(const MindMapCanvasView& view, size_t idx);
+  friend std::optional<size_t> canvas::GetPrevSiblingOf(const MindMapCanvasView& view, size_t idx);
+  friend std::optional<size_t> canvas::GetNextSiblingOf(const MindMapCanvasView& view, size_t idx);
+  friend void canvas::SetNodeImage(MindMapCanvasView& view, size_t idx, std::string_view png_base64);
+  friend const std::string& canvas::GetNodeImageBase64(const MindMapCanvasView& view, size_t idx);
+  friend void canvas::SetNodeLabel(MindMapCanvasView& view, size_t idx, std::string_view label);
+  friend const std::string& canvas::GetNodeLabel(const MindMapCanvasView& view, size_t idx);
 
   std::vector<CanvasNode> nodes_;
   std::vector<ImVec2> initial_pos_world_;

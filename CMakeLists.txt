@@ -226,6 +226,8 @@ set(BM_UI_SOURCES
   src/ui/branch/DrawBranchesOrganicTaper.cpp
   src/ui/branch/DrawBranchTextOnPath.cpp
   src/ui/canvas/NodeTextureUtils.cpp
+  src/ui/canvas/MindMapCanvasTreeNav.cpp
+  src/ui/canvas/MindMapCanvasNodeMutators.cpp
   src/ui/commands/PasteImageCommand.cpp
   src/ui/commands/PasteTextCommand.cpp
 )

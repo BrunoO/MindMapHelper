@@ -571,35 +571,6 @@ std::vector<size_t> MindMapCanvasView::CollectActiveSubtree(size_t idx) const {
   return result;
 }
 
-void MindMapCanvasView::SetNodeImage(size_t idx, std::string_view png_base64) {
-  if (idx >= nodes_.size()) { return; }
-  auto& node = nodes_[idx];
-  ReleaseTexture(node.texture_id_);
-  node.texture_id_ = 0;
-  node.image_png_base64_ = png_base64;
-  if (!png_base64.empty()) {
-    node.texture_id_ = UploadPngTexture(mind_map::core::Base64Decode(node.image_png_base64_));
-  }
-}
-
-const std::string& MindMapCanvasView::GetNodeImageBase64(size_t idx) const {
-  static const std::string kEmpty;
-  if (idx >= nodes_.size()) { return kEmpty; }
-  return nodes_[idx].image_png_base64_;
-}
-
-void MindMapCanvasView::SetNodeLabel(size_t idx, std::string_view label) {
-  if (idx >= nodes_.size()) { return; }
-  nodes_[idx].label_ = label;
-}
-
-const std::string& MindMapCanvasView::GetNodeLabel(size_t idx) const {
-  static const std::string kEmpty;
-  if (idx >= nodes_.size()) { return kEmpty; }
-  return nodes_[idx].label_;
-}
-
-
 void MindMapCanvasView::CollapseNode(size_t idx) {
   if (idx >= nodes_.size() || nodes_[idx].collapsed_) { return; }
   nodes_[idx].collapsed_ = true;
@@ -694,42 +665,6 @@ void MindMapCanvasView::SelectNode(std::optional<size_t> idx) {
 ImVec2 MindMapCanvasView::GetNodeWorldPos(size_t idx) const {
   assert(idx < nodes_.size());
   return nodes_[idx].pos_world_;
-}
-
-std::optional<size_t> MindMapCanvasView::GetParentOf(size_t idx) const {
-  assert(idx < nodes_.size());
-  return nodes_[idx].parent_idx_;
-}
-
-std::optional<size_t> MindMapCanvasView::GetFirstActiveChildOf(size_t idx) const {
-  for (size_t i = 0; i < nodes_.size(); ++i) {
-    if (nodes_[i].active_ && nodes_[i].parent_idx_ == idx) { return i; }
-  }
-  return std::nullopt;
-}
-
-std::optional<size_t> MindMapCanvasView::GetPrevSiblingOf(size_t idx) const {
-  assert(idx < nodes_.size());
-  const auto parent = nodes_[idx].parent_idx_;
-  std::optional<size_t> prev;
-  for (size_t i = 0; i < nodes_.size(); ++i) {
-    if (!nodes_[i].active_ || nodes_[i].parent_idx_ != parent) { continue; }
-    if (i == idx) { return prev; }
-    prev = i;
-  }
-  return std::nullopt;
-}
-
-std::optional<size_t> MindMapCanvasView::GetNextSiblingOf(size_t idx) const {
-  assert(idx < nodes_.size());
-  const auto parent = nodes_[idx].parent_idx_;
-  bool found = false;
-  for (size_t i = 0; i < nodes_.size(); ++i) {
-    if (!nodes_[i].active_ || nodes_[i].parent_idx_ != parent) { continue; }
-    if (found) { return i; }
-    if (i == idx) { found = true; }
-  }
-  return std::nullopt;
 }
 
 }  // namespace mind_map::ui

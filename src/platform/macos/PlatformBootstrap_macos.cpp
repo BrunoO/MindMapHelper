@@ -33,8 +33,9 @@ void ConfigurePlatformGlContextHints() {
 void LaunchNewWindow(std::string_view path) {
   constexpr uint32_t kBufSize = PATH_MAX;
   std::array<char, kBufSize> buf{};
-  uint32_t size = kBufSize;
-  if (_NSGetExecutablePath(buf.data(), &size) != 0) { return; }
+  if (uint32_t size = kBufSize; _NSGetExecutablePath(buf.data(), &size) != 0) {
+    return;
+  }
 
   std::string exe(buf.data());
   std::string path_arg(path);
