@@ -5,11 +5,24 @@
 namespace mind_map::ui::canvas {
 
 namespace {
+
 InlineMarkupFonts& FontRegistry() {
   static InlineMarkupFonts instance;
   return instance;
 }
+
+// If any style flag is still open at EOF the label has an unmatched opener.
+// Emit the raw label as a single plain-text span so markers are visible rather
+// than silently consumed. Extracted to keep ParseMarkup under the complexity limit.
+void ReconcileUnmatched(std::vector<MarkupSpan>& spans, std::string_view label,  // NOLINT(readability-identifier-naming,cppcoreguidelines-avoid-non-const-global-variables)
+                        bool bold, bool italic, bool code, bool strikethrough) {
+  if (bold || italic || code || strikethrough) {
+    spans.clear();
+    spans.push_back(MarkupSpan{std::string{label}});
+  }
 }
+
+}  // namespace
 
 void InitInlineMarkupFonts(InlineMarkupFonts fonts) { FontRegistry() = fonts; }
 const InlineMarkupFonts& GetInlineMarkupFonts()     { return FontRegistry(); }
@@ -71,6 +84,7 @@ std::vector<MarkupSpan> ParseMarkup(std::string_view label) {
     buf += label[i++];
   }
   flush();
+  ReconcileUnmatched(spans, label, bold, italic, code, strikethrough);
   return spans;
 }
 

@@ -132,6 +132,8 @@ int RunApp(int argc, char** argv) {
                   font_size);
     io.Fonts->AddFontDefault();
     io.FontGlobalScale = 1.0F;
+    // No styled variants available; markup degrades to regular font for bold/italic.
+    mind_map::ui::canvas::InitInlineMarkupFonts({});
   } else {
     // Load FreeType synthetic bold, italic, and bold-italic from the same Inter-Regular.ttf.
     // No extra font files needed; ImGuiFreeTypeBuilderFlags synthesises the variants.
