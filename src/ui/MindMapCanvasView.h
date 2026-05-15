@@ -129,6 +129,8 @@ class MindMapCanvasView {
   friend const std::string& canvas::GetNodeImageBase64(const MindMapCanvasView& view, size_t idx);
   friend void canvas::SetNodeLabel(MindMapCanvasView& view, size_t idx, std::string_view label);
   friend const std::string& canvas::GetNodeLabel(const MindMapCanvasView& view, size_t idx);
+  friend void canvas::SetEdgeLabel(MindMapCanvasView& view, size_t idx, std::string_view label);
+  friend const std::string& canvas::GetEdgeLabel(const MindMapCanvasView& view, size_t idx);
 
   std::vector<CanvasNode> nodes_;
   std::vector<ImVec2> initial_pos_world_;

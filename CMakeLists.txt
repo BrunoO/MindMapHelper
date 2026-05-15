@@ -233,6 +233,7 @@ set(BM_UI_SOURCES
   src/ui/commands/PasteImageCommand.cpp
   src/ui/commands/PasteTextCommand.cpp
   src/ui/commands/RenameNodeCommand.cpp
+  src/ui/commands/UpdateEdgeLabelCommand.cpp
   src/ui/NodeEditOverlay.cpp
 )
 
@@ -299,6 +300,7 @@ if(APPLE)
   target_link_libraries(mindmap_helper_ui PRIVATE "-framework AppKit")
 elseif(WIN32)
   target_sources(mindmap_helper_ui PRIVATE src/ui/canvas/ClipboardImage_windows.cpp)
+  target_link_libraries(mindmap_helper_ui PRIVATE Gdiplus)
 elseif(UNIX)
   target_sources(mindmap_helper_ui PRIVATE src/ui/canvas/ClipboardImage_linux.cpp)
 endif()

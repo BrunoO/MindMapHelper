@@ -42,4 +42,19 @@ const std::string& GetNodeLabel(const MindMapCanvasView& view, size_t idx) {
   return view.nodes_[idx].label_;
 }
 
+void SetEdgeLabel(MindMapCanvasView& view, size_t idx, std::string_view label) {
+  if (idx >= view.nodes_.size()) {
+    return;
+  }
+  view.nodes_[idx].branch_edge_label_ = label;
+}
+
+const std::string& GetEdgeLabel(const MindMapCanvasView& view, size_t idx) {
+  static const std::string kEmpty;
+  if (idx >= view.nodes_.size()) {
+    return kEmpty;
+  }
+  return view.nodes_[idx].branch_edge_label_;
+}
+
 }  // namespace mind_map::ui::canvas

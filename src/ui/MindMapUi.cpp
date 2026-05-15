@@ -8,11 +8,14 @@
 #include "ui/UiCommandDispatcher.h"
 #include "ui/branch/BranchStyle.h"
 #include "ui/canvas/CanvasMath.h"
+#include "ui/canvas/MindMapCanvasNodeMutators.h"
 #include "ui/commands/CollapseNodeCommand.h"
 #include "ui/commands/CommandHistory.h"
+#include "ui/commands/UpdateEdgeLabelCommand.h"
 
 #include "ImGuiFileDialog.h"
 #include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
 
 #include <algorithm>
 #include <cassert>
@@ -29,6 +32,7 @@ constexpr float kZoomStep = 0.1F;
 constexpr float kStatusBarHeight = 26.0F;
 constexpr float kFileDialogWidth = 600.0F;
 constexpr float kFileDialogHeight = 400.0F;
+constexpr float kEdgeLabelInputWidth = 180.0F;
 
 // Returns true when the caller should proceed immediately; when false the action is queued behind
 // the unsaved-changes guard modal which will invoke it after Save or Discard.
@@ -121,7 +125,8 @@ void RenderEditMenu(const UiCommandDispatcher& dispatcher, UiState& state,
 }
 
 void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas,
-                                             mind_map::app::DocumentSessionService& session) {
+                                             mind_map::app::DocumentSessionService& session,
+                                             commands::CommandHistory& history) {
   if (!canvas.HasSelectedIncomingEdgeStyleTarget()) {
     ImGui::TextDisabled("Incoming edge style: select a non-root node on the canvas.");
     return;
@@ -132,22 +137,42 @@ void RenderSelectedIncomingEdgeStyleSelector(MindMapCanvasView& canvas,
   ImGui::SameLine();
   const mind_map::ui::branch::BranchStyle current = canvas.GetBranchStyleForSelectedChildEdge();
   if (const char* const preview = mind_map::ui::branch::GetBranchStyleDisplayName(current);
-      !ImGui::BeginCombo("##SelectedIncomingEdgeBranchStyle", preview)) {
-    return;
+      ImGui::BeginCombo("##SelectedIncomingEdgeBranchStyle", preview)) {
+    for (int i = 0; i < mind_map::ui::branch::kBranchStyleCount; ++i) {
+      const mind_map::ui::branch::BranchStyle style = mind_map::ui::branch::BranchStyleFromIndex(i);
+      const bool selected = (style == current);
+      if (ImGui::Selectable(mind_map::ui::branch::GetBranchStyleDisplayName(style), selected)) {
+        canvas.SetBranchStyleForSelectedChildEdge(style);
+        session.MarkDirty();
+      }
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
   }
 
-  for (int i = 0; i < mind_map::ui::branch::kBranchStyleCount; ++i) {
-    const mind_map::ui::branch::BranchStyle style = mind_map::ui::branch::BranchStyleFromIndex(i);
-    const bool selected = (style == current);
-    if (ImGui::Selectable(mind_map::ui::branch::GetBranchStyleDisplayName(style), selected)) {
-      canvas.SetBranchStyleForSelectedChildEdge(style);
+  // Edge label text field — synced from the canvas whenever the selection changes.
+  static std::string s_edge_label_buf;
+  static std::optional<size_t> s_last_edge_idx;
+  const std::optional<size_t> edge_idx = canvas.GetSelectedChildForBranchStyle();
+  if (s_last_edge_idx != edge_idx) {
+    s_edge_label_buf = edge_idx.has_value() ? canvas::GetEdgeLabel(canvas, *edge_idx) : std::string{};
+    s_last_edge_idx = edge_idx;
+  }
+  ImGui::SameLine();
+  ImGui::TextUnformatted("Label:");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(kEdgeLabelInputWidth);
+  ImGui::InputText("##EdgeLabel", &s_edge_label_buf);
+  if (ImGui::IsItemDeactivatedAfterEdit() && edge_idx.has_value()) {
+    std::string old_label = canvas::GetEdgeLabel(canvas, *edge_idx);
+    if (old_label != s_edge_label_buf) {
+      history.Push(std::make_unique<commands::UpdateEdgeLabelCommand>(
+          canvas, *edge_idx, std::move(old_label), s_edge_label_buf));
       session.MarkDirty();
     }
-    if (selected) {
-      ImGui::SetItemDefaultFocus();
-    }
   }
-  ImGui::EndCombo();
 }
 
 void RenderBranchStyleSelector(MindMapCanvasView& canvas,
@@ -577,7 +602,7 @@ void RenderMainUi(UiState& state, mind_map::app::DocumentSessionService& session
     if (ImGui::Button("Reset layout")) {
       command_dispatcher.Dispatch(UiCommandId::ResetLayout, state, session);
     }
-    RenderSelectedIncomingEdgeStyleSelector(state.canvas_, session);
+    RenderSelectedIncomingEdgeStyleSelector(state.canvas_, session, history);
     ImGui::Text("Zoom %.2f", state.zoom_);
     RenderCanvas(state, session, history);
   }
